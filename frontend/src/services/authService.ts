@@ -162,7 +162,7 @@ class AuthService {
     try {
       const token = localStorage.getItem('auth_token');
       const response: AxiosResponse<{ success: boolean; message: string }> =
-        await api.delete('/api/auth/delete-account', {
+        await api.delete('/auth/delete-account', {
           headers: { Authorization: `Bearer ${token}` },
           data: { password }, // axios DELETE requires `data` for body
         });
@@ -186,7 +186,7 @@ class AuthService {
       const token = localStorage.getItem('auth_token');
       const response: AxiosResponse<{ success: boolean; message: string }> =
         await api.post(
-          '/api/auth/logout',
+          '/auth/logout',
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );

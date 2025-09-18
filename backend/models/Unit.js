@@ -1,3 +1,4 @@
+// Unit.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../src/config/database');
 
@@ -20,4 +21,4 @@ const Unit = sequelize.define('Unit', {
   tableName: 'units'
 });
 
-module.exports = Unit;
+module.exports = Unit;  

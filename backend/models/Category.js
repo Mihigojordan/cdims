@@ -1,3 +1,5 @@
+
+// Category.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../src/config/database');
 
@@ -17,7 +19,9 @@ const Category = sequelize.define('Category', {
     references: {
       model: 'categories',
       key: 'id'
-    }
+    },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE'
   }
 }, {
   tableName: 'categories'
