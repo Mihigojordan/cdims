@@ -13,10 +13,7 @@ import {
   XCircle,
   X,
   AlertCircle,
-  Store as StoreIcon,
   MapPin,
-  Mail,
-  Phone,
   RefreshCw,
   Filter,
   Grid3X3,
@@ -24,9 +21,9 @@ import {
   Settings,
   Minimize2,
 } from "lucide-react";
-import storeService, { type CreateStoreInput, type ValidationResult } from "../../services/storeService";
+import siteService, { type CreateSiteInput, type ValidationResult } from "../../services/siteService";
 import { useNavigate } from "react-router-dom";
-import type { Store } from "../../types/model";
+import type { Site } from "../../types/model";
 
 type ViewMode = 'table' | 'grid' | 'list';
 
@@ -35,17 +32,17 @@ interface OperationStatus {
   message: string;
 }
 
-const StoreDashboard: React.FC = () => {
-  const [stores, setStores] = useState<Store[]>([]);
-  const [allStores, setAllStores] = useState<Store[]>([]);
+const SiteDashboard: React.FC = () => {
+  const [sites, setSites] = useState<Site[]>([]);
+  const [allSites, setAllSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<keyof Store>("name");
+  const [sortBy, setSortBy] = useState<keyof Site>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
-  const [deleteConfirm, setDeleteConfirm] = useState<Store | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Site | null>(null);
   const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
   const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -55,15 +52,11 @@ const StoreDashboard: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [formData, setFormData] = useState<CreateStoreInput>({
+  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [formData, setFormData] = useState<CreateSiteInput>({
     code: '',
     name: '',
     location: '',
-    description: '',
-    manager_name: '',
-    contact_phone: '',
-    contact_email: '',
   });
   const [formError, setFormError] = useState<string>('');
 
@@ -75,16 +68,16 @@ const StoreDashboard: React.FC = () => {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, sortBy, sortOrder, allStores, selectedLocation]);
+  }, [searchTerm, sortBy, sortOrder, allSites, selectedLocation]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const { stores } = await storeService.getAllStores();
-      setAllStores(stores || []);
+      const { sites } = await siteService.getAllSites();
+      setAllSites(sites || []);
       setError(null);
     } catch (err: any) {
-      setError(err.message || "Failed to load stores");
+      setError(err.message || "Failed to load sites");
     } finally {
       setLoading(false);
     }
@@ -96,21 +89,19 @@ const StoreDashboard: React.FC = () => {
   };
 
   const handleFilterAndSort = () => {
-    let filtered = [...allStores];
+    let filtered = [...allSites];
 
     if (searchTerm.trim()) {
       filtered = filtered.filter(
-        (store) =>
-          store.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          store.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          store.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          store.manager_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          store.contact_email?.toLowerCase().includes(searchTerm.toLowerCase())
+        (site) =>
+          site.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          site.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          site.code?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (selectedLocation) {
-      filtered = filtered.filter(store => store.location?.toLowerCase() === selectedLocation.toLowerCase());
+      filtered = filtered.filter(site => site.location?.toLowerCase() === selectedLocation.toLowerCase());
     }
 
     filtered.sort((a, b) => {
@@ -130,41 +121,36 @@ const StoreDashboard: React.FC = () => {
       else return aStr < bStr ? 1 : aStr > bStr ? -1 : 0;
     });
 
-    setStores(filtered);
+    setSites(filtered);
     setCurrentPage(1);
   };
 
-  const totalStores = allStores.length;
-  const uniqueLocations = [...new Set(allStores.map(store => store.location))].length;
+  const totalSites = allSites.length;
+  const uniqueLocations = [...new Set(allSites.map(site => site.location))].length;
 
-  const handleAddStore = () => {
-    // Generate sequential store code
-    const storeCodes = allStores
-      .filter(store => store.code && store.code.startsWith('STORE-'))
-      .map(store => {
-        const match = store.code.match(/STORE-(\d+)/);
+  const handleAddSite = () => {
+    const siteCodes = allSites
+      .filter(site => site.code && site.code.startsWith('SITE-'))
+      .map(site => {
+        const match = site.code.match(/SITE-(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
       })
       .filter(num => !isNaN(num));
 
-    const maxNum = storeCodes.length > 0 ? Math.max(...storeCodes) : 0;
+    const maxNum = siteCodes.length > 0 ? Math.max(...siteCodes) : 0;
     const nextNum = maxNum + 1;
-    const nextCode = `STORE-${nextNum.toString().padStart(3, '0')}`;
+    const nextCode = `SITE-${nextNum.toString().padStart(3, '0')}`;
 
     setFormData({
       code: nextCode,
       name: '',
       location: '',
-      description: '',
-      manager_name: '',
-      contact_phone: '',
-      contact_email: '',
     });
     setFormError('');
     setShowAddModal(true);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -172,7 +158,7 @@ const StoreDashboard: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    const validation: ValidationResult = storeService.validateStoreData(formData);
+    const validation: ValidationResult = siteService.validateSiteData(formData);
     if (!validation.isValid) {
       setFormError(validation.errors.join(', '));
       return;
@@ -180,37 +166,29 @@ const StoreDashboard: React.FC = () => {
 
     try {
       setOperationLoading(true);
-      const newStore = await storeService.createStore(formData);
+      const newSite = await siteService.createSite(formData);
       setShowAddModal(false);
       setFormData({
         code: '',
         name: '',
         location: '',
-        description: '',
-        manager_name: '',
-        contact_phone: '',
-        contact_email: '',
       });
       loadData();
-      showOperationStatus("success", `${newStore.name} created successfully!`);
+      showOperationStatus("success", `${newSite.name} created successfully!`);
     } catch (err: any) {
-      setFormError(err.message || "Failed to create store");
+      setFormError(err.message || "Failed to create site");
     } finally {
       setOperationLoading(false);
     }
   };
 
-  const handleEditStore = (store: Store) => {
-    if (!store?.id) return;
-    setSelectedStore(store);
+  const handleEditSite = (site: Site) => {
+    if (!site?.id) return;
+    setSelectedSite(site);
     setFormData({
-      code: store.code || '',
-      name: store.name || '',
-      location: store.location || '',
-      description: store.description || '',
-      manager_name: store.manager_name || '',
-      contact_phone: store.contact_phone || '',
-      contact_email: store.contact_email || '',
+      code: site.code || '',
+      name: site.name || '',
+      location: site.location || '',
     });
     setShowUpdateModal(true);
   };
@@ -219,55 +197,51 @@ const StoreDashboard: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    const validation: ValidationResult = storeService.validateStoreData(formData);
+    const validation: ValidationResult = siteService.validateSiteData(formData);
     if (!validation.isValid) {
       setFormError(validation.errors.join(', '));
       return;
     }
 
-    if (!selectedStore?.id) {
-      setFormError("Invalid store ID");
+    if (!selectedSite?.id) {
+      setFormError("Invalid site ID");
       return;
     }
 
     try {
       setOperationLoading(true);
-      await storeService.updateStore(selectedStore.id, formData);
+      await siteService.updateSite(selectedSite.id, formData);
       setShowUpdateModal(false);
-      setSelectedStore(null);
+      setSelectedSite(null);
       setFormData({
         code: '',
         name: '',
         location: '',
-        description: '',
-        manager_name: '',
-        contact_phone: '',
-        contact_email: '',
       });
       loadData();
       showOperationStatus("success", `${formData.name} updated successfully!`);
     } catch (err: any) {
-      setFormError(err.message || "Failed to update store");
+      setFormError(err.message || "Failed to update site");
     } finally {
       setOperationLoading(false);
     }
   };
 
-  const handleViewStore = (store: Store) => {
-    if (!store?.id) return;
-    setSelectedStore(store);
+  const handleViewSite = (site: Site) => {
+    if (!site?.id) return;
+    setSelectedSite(site);
     setShowViewModal(true);
   };
 
-  const handleDeleteStore = async (store: Store) => {
+  const handleDeleteSite = async (site: Site) => {
     try {
       setOperationLoading(true);
       setDeleteConfirm(null);
-      await storeService.deleteStore(store.id);
+      await siteService.deleteSite(site.id);
       loadData();
-      showOperationStatus("success", `${store.name} deleted successfully!`);
+      showOperationStatus("success", `${site.name} deleted successfully!`);
     } catch (err: any) {
-      showOperationStatus("error", err.message || "Failed to delete store");
+      showOperationStatus("error", err.message || "Failed to delete site");
     } finally {
       setOperationLoading(false);
     }
@@ -282,10 +256,10 @@ const StoreDashboard: React.FC = () => {
     });
   };
 
-  const totalPages = Math.ceil(stores.length / itemsPerPage);
+  const totalPages = Math.ceil(sites.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentStores = stores.slice(startIndex, endIndex);
+  const currentSites = sites.slice(startIndex, endIndex);
 
   const renderTableView = () => (
     <div className="bg-white rounded border border-gray-200">
@@ -304,39 +278,37 @@ const StoreDashboard: React.FC = () => {
                 </div>
               </th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Code</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Manager name</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Location</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
               <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {currentStores.map((store, index) => (
-              <tr key={store.id || index} className="hover:bg-gray-25">
+            {currentSites.map((site, index) => (
+              <tr key={site.id || index} className="hover:bg-gray-25">
                 <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
-                <td className="py-2 px-2 font-medium text-gray-900 text-xs">{store.name}</td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{store.code}</td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{ store.manager_name ? store.manager_name : "N/A"}</td>
-                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{store.location}</td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(store.created_at)}</td>
+                <td className="py-2 px-2 font-medium text-gray-900 text-xs">{site.name}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{site.code}</td>
+                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{site.location}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(site.created_at)}</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
-                      onClick={() => handleViewStore(store)} 
+                      onClick={() => handleViewSite(site)} 
                       className="text-gray-400 hover:text-primary-600 p-1" 
                       title="View"
                     >
                       <Eye className="w-3 h-3" />
                     </button>
                     <button 
-                      onClick={() => handleEditStore(store)} 
+                      onClick={() => handleEditSite(site)} 
                       className="text-gray-400 hover:text-primary-600 p-1" 
                       title="Edit"
                     >
                       <Edit className="w-3 h-3" />
                     </button>
                     <button 
-                      onClick={() => setDeleteConfirm(store)} 
+                      onClick={() => setDeleteConfirm(site)} 
                       className="text-gray-400 hover:text-red-600 p-1" 
                       title="Delete"
                     >
@@ -354,45 +326,33 @@ const StoreDashboard: React.FC = () => {
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {currentStores.map((store) => (
-        <div key={store.id} className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
+      {currentSites.map((site) => (
+        <div key={site.id} className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-              <StoreIcon className="w-4 h-4 text-primary-700" />
+              <MapPin className="w-4 h-4 text-primary-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-xs truncate">{store.name}</div>
-              <div className="text-gray-500 text-xs truncate">{store.code}</div>
+              <div className="font-medium text-gray-900 text-xs truncate">{site.name}</div>
+              <div className="text-gray-500 text-xs truncate">{site.code}</div>
             </div>
           </div>
           <div className="space-y-1 mb-3">
             <div className="flex items-center space-x-1 text-xs text-gray-600">
               <MapPin className="w-3 h-3" />
-              <span>{store.location}</span>
+              <span>{site.location || '-'}</span>
             </div>
-            {store.contact_email && (
-              <div className="flex items-center space-x-1 text-xs text-gray-600">
-                <Mail className="w-3 h-3" />
-                <span className="truncate">{store.contact_email}</span>
-              </div>
-            )}
-            {store.contact_phone && (
-              <div className="flex items-center space-x-1 text-xs text-gray-600">
-                <Phone className="w-3 h-3" />
-                <span>{store.contact_phone}</span>
-              </div>
-            )}
           </div>
           <div className="flex items-center justify-between">
             <div className="flex space-x-1">
-              <button onClick={() => handleViewStore(store)} className="text-gray-400 hover:text-primary-600 p-1" title="View">
+              <button onClick={() => handleViewSite(site)} className="text-gray-400 hover:text-primary-600 p-1" title="View">
                 <Eye className="w-3 h-3" />
               </button>
-              <button onClick={() => handleEditStore(store)} className="text-gray-400 hover:text-primary-600 p-1" title="Edit">
+              <button onClick={() => handleEditSite(site)} className="text-gray-400 hover:text-primary-600 p-1" title="Edit">
                 <Edit className="w-3 h-3" />
               </button>
             </div>
-            <button onClick={() => setDeleteConfirm(store)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
+            <button onClick={() => setDeleteConfirm(site)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
               <Trash2 className="w-3 h-3" />
             </button>
           </div>
@@ -403,42 +363,41 @@ const StoreDashboard: React.FC = () => {
 
   const renderListView = () => (
     <div className="bg-white rounded border border-gray-200 divide-y divide-gray-100">
-      {currentStores.map((store) => (
-        <div key={store.id} className="px-4 py-3 hover:bg-gray-25">
+      {currentSites.map((site) => (
+        <div key={site.id} className="px-4 py-3 hover:bg-gray-25">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
               <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <StoreIcon className="w-5 h-5 text-primary-700" />
+                <MapPin className="w-5 h-5 text-primary-700" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 text-sm truncate">{store.name}</div>
-                <div className="text-gray-500 text-xs truncate">{store.code}</div>
+                <div className="font-medium text-gray-900 text-sm truncate">{site.name}</div>
+                <div className="text-gray-500 text-xs truncate">{site.code}</div>
               </div>
             </div>
-            <div className="hidden md:grid grid-cols-3 gap-4 text-xs text-gray-600 flex-1 max-w-2xl px-4">
-              <span className="truncate">{store.location}</span>
-              <span className="truncate">{store.contact_email || '-'}</span>
-              <span>{formatDate(store.created_at)}</span>
+            <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
+              <span className="truncate">{site.location || '-'}</span>
+              <span>{formatDate(site.created_at)}</span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
               <button 
-                onClick={() => handleViewStore(store)} 
+                onClick={() => handleViewSite(site)} 
                 className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
-                title="View Store"
+                title="View Site"
               >
                 <Eye className="w-4 h-4" />
               </button>
               <button 
-                onClick={() => handleEditStore(store)} 
+                onClick={() => handleEditSite(site)} 
                 className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
-                title="Edit Store"
+                title="Edit Site"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button 
-                onClick={() => setDeleteConfirm(store)} 
+                onClick={() => setDeleteConfirm(site)} 
                 className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" 
-                title="Delete Store"
+                title="Delete Site"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -466,7 +425,7 @@ const StoreDashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-between bg-white px-3 py-2 border-t border-gray-200">
         <div className="text-xs text-gray-600">
-          Showing {startIndex + 1}-{Math.min(endIndex, stores.length)} of {stores.length}
+          Showing {startIndex + 1}-{Math.min(endIndex, sites.length)} of {sites.length}
         </div>
         <div className="flex items-center space-x-1">
           <button
@@ -515,8 +474,8 @@ const StoreDashboard: React.FC = () => {
                 <Minimize2 className="w-4 h-4" />
               </button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Store Management</h1>
-                <p className="text-xs text-gray-500 mt-0.5">Manage your organization's stores</p>
+                <h1 className="text-lg font-semibold text-gray-900">Site Management</h1>
+                <p className="text-xs text-gray-500 mt-0.5">Manage your organization's sites</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -530,12 +489,12 @@ const StoreDashboard: React.FC = () => {
                 <span>Refresh</span>
               </button>
               <button
-                onClick={handleAddStore}
+                onClick={handleAddSite}
                 disabled={operationLoading}
                 className="flex items-center space-x-1 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50"
               >
                 <Plus className="w-3 h-3" />
-                <span>Add Store</span>
+                <span>Add Site</span>
               </button>
             </div>
           </div>
@@ -547,11 +506,11 @@ const StoreDashboard: React.FC = () => {
           <div className="bg-white rounded shadow p-4">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-                <StoreIcon className="w-5 h-5 text-primary-600" />
+                <MapPin className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-600">Total Stores</p>
-                <p className="text-lg font-semibold text-gray-900">{totalStores}</p>
+                <p className="text-xs text-gray-600">Total Sites</p>
+                <p className="text-lg font-semibold text-gray-900">{totalSites}</p>
               </div>
             </div>
           </div>
@@ -575,7 +534,7 @@ const StoreDashboard: React.FC = () => {
                 <Search className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search stores..."
+                  placeholder="Search sites..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-48 pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
@@ -595,7 +554,7 @@ const StoreDashboard: React.FC = () => {
               <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
-                  const [field, order] = e.target.value.split("-") as [keyof Store, "asc" | "desc"];
+                  const [field, order] = e.target.value.split("-") as [keyof Site, "asc" | "desc"];
                   setSortBy(field);
                   setSortOrder(order);
                 }}
@@ -648,7 +607,7 @@ const StoreDashboard: React.FC = () => {
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">All Locations</option>
-                  {[...new Set(allStores.map(store => store.location))].map((location, index) => (
+                  {[...new Set(allSites.map(site => site.location))].map((location, index) => (
                     <option key={index} value={location}>{location}</option>
                   ))}
                 </select>
@@ -675,13 +634,13 @@ const StoreDashboard: React.FC = () => {
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="inline-flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-xs">Loading stores...</span>
+              <span className="text-xs">Loading sites...</span>
             </div>
           </div>
-        ) : currentStores.length === 0 ? (
+        ) : currentSites.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm || selectedLocation ? 'No stores found matching your criteria' : 'No stores found'}
+              {searchTerm || selectedLocation ? 'No sites found matching your criteria' : 'No sites found'}
             </div>
           </div>
         ) : (
@@ -731,7 +690,7 @@ const StoreDashboard: React.FC = () => {
                 <AlertTriangle className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Delete Store</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Delete Site</h3>
                 <p className="text-xs text-gray-500">This action cannot be undone</p>
               </div>
             </div>
@@ -750,7 +709,7 @@ const StoreDashboard: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={() => handleDeleteStore(deleteConfirm)}
+                onClick={() => handleDeleteSite(deleteConfirm)}
                 className="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Delete
@@ -763,7 +722,7 @@ const StoreDashboard: React.FC = () => {
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Add New Store</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Add New Site</h3>
             {formError && (
               <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-xs mb-4">
                 {formError}
@@ -771,19 +730,19 @@ const StoreDashboard: React.FC = () => {
             )}
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Code</label>
                 <input
                   type="text"
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store code"
+                  placeholder="Enter site code"
                   disabled
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Name *</label>
                 <input
                   type="text"
                   name="name"
@@ -791,7 +750,7 @@ const StoreDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store name"
+                  placeholder="Enter site name"
                 />
               </div>
               <div>
@@ -803,51 +762,7 @@ const StoreDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store location"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store description"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
-                <input
-                  type="text"
-                  name="manager_name"
-                  value={formData.manager_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter manager name"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
-                <input
-                  type="email"
-                  name="contact_email"
-                  value={formData.contact_email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter contact email"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
-                <input
-                  type="tel"
-                  name="contact_phone"
-                  value={formData.contact_phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter contact phone"
+                  placeholder="Enter site location"
                 />
               </div>
               <div className="flex justify-end space-x-2 pt-2">
@@ -859,10 +774,6 @@ const StoreDashboard: React.FC = () => {
                       code: '',
                       name: '',
                       location: '',
-                      description: '',
-                      manager_name: '',
-                      contact_phone: '',
-                      contact_email: '',
                     });
                     setFormError('');
                   }}
@@ -875,7 +786,7 @@ const StoreDashboard: React.FC = () => {
                   disabled={operationLoading}
                   className="px-4 py-2 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {operationLoading ? 'Creating...' : 'Create Store'}
+                  {operationLoading ? 'Creating...' : 'Create Site'}
                 </button>
               </div>
             </form>
@@ -883,10 +794,10 @@ const StoreDashboard: React.FC = () => {
         </div>
       )}
 
-      {showUpdateModal && selectedStore && (
+      {showUpdateModal && selectedSite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Update Store</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Update Site</h3>
             {formError && (
               <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-xs mb-4">
                 {formError}
@@ -894,19 +805,19 @@ const StoreDashboard: React.FC = () => {
             )}
             <form onSubmit={handleUpdateSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Code</label>
                 <input
                   type="text"
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store code"
+                  placeholder="Enter site code"
                   disabled
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Name *</label>
                 <input
                   type="text"
                   name="name"
@@ -914,7 +825,7 @@ const StoreDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store name"
+                  placeholder="Enter site name"
                 />
               </div>
               <div>
@@ -926,51 +837,7 @@ const StoreDashboard: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store location"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter store description"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
-                <input
-                  type="text"
-                  name="manager_name"
-                  value={formData.manager_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter manager name"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
-                <input
-                  type="email"
-                  name="contact_email"
-                  value={formData.contact_email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter contact email"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
-                <input
-                  type="tel"
-                  name="contact_phone"
-                  value={formData.contact_phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter contact phone"
+                  placeholder="Enter site location"
                 />
               </div>
               <div className="flex justify-end space-x-2 pt-2">
@@ -978,15 +845,11 @@ const StoreDashboard: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setShowUpdateModal(false);
-                    setSelectedStore(null);
+                    setSelectedSite(null);
                     setFormData({
                       code: '',
                       name: '',
                       location: '',
-                      description: '',
-                      manager_name: '',
-                      contact_phone: '',
-                      contact_email: '',
                     });
                     setFormError('');
                   }}
@@ -999,7 +862,7 @@ const StoreDashboard: React.FC = () => {
                   disabled={operationLoading}
                   className="px-4 py-2 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {operationLoading ? 'Updating...' : 'Update Store'}
+                  {operationLoading ? 'Updating...' : 'Update Site'}
                 </button>
               </div>
             </form>
@@ -1007,53 +870,37 @@ const StoreDashboard: React.FC = () => {
         </div>
       )}
 
-      {showViewModal && selectedStore && (
+      {showViewModal && selectedSite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Store Details</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Site Details</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
-                <p className="text-xs text-gray-900">{selectedStore.code || '-'}</p>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Code</label>
+                <p className="text-xs text-gray-900">{selectedSite.code || '-'}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name</label>
-                <p className="text-xs text-gray-900">{selectedStore.name || '-'}</p>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Site Name</label>
+                <p className="text-xs text-gray-900">{selectedSite.name || '-'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                <p className="text-xs text-gray-900">{selectedStore.location || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <p className="text-xs text-gray-900">{selectedStore.description || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
-                <p className="text-xs text-gray-900">{selectedStore.manager_name || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
-                <p className="text-xs text-gray-900">{selectedStore.contact_email || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
-                <p className="text-xs text-gray-900">{selectedStore.contact_phone || '-'}</p>
+                <p className="text-xs text-gray-900">{selectedSite.location || '-'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
-                <p className="text-xs text-gray-900">{formatDate(selectedStore.created_at)}</p>
+                <p className="text-xs text-gray-900">{formatDate(selectedSite.created_at)}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>
-                <p className="text-xs text-gray-900">{formatDate(selectedStore.updated_at)}</p>
+                <p className="text-xs text-gray-900">{formatDate(selectedSite.updated_at)}</p>
               </div>
             </div>
             <div className="flex justify-end pt-4">
               <button
                 onClick={() => {
                   setShowViewModal(false);
-                  setSelectedStore(null);
+                  setSelectedSite(null);
                 }}
                 className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
               >
@@ -1067,4 +914,4 @@ const StoreDashboard: React.FC = () => {
   );
 };
 
-export default StoreDashboard;
+export default SiteDashboard;
