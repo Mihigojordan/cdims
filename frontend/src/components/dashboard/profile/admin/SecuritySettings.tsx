@@ -1,270 +1,121 @@
 import React, { useState } from 'react';
-import { Shield, CheckCircle, Settings, Trash2, Power } from 'lucide-react';
-import useAdminAuth from '../../../../context/AdminAuthContext';
+import { Shield, Power } from 'lucide-react';
+import  useAuth ,{ type AuthContextType } from '../../../../context/AuthContext';
 import Swal from 'sweetalert2';
+import authService from '../../../../services/authService';
+import ChangePasswordModal from './security/ChangePasswordModal';
+import { logout } from '../../../../services/adminAuthService';
 
-interface AdminUser {
-  id: string;
-  adminName?: string;
-  adminEmail?: string;
-  isLocked?: boolean;
-  createdAt?: string;
-  profileImage?: string;
-  phone?: string;
-  is2FA?: boolean;
+interface DeleteAccountModalProps {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-const SecuritySettings: React.FC = () => {
-  const { user, updateAdmin } = useAdminAuth() as { user: AdminUser | null; updateAdmin: (updateData: Partial<AdminUser>) => Promise<AdminUser> };
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.is2FA || false);
-  const [googleConnected, setGoogleConnected] = useState(true);
-  const [phoneVerified] = useState(true);
-  const [emailVerified] = useState(true);
+const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, onClose }) => {
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+const { user,logout } = useAuth() as AuthContextType;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) {
+      setError('Password is required');
+      return;
+    }
 
-  const handleChangePassword = () => {
-    Swal.fire({
-      title: 'Change Password',
-      text: 'A modal to change your password would open here.',
-      icon: 'info',
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#2563eb', // primary-600
-      textColor: '#1f2937', // gray-800
-      titleColor: '#1f2937', // gray-800
-    });
-  };
+    setIsLoading(true);
+    setError(null);
 
-  const handleEnableTwoFactor = async () => {
     try {
-      const action = twoFactorEnabled ? 'disable' : 'enable';
-      const result = await Swal.fire({
-        title: `Are you sure you want to ${action} Two Factor Authentication?`,
-        text: twoFactorEnabled
-          ? 'You will no longer receive OTP codes for login.'
-          : 'You will receive OTP codes via SMS or email for login.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: `Yes, ${action} 2FA`,
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#2563eb', // primary-600
-        cancelButtonColor: '#6b7280', // gray-500
-        textColor: '#1f2937', // gray-800
-        titleColor: '#1f2937', // gray-800
+      await authService.deleteAccount(password);
+      await logout();
+      localStorage.removeItem('auth_token');
+      Swal.fire({
+        title: 'Account Deleted',
+        text: 'Your account has been permanently deleted.',
+        icon: 'success',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#2563eb',
+        textColor: '#1f2937',
+        titleColor: '#1f2937',
       });
-
-      if (result.isConfirmed) {
-        if (!user?.id) {
-          throw new Error('No logged-in admin to update');
-        }
-        await updateAdmin({ id: user.id, is2FA: !twoFactorEnabled });
-        setTwoFactorEnabled(!twoFactorEnabled);
-        Swal.fire({
-          title: `2FA ${action}d`,
-          text: `Two Factor Authentication has been ${action}d successfully.`,
-          icon: 'success',
-          confirmButtonText: 'OK',
-          confirmButtonColor: '#2563eb',
-          textColor: '#1f2937',
-          titleColor: '#1f2937',
-        });
-      }
+      onClose();
     } catch (error: any) {
       Swal.fire({
-        title: 'Error',
-        text: error.message || `Failed to ${twoFactorEnabled ? 'disable' : 'enable'} 2FA. Please try again.`,
+        title: 'Deletion Failed',
+        text: error.message || 'Failed to delete account. Please try again.',
         icon: 'error',
         confirmButtonText: 'OK',
-        confirmButtonColor: '#ef4444', // red-500
+        confirmButtonColor: '#ef4444',
         textColor: '#1f2937',
         titleColor: '#1f2937',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGoogleToggle = async () => {
-    const action = googleConnected ? 'disconnect' : 'connect';
-    const result = await Swal.fire({
-      title: `Are you sure you want to ${action} Google Authentication?`,
-      text: googleConnected
-        ? 'This will disconnect your Google account.'
-        : 'This will connect your Google account.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: `Yes, ${action}`,
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#6b7280',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
+  if (!isOpen) return null;
 
-    if (result.isConfirmed) {
-      setGoogleConnected(!googleConnected);
-      Swal.fire({
-        title: `Google ${action}ed`,
-        text: `Google Authentication has been ${action}ed successfully.`,
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#2563eb',
-        textColor: '#1f2937',
-        titleColor: '#1f2937',
-      });
-    }
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Account</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Please enter your password to confirm account deletion. This action is permanent and cannot be undone.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
+              }`}
+              placeholder="Enter your password"
+              disabled={isLoading}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          </div>
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Deleting...' : 'Delete Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const SecuritySettings: React.FC = () => {
+  const { user } = useAuth() as AuthContextType;
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+
+  const handleChangePassword = () => {
+    setIsChangePasswordModalOpen(true);
   };
 
-  const handleRemovePhone = async () => {
-    const result = await Swal.fire({
-      title: 'Remove Phone Number',
-      text: 'Are you sure you want to remove your phone number?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, remove',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#6b7280',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: 'Phone Number Removed',
-        text: 'Your phone number has been removed successfully.',
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#2563eb',
-        textColor: '#1f2937',
-        titleColor: '#1f2937',
-      });
-    }
-  };
-
-  const handleChangePhone = () => {
-    Swal.fire({
-      title: 'Change Phone Number',
-      text: 'A modal to change your phone number would open here.',
-      icon: 'info',
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#2563eb',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-  };
-
-  const handleRemoveEmail = async () => {
-    const result = await Swal.fire({
-      title: 'Remove Email',
-      text: 'Are you sure you want to remove your email?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, remove',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#6b7280',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: 'Email Removed',
-        text: 'Your email has been removed successfully.',
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#2563eb',
-        textColor: '#1f2937',
-        titleColor: '#1f2937',
-      });
-    }
-  };
-
-  const handleChangeEmail = () => {
-    Swal.fire({
-      title: 'Change Email',
-      text: 'A modal to change your email would open here.',
-      icon: 'info',
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#2563eb',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-  };
-
-  const handleManageDevices = () => {
-    Swal.fire({
-      title: 'Manage Devices',
-      text: 'A modal to manage your devices would open here.',
-      icon: 'info',
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#2563eb',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-  };
-
-  const handleViewActivity = () => {
-    Swal.fire({
-      title: 'View Account Activity',
-      text: 'A modal to view your account activity would open here.',
-      icon: 'info',
-      confirmButtonText: 'OK',
-      confirmButtonColor: '#2563eb',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-  };
-
-  const handleDeactivateAccount = async () => {
-    const result = await Swal.fire({
-      title: 'Deactivate Account',
-      text: 'Are you sure you want to deactivate your account? This will shutdown your account and it will be reactivated when you sign in again.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, deactivate',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#6b7280',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: 'Account Deactivated',
-        text: 'Your account has been deactivated successfully.',
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#2563eb',
-        textColor: '#1f2937',
-        titleColor: '#1f2937',
-      });
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    const result = await Swal.fire({
-      title: 'Delete Account',
-      text: 'Are you sure you want to delete your account? Your account will be permanently deleted and cannot be recovered.',
-      icon: 'error',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#6b7280',
-      textColor: '#1f2937',
-      titleColor: '#1f2937',
-    });
-
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: 'Account Deletion Initiated',
-        text: 'Your account deletion has been initiated.',
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#2563eb',
-        textColor: '#1f2937',
-        titleColor: '#1f2937',
-      });
-    }
+  const handleDeleteAccount = () => {
+    setIsDeleteAccountModalOpen(true);
   };
 
   return (
@@ -284,149 +135,6 @@ const SecuritySettings: React.FC = () => {
         </button>
       </div>
 
-      {/* Two Factor Authentication */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-900 mb-0.5">Two Factor Authentication</h3>
-          <p className="text-xs text-gray-500">Receive codes via SMS or email every time you login</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleEnableTwoFactor}
-            className={`px-3 py-1.5 text-xs font-medium rounded focus:outline-none focus:ring-2 ${
-              twoFactorEnabled
-                ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
-                : 'bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500'
-            }`}
-          >
-            {twoFactorEnabled ? 'Disable' : 'Enable'}
-          </button>
-          <button className="p-1.5 text-primary-500 hover:bg-primary-50 rounded">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Google Authentication */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <div className="flex items-center space-x-1 mb-0.5">
-            <h3 className="text-sm font-medium text-gray-900">Google Authentication</h3>
-            {googleConnected && (
-              <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                ✓ Connected
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-500">Connect to Google</p>
-        </div>
-        <div className="flex items-center">
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={googleConnected}
-              onChange={handleGoogleToggle}
-              className="sr-only peer"
-            />
-            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-500"></div>
-          </label>
-        </div>
-      </div>
-
-      {/* Phone Number Verification */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <div className="flex items-center space-x-1 mb-0.5">
-            <h3 className="text-sm font-medium text-gray-900">Phone Number Verification</h3>
-            {phoneVerified && <CheckCircle className="w-3 h-3 text-green-500" />}
-          </div>
-          <p className="text-xs text-gray-500 mb-0.5">The phone number associated with the account</p>
-          <p className="text-xs text-gray-600">Verified Mobile Number: {user?.phone || '+99264710583'}</p>
-        </div>
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={handleRemovePhone}
-            className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-red-600 focus:outline-none"
-          >
-            Remove
-          </button>
-          <button
-            onClick={handleChangePhone}
-            className="px-3 py-1.5 bg-primary-500 text-white text-xs font-medium rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            Change
-          </button>
-        </div>
-      </div>
-
-      {/* Email Verification */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <div className="flex items-center space-x-1 mb-0.5">
-            <h3 className="text-sm font-medium text-gray-900">Email Verification</h3>
-            {emailVerified && <CheckCircle className="w-3 h-3 text-green-500" />}
-          </div>
-          <p className="text-xs text-gray-500 mb-0.5">The email address associated with the account</p>
-          <p className="text-xs text-gray-600">Verified Email: {user?.adminEmail || 'info@example.com'}</p>
-        </div>
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={handleRemoveEmail}
-            className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-red-600 focus:outline-none"
-          >
-            Remove
-          </button>
-          <button
-            onClick={handleChangeEmail}
-            className="px-3 py-1.5 bg-primary-500 text-white text-xs font-medium rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            Change
-          </button>
-        </div>
-      </div>
-
-      {/* Device Management */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-900 mb-0.5">Device Management</h3>
-          <p className="text-xs text-gray-500">The devices associated with the account</p>
-        </div>
-        <button
-          onClick={handleManageDevices}
-          className="px-3 py-1.5 bg-primary-500 text-white text-xs font-medium rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          Manage
-        </button>
-      </div>
-
-      {/* Account Activity */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-900 mb-0.5">Account Activity</h3>
-          <p className="text-xs text-gray-500">The activities of the account</p>
-        </div>
-        <button
-          onClick={handleViewActivity}
-          className="px-3 py-1.5 bg-primary-500 text-white text-xs font-medium rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          View
-        </button>
-      </div>
-
-      {/* Deactivate Account */}
-      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-900 mb-0.5">Deactivate Account</h3>
-          <p className="text-xs text-gray-500">This will shutdown your account. Your account will be reactivated when you sign in again</p>
-        </div>
-        <button
-          onClick={handleDeactivateAccount}
-          className="px-3 py-1.5 bg-primary-500 text-white text-xs font-medium rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          Deactivate
-        </button>
-      </div>
-
       {/* Delete Account */}
       <div className="flex items-center justify-between py-3">
         <div className="flex-1">
@@ -440,6 +148,17 @@ const SecuritySettings: React.FC = () => {
           Delete
         </button>
       </div>
+
+      {/* Modals */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        adminId={user?.id.toString() || ''}
+      />
+      <DeleteAccountModal
+        isOpen={isDeleteAccountModalOpen}
+        onClose={() => setIsDeleteAccountModalOpen(false)}
+      />
     </div>
   );
 };

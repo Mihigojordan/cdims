@@ -1,7 +1,7 @@
 import React, { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import useAdminAuth from '../../context/AdminAuthContext';
+import useAdminAuth from '../../context/AuthContext';
 
 interface ProtectPrivateAdminRouteProps {
   children: ReactNode;
@@ -14,7 +14,7 @@ const ProtectPrivateAdminRoute: React.FC<ProtectPrivateAdminRouteProps> = ({
 }) => {
   const { isAuthenticated, isLoading, user } = useAdminAuth();
   const location = useLocation();
-
+ 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-primary-50">

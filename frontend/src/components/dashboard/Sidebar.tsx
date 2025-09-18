@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
-import useAdminAuth from "../../context/AdminAuthContext";
+import useAdminAuth from "../../context/AuthContext";
 
 interface SidebarProps {
   isOpen?: boolean;
