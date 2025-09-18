@@ -51,28 +51,7 @@ const AdminProfilePage: React.FC = () => {
                 <Lock className="w-4 h-4 mr-2" />
                 Security Settings
               </button>
-              <button
-                onClick={() => setActiveTab('notifications')}
-                className={`w-full flex items-center px-3 py-2 text-xs font-medium rounded transition-colors ${
-                  activeTab === 'notifications'
-                    ? 'bg-primary-50 text-primary-600 border-r-4 border-primary-500'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Bell className="w-4 h-4 mr-2" />
-                Notifications
-              </button>
-              <button
-                onClick={() => setActiveTab('connected-apps')}
-                className={`w-full flex items-center px-3 py-2 text-xs font-medium rounded transition-colors ${
-                  activeTab === 'connected-apps'
-                    ? 'bg-primary-50 text-primary-600 border-r-4 border-primary-500'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Link className="w-4 h-4 mr-2" />
-                Connected Apps
-              </button>
+              
             </nav>
           </div>
         </div>
@@ -95,8 +74,7 @@ const AdminProfilePage: React.FC = () => {
               <div className="p-4">
                 {activeTab === 'profile' && <ProfileSettings />}
                 {activeTab === 'security' && <SecuritySettings />}
-                {activeTab === 'notifications' && <NotificationsSettings />}
-                {activeTab === 'connected-apps' && <ConnectedApps />}
+               
               </div>
             </div>
           </div>

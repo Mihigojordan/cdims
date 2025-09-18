@@ -9,7 +9,7 @@ import {
   User,
   ArrowLeft 
 } from 'lucide-react';
-import useAdminAuth from '../../context/AdminAuthContext';
+import useAdminAuth from '../../context/AuthContext';
 import { API_URL } from '../../api/api';
 
 const UnlockScreen = () => {
