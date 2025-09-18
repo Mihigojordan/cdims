@@ -1,120 +1,166 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, Mail, Phone, MapPin, Camera, Plus } from 'lucide-react';
-import clientService, { type UpdateClientInput } from '../../../services/requestService';
-import { API_URL } from '../../../api/api';
+import React, { useState, useEffect } from 'react';
+import { X, User, Mail, Phone, Plus, RefreshCw, UserCheck } from 'lucide-react';
+import userService, { type UpdateUserInput, type User as UserType } from '../../../services/userService';
+import roleService, { type Role } from '../../../services/roleService';
 
-interface Client {
-    id: string;
-    firstname: string;
-    lastname: string;
-    email: string;
-    phone?: string | null;
-    address?: string | null;
-    status: 'ACTIVE' | 'INACTIVE';
-    profileImage?: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface EditClientModalProps {
+interface EditUserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    client: Client | null;
-    onSave: (data: UpdateClientInput) => Promise<void>;
+    user: UserType | null;
+    onSave: (data: UpdateUserInput) => Promise<void>;
 }
 
-const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, client, onSave }) => {
-    const [formData, setFormData] = useState<UpdateClientInput>({
-        firstname: client?.firstname || '',
-        lastname: client?.lastname || '',
-        email: client?.email || '',
-        phone: client?.phone || '',
-        address: client?.address || '',
-        status: client?.status || 'ACTIVE',
-        profileImgFile: null
+const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, onSave }) => {
+    const [formData, setFormData] = useState<UpdateUserInput>({
+        full_name: user?.full_name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        password: '',
+        role_id: user?.role_id || 0,
+        active: user?.active !== undefined ? user.active : true
     });
+    const [roles, setRoles] = useState<Role[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
-    const [imagePreview, setImagePreview] = useState<string | null>(client?.profileImage || null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isLoadingRoles, setIsLoadingRoles] = useState(false);
 
+    // Load roles when modal opens
     useEffect(() => {
-        if (client) {
-            setFormData({
-                firstname: client.firstname || '',
-                lastname: client.lastname || '',
-                email: client.email || '',
-                phone: client.phone || '',
-                address: client.address || '',
-                status: client.status || 'ACTIVE',
-                profileImgFile: null
-            });
-            setImagePreview(client.profileImage || null);
-            setErrors([]);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-        }
-    }, [client]);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setFormData({
-                firstname: '',
-                lastname: '',
-                email: '',
-                phone: '',
-                address: '',
-                status: 'ACTIVE',
-                profileImgFile: null
-            });
-            setErrors([]);
-            setImagePreview(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
+        if (isOpen) {
+            loadRoles();
         }
     }, [isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-        if (errors.length > 0) {
+    console.log(user)
+
+    // Update form data when user changes
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                full_name: user.full_name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                password: '', // Always start with empty password for security
+                role_id: user.role_id || 0,
+                active: user.active !== undefined ? user.active : true
+            });
             setErrors([]);
         }
-    };
+    }, [user]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
-        setFormData((prev) => ({ ...prev, profileImgFile: file }));
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setImagePreview(client?.profileImage || null);
+    // Reset form when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setFormData({
+                full_name: '',
+                email: '',
+                phone: '',
+                password: '',
+                role_id: 0,
+                active: true
+            });
+            setErrors([]);
+        }
+    }, [isOpen]);
+
+    const loadRoles = async () => {
+        console.log('Fetching roles...');
+        setIsLoadingRoles(true);
+        try {
+            const response = await roleService.getAllRoles();
+            console.log('Roles raw response:', response);
+            const rolesData = Array.isArray(response.data?.roles) ? response.data.roles : [];
+            setRoles(rolesData);
+        } catch (error: any) {
+            console.error('Error loading roles:', error);
+            setErrors([error.message || 'Failed to load roles']);
+        } finally {
+            setIsLoadingRoles(false);
         }
     };
 
-    const handleRemoveImage = () => {
-        setFormData((prev) => ({ ...prev, profileImgFile: null }));
-        setImagePreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+    const generateRandomPassword = () => {
+        try {
+            const length = 12;
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            let password = "";
+            
+            if (!charset || charset.length === 0) {
+                throw new Error('Charset is empty');
+            }
+            
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * charset.length);
+                if (randomIndex < charset.length) {
+                    password += charset.charAt(randomIndex);
+                }
+            }
+            
+            if (password && password.length > 0) {
+                setFormData((prev) => ({ ...prev, password }));
+                if (errors.length > 0) {
+                    setErrors([]);
+                }
+            }
+        } catch (error) {
+            console.error('Error generating password:', error);
+            setErrors(['Failed to generate password']);
         }
     };
 
-    const triggerFileInput = () => {
-        fileInputRef.current?.click();
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        try {
+            const { name, value, type } = e.target;
+            let processedValue: any = value;
+            
+            if (type === 'checkbox') {
+                processedValue = (e.target as HTMLInputElement).checked;
+            } else if (name === 'role_id') {
+                processedValue = value ? parseInt(value, 10) : 0;
+            }
+            
+            setFormData((prev) => ({ ...prev, [name]: processedValue }));
+            if (errors.length > 0) {
+                setErrors([]);
+            }
+        } catch (error) {
+            console.error('Error handling form change:', error);
+        }
+    };
+
+    const validateForm = (): { isValid: boolean; errors: string[] } => {
+        const validationErrors: string[] = [];
+
+        if (!formData.full_name || !formData.full_name.trim()) {
+            validationErrors.push('Full name is required');
+        }
+
+        // Email validation removed since it's read-only
+
+        if (!formData.phone || !formData.phone.trim()) {
+            validationErrors.push('Phone number is required');
+        }
+
+        // Password is optional for updates - only validate if provided
+        if (formData.password && formData.password.trim().length > 0 && formData.password.trim().length < 6) {
+            validationErrors.push('Password must be at least 6 characters long if provided');
+        }
+
+        if (!formData.role_id || formData.role_id === 0) {
+            validationErrors.push('Please select a role');
+        }
+
+        return {
+            isValid: validationErrors.length === 0,
+            errors: validationErrors
+        };
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        const validation = clientService.validateClientData(formData);
+        const validation = validateForm();
         if (!validation.isValid) {
             setErrors(validation.errors);
             setIsSubmitting(false);
@@ -122,24 +168,32 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
         }
 
         try {
-            await onSave(formData);
+            // Create update payload - exclude email since it's read-only
+            const updateData: UpdateUserInput = {
+                full_name: formData.full_name,
+                phone: formData.phone,
+                role_id: formData.role_id,
+                active: formData.active
+            };
+
+            // Only include password if it's been set
+            if (formData.password && formData.password.trim().length > 0) {
+                updateData.password = formData.password.trim();
+            }
+
+            await onSave(updateData);
             setErrors([]);
             setFormData({
-                firstname: '',
-                lastname: '',
+                full_name: '',
                 email: '',
                 phone: '',
-                address: '',
-                status: 'ACTIVE',
-                profileImgFile: null
+                password: '',
+                role_id: 0,
+                active: true
             });
-            setImagePreview(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
             onClose();
         } catch (error: any) {
-            const errorMessage = error.message || 'Failed to update client';
+            const errorMessage = error.message || 'Failed to update employee';
             console.error('Error in handleSubmit:', error);
             setErrors([errorMessage]);
         } finally {
@@ -147,7 +201,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
         }
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !user) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -155,8 +209,8 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                 <div className="bg-primary-500 rounded-t-lg p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-semibold text-white">Edit Client</h2>
-                            <p className="text-sm text-primary-100 mt-1">Update client profile details</p>
+                            <h2 className="text-xl font-semibold text-white">Edit Employee</h2>
+                            <p className="text-sm text-primary-100 mt-1">Update employee account details</p>
                         </div>
                         <button
                             onClick={onClose}
@@ -169,79 +223,20 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="flex flex-col items-center space-y-4">
-                        <div className="relative group">
-                            {imagePreview ? (
-                                <div className="relative">
-                                    <img
-                                        src={imagePreview.includes('http') ? imagePreview : `${API_URL}${imagePreview}`}
-                                        alt="Profile Preview"
-                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveImage}
-                                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div
-                                    onClick={triggerFileInput}
-                                    className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors"
-                                >
-                                    <Camera className="w-12 h-12 text-gray-400 group-hover:text-primary-500 transition-colors" />
-                                </div>
-                            )}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={triggerFileInput}
-                            className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
-                        >
-                            <Upload className="w-4 h-4" />
-                            <span>{imagePreview ? 'Change Photo' : 'Upload Photo'}</span>
-                        </button>
-
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
                                 <User className="w-4 h-4 text-gray-400" />
-                                <span>First Name <span className="text-red-500">*</span></span>
+                                <span>Full Name <span className="text-red-500">*</span></span>
                             </label>
                             <input
                                 type="text"
-                                name="firstname"
-                                value={formData.firstname}
+                                name="full_name"
+                                value={formData.full_name}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter first name"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                                <User className="w-4 h-4 text-gray-400" />
-                                <span>Last Name <span className="text-red-500">*</span></span>
-                            </label>
-                            <input
-                                type="text"
-                                name="lastname"
-                                value={formData.lastname}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter last name"
+                                placeholder="Enter full name"
+                                key={`full_name_${user?.id}`}
                             />
                         </div>
 
@@ -249,13 +244,15 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
                                 <Mail className="w-4 h-4 text-gray-400" />
                                 <span>Email Address <span className="text-red-500">*</span></span>
+                                <span className="text-xs text-gray-500">(Cannot be changed)</span>
                             </label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                readOnly
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed text-sm"
                                 placeholder="Enter email address"
                             />
                         </div>
@@ -263,31 +260,64 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                         <div className="space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
                                 <Phone className="w-4 h-4 text-gray-400" />
-                                <span>Phone Number</span>
+                                <span>Phone Number <span className="text-red-500">*</span></span>
                             </label>
                             <input
                                 type="tel"
                                 name="phone"
-                                value={formData.phone || ''}
+                                value={formData.phone}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                                 placeholder="Enter phone number"
                             />
                         </div>
 
+                        <div className="md:col-span-2 space-y-2">
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                                <span>Password</span>
+                                <span className="text-xs text-gray-500">(Leave empty to keep current password)</span>
+                            </label>
+                            <div className="flex space-x-2">
+                                <input
+                                    type="text"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                    placeholder="Enter new password or leave empty"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={generateRandomPassword}
+                                    className="px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors flex items-center space-x-2"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    <span>Generate</span>
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                                <MapPin className="w-4 h-4 text-gray-400" />
-                                <span>Address</span>
+                                <UserCheck className="w-4 h-4 text-gray-400" />
+                                <span>Role <span className="text-red-500">*</span></span>
                             </label>
-                            <input
-                                type="text"
-                                name="address"
-                                value={formData.address || ''}
+                            <select
+                                name="role_id"
+                                value={formData.role_id}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter address"
-                            />
+                                disabled={isLoadingRoles}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            >
+                                <option value={0}>
+                                    {isLoadingRoles ? 'Loading roles...' : 'Select a role'}
+                                </option>
+                                {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>
+                                        {role.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="space-y-2">
@@ -295,13 +325,13 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                                 <span>Status</span>
                             </label>
                             <select
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
+                                name="active"
+                                value={formData.active ? 'true' : 'false'}
+                                onChange={(e) => handleChange({ ...e, target: { ...e.target, name: 'active', value: e.target.value === 'true' ? 'true' : 'false', type: 'checkbox' } } as any)}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             >
-                                <option value="ACTIVE">Active</option>
-                                <option value="INACTIVE">Inactive</option>
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
                             </select>
                         </div>
                     </div>
@@ -331,7 +361,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isLoadingRoles}
                             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                         >
                             {isSubmitting ? (
@@ -342,7 +372,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
                             ) : (
                                 <>
                                     <Plus className="w-4 h-4" />
-                                    <span>Update Client</span>
+                                    <span>Update Employee</span>
                                 </>
                             )}
                         </button>
@@ -353,4 +383,4 @@ const EditClientModal: React.FC<EditClientModalProps> = ({ isOpen, onClose, clie
     );
 };
 
-export default EditClientModal;
+export default EditUserModal;

@@ -38,6 +38,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       icon: TrendingUp,
       path: "/admin/dashboard",
     },
+      {
+      id: "role",
+      label: "Role Management",
+      icon: User2,
+      path: "/admin/dashboard/role-management",
+    },
     {
       id: "departments",
       label: "Departments Management",

@@ -25,6 +25,7 @@ import JobPostView from '../components/landing/JobViewPage';
 import JobApplicationForm from '../components/landing/ApplyJob';
 import ApplicantView from '../components/dashboard/recruitment/ApplicantView';
 import ClientManagement from '../pages/dashboard/ClientManagement';
+import RoleManagement from '../pages/dashboard/RoleManagement';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -282,6 +283,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <ClientManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'role-management',
+                element: (
+                  <SuspenseWrapper>
+                    <RoleManagement />
                   </SuspenseWrapper>
                 ),
               },
