@@ -29,6 +29,7 @@ import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
+import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -270,6 +271,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <SitesManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'site-assign-management',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteAssignmentDashboard />
                   </SuspenseWrapper>
                 ),
               },

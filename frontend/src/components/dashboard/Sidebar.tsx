@@ -88,6 +88,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/site-management",
     },
     {
+      id: "site-assign",
+      label: "Site Assign Management",
+      icon: MapPin,
+      path: "/admin/dashboard/site-assign-management",
+    },
+    {
       id: "stores",
       label: "Stores Management",
       icon: Store,
