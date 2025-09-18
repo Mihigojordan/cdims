@@ -29,13 +29,16 @@ import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
+
 import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
+
+import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
 const AboutPage = lazy(() => import('../pages/landing/AboutPage'));
-const DepartmentDashboard = lazy(() => import('../pages/dashboard/DepartmentManagement'));
+const StockManagement = lazy(() => import('../pages/dashboard/StockManagement'));
 
 /**
  * Loading spinner component for Suspense fallback
@@ -195,10 +198,10 @@ const routes = createBrowserRouter([
                 ),
               },
               {
-                path: 'department-management',
+                path: 'stock-management',
                 element: (
                   <SuspenseWrapper>
-                    <DepartmentDashboard />
+                    <StockManagement />
                   </SuspenseWrapper>
                 ),
               },
@@ -271,6 +274,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <SitesManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'site-assign-management',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteAssignmentDashboard />
                   </SuspenseWrapper>
                 ),
               },
