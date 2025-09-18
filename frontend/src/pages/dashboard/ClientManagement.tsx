@@ -715,16 +715,7 @@ const UserManagement = () => {
                             <p className="text-xs text-gray-500 mt-0.5">Manage your organization's users</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                onClick={() => userService.getAllUsers().then((data: any) => setAllUsers(data || []))}
-                                disabled={loading}
-                                className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
-                                title="Refresh"
-                            >
-                                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                                <span>Refresh</span>
-                            </button>
+                        
                             <button
                                 onClick={handleExportPDF}
                                 disabled={operationLoading || filteredUsers.length === 0}

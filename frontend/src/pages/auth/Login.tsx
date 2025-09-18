@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import  useAdminAuth from "../../context/AdminAuthContext";
+import  useAuth from "../../context/AuthContext";
 
 // Define interfaces
 interface FormData {
@@ -22,7 +22,7 @@ interface Touched {
 }
 
 const AdminLogin: React.FC = () => {
-  const { login, isLoading: authLoading, isAuthenticated } = useAdminAuth() ;
+  const { login, isLoading: authLoading, isAuthenticated } = useAuth() ;
 
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -156,7 +156,7 @@ const AdminLogin: React.FC = () => {
 
     try {
       const response = await login({
-        identifier: formData.email,
+        email: formData.email,
         password: formData.password,
       });
 

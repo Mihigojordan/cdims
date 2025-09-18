@@ -156,3 +156,19 @@ export interface Client {
   createdAt: string; // ISO date string from backend
   updatedAt: string; // ISO date string from backend
 }
+
+
+
+
+export interface Store {
+  id: number;
+  code: string;
+  name: string;
+  location: string;
+  description?: string;
+  manager_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}

@@ -4,7 +4,6 @@ import {
   Menu,
   Settings,
   User,
-  Lock,
   ChevronDown,
   Mail,
   MessageSquare,
@@ -20,8 +19,8 @@ import {
 } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import useAdminAuth from "../../context/AdminAuthContext";
-import { API_URL } from "../../api/api";
+import useAuth ,{ type AuthContextType } from '../../context/AuthContext';
+
 import "flag-icons/css/flag-icons.min.css"; // Import flag-icons CSS
 
 interface HeaderProps {
@@ -29,10 +28,9 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onToggle }) => {
-  const { user, logout, lockAdmin } = useAdminAuth();
+  const { user, logout } = useAuth() as AuthContextType;
 
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [isLocking, setIsLocking] = useState<boolean>(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState<boolean>(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -67,17 +65,6 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
     }
   };
 
-  const handleLock = async () => {
-    setIsLocking(true);
-    try {
-      await lockAdmin();
-    } catch (error) {
-      console.error("Lock error:", error);
-    } finally {
-      setIsLocking(false);
-    }
-  };
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -89,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
   };
 
   const getDisplayName = (): string => {
-    return user?.adminName || "Admin";
+    return user?.full_name || "User";
   };
 
   const handleLanguageSelect = (langCode: string) => {
@@ -235,23 +222,18 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
             {/* Email */}
             <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative">
               <Mail className="w-4 h-4" />
-              
             </button>
 
             {/* Messages */}
             <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative">
               <MessageSquare className="w-4 h-4" />
-            
             </button>
-
 
             {/* Notifications with Animation */}
             <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative group">
               <Bell className="w-4 h-4 animate-pulse group-hover:animate-bounce" />
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-500 rounded-full animate-ping"></span>
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-600 rounded-full text-xs text-white flex items-center justify-center">
-                
-              </span>
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-600 rounded-full text-xs text-white flex items-center justify-center"></span>
             </button>
 
             {/* Fullscreen Toggle */}
@@ -276,18 +258,9 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                disabled={isLocking}
               >
                 <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center overflow-hidden">
-                  {user?.profileImg ? (
-                    <img
-                      src={`${API_URL}${user.profileImg}`}
-                      alt="Profile"
-                      className="w-7 h-7 rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-4 h-4 text-primary-600" />
-                  )}
+                  <User className="w-4 h-4 text-primary-600" />
                 </div>
                 <div className="text-left hidden md:block">
                   <div className="text-xs font-medium text-gray-700">
@@ -311,10 +284,7 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
                         {getDisplayName()}
                       </div>
                       <div className="text-xs text-gray-600">
-                        {user?.adminEmail}
-                      </div>
-                      <div className="text-xs font-medium text-primary-600">
-                        Administrator
+                        {user?.email}
                       </div>
                     </div>
 
@@ -329,18 +299,6 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
                       >
                         <User className="w-4 h-4 mr-2" />
                         My Profile
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          handleLock();
-                          setIsDropdownOpen(false);
-                        }}
-                        disabled={isLocking}
-                        className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Lock className="w-4 h-4 mr-2" />
-                        {isLocking ? "Locking..." : "Lock Screen"}
                       </button>
 
                       <div className="border-t border-gray-100 my-1"></div>

@@ -47,7 +47,7 @@ class AdminAuthService {
       };
 
       const response: AxiosResponse<AuthResponse> = await this.api.post(
-        '/api/auth/login',
+        '/auth/login',
         payload
       );
 
@@ -70,7 +70,7 @@ class AdminAuthService {
       if (!token) return null;
 
       const response: AxiosResponse<{ success: boolean; data: { user: User } }> =
-        await this.api.get('/api/auth/profile', {
+        await this.api.get('/auth/profile', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -91,7 +91,7 @@ class AdminAuthService {
   async logout(): Promise<{ message: string }> {
     try {
       const response: AxiosResponse<{ message: string }> = await this.api.post(
-        '/api/auth/logout'
+        '/auth/logout'
       );
       localStorage.removeItem('auth_token');
       return response.data;
