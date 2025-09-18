@@ -1,0 +1,52 @@
+{
+  "name": "cdims-backend",
+  "version": "1.0.0",
+  "description": "Diocese Infrastructure Management System - Backend API",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest",
+    "migrate": "npx sequelize-cli db:migrate",
+    "migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "seed": "npx sequelize-cli db:seed:all",
+    "seed:undo": "npx sequelize-cli db:seed:undo:all",
+    "postinstall": "npm run migrate && npm run seed"
+  },
+  "keywords": [
+    "infrastructure",
+    "management",
+    "diocese",
+    "materials",
+    "inventory"
+  ],
+  "author": "CDIMS Development Team",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.5.1",
+    "express-validator": "^7.2.1",
+    "helmet": "^7.2.0",
+    "hpp": "^0.2.3",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.6.5",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.35.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  }
+}
