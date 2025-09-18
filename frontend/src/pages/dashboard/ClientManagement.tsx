@@ -37,6 +37,7 @@ import EditUserModal from '../../components/dashboard/client/EditClientModal';
 import DeleteUserModal from '../../components/dashboard/client/DeleteClientModal';
 
 interface User {
+    role_name: any;
     id: string;
     full_name: string;
     email: string;
@@ -75,26 +76,34 @@ const UserManagement = () => {
     const [operationLoading, setOperationLoading] = useState<boolean>(false);
     const [showFilters, setShowFilters] = useState<boolean>(false);
 
-    const pdfContentRef = useRef<HTMLDivElement>(null);
+    const pdfContentRef = useRef<HTMLDivElement>(null);useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await userService.getAllUsers();
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                setLoading(true);
-                const data = await userService.getAllUsers();
-                setAllUsers(data || []);
-                setError(null);
-            } catch (err: any) {
-                const errorMessage = err.message || 'Failed to load users';
-                console.error('Error fetching users:', err);
-                setError(errorMessage);
-                showOperationStatus('error', errorMessage);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUsers();
-    }, []);
+      // Log the response to see structure
+      console.log('Fetched users:', response);
+
+      // Extract users safely
+      const users = Array.isArray(response?.data?.users) ? response.data.users : [];
+
+      setAllUsers(users);
+      setError(null);
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to load users';
+      console.error('Error fetching users:', err);
+      setError(errorMessage);
+      showOperationStatus('error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchUsers();
+}, []);
+
+
 
     useEffect(() => {
         handleFilterAndSort();
@@ -170,7 +179,7 @@ const UserManagement = () => {
                         </td>
                         <td style="font-size:10px;">${user.email}</td>
                         <td style="font-size:10px;">${user.phone || 'N/A'}</td>
-                        <td style="font-size:10px;">${user.role_id}</td>
+                        <td style="font-size:10px;">${user.role_name}</td>
                         <td style="font-size:10px; color: ${user.active ? 'green' : 'red'};">
                             ${user.active ? 'ACTIVE' : 'INACTIVE'}
                         </td>
@@ -201,7 +210,7 @@ const UserManagement = () => {
                                 <th>User Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
-                                <th>Role ID</th>
+                               
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -236,22 +245,16 @@ const UserManagement = () => {
         setIsAddModalOpen(true);
     };
 
-    const handleEditUser = async (id: string) => {
-        try {
-            setOperationLoading(true);
-            const user = await userService.getUserById(id);
+    const handleEditUser = async (user) => {
+
+               setOperationLoading(true);
+     
             if (user) {
                 setSelectedUser(user);
                 setIsEditModalOpen(true);
             } else {
                 showOperationStatus('error', 'User not found');
             }
-        } catch (err: any) {
-            console.error('Error fetching user for edit:', err);
-            showOperationStatus('error', err.message || 'Failed to fetch user');
-        } finally {
-            setOperationLoading(false);
-        }
     };
 
     const handleViewUser = (user: User) => {
@@ -295,11 +298,16 @@ const UserManagement = () => {
     };
 
     const handleDelete = async (user: User) => {
+
+        console.log("dsjfgdsj")
         try {
+
             setOperationLoading(true);
             await userService.deleteUser(user.id);
             setAllUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
             showOperationStatus('success', `User "${user.full_name}" deleted successfully`);
+
+
         } catch (err: any) {
             console.error('Error deleting user:', err);
             showOperationStatus('error', err.message || 'Failed to delete user');
@@ -377,7 +385,7 @@ const UserManagement = () => {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        handleEditUser(user.id);
+                                        handleEditUser(user);
                                         setIsDropdownOpen(false);
                                     }}
                                     className="flex items-center px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 w-full"
@@ -463,8 +471,7 @@ const UserManagement = () => {
                             </th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Email</th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Phone</th>
-                            <th className="text-left py-2 px-2 text-gray-600 font-medium hidden md:table-cell">Role ID</th>
-                            <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
+                         <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
                             <th
                                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100 hidden lg:table-cell"
                                 onClick={() => {
@@ -496,8 +503,7 @@ const UserManagement = () => {
                                 </td>
                                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{user.email}</td>
                                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{user.phone || 'N/A'}</td>
-                                <td className="py-2 px-2 text-gray-700 hidden md:table-cell">{user.role_id}</td>
-                                <td className="py-2 px-2">
+                         <td className="py-2 px-2">
                                     <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                                         user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                     }`}>
@@ -515,7 +521,7 @@ const UserManagement = () => {
                                             <Eye className="w-3 h-3" />
                                         </button>
                                         <button
-                                            onClick={() => handleEditUser(user.id)}
+                                            onClick={() => handleEditUser(user)}
                                             disabled={operationLoading}
                                             className="text-gray-400 hover:text-primary-600 p-1 disabled:opacity-50"
                                             title="Edit"
@@ -940,10 +946,7 @@ const UserManagement = () => {
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
                                 <p className="text-gray-900 p-2 bg-gray-50 rounded text-xs">{selectedUser.phone || 'N/A'}</p>
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Role ID</label>
-                                <p className="text-gray-900 p-2 bg-gray-50 rounded text-xs">{selectedUser.role_id}</p>
-                            </div>
+
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                                 <p className="text-gray-900 p-2 bg-gray-50 rounded text-xs">{getStatusText(selectedUser.active)}</p>

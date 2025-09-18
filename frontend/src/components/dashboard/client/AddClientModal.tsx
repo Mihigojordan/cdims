@@ -1,78 +1,144 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, User, Mail, Phone, MapPin, Camera, Plus } from 'lucide-react';
-import clientService, { type CreateClientInput } from '../../../services/requestService';
+import React, { useState, useEffect } from 'react';
+import { X, User, Mail, Phone, Plus, RefreshCw, UserCheck } from 'lucide-react';
+import userService, { type CreateUserInput } from '../../../services/userService';
+import roleService, { type Role } from '../../../services/roleService';
 
-interface AddClientModalProps {
+interface AddEmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: CreateClientInput) => Promise<void>;
+    onSave: (data: CreateUserInput) => Promise<void>;
 }
 
-const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
-    const [formData, setFormData] = useState<CreateClientInput>({
-        firstname: '',
-        lastname: '',
+const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) => {
+    const [formData, setFormData] = useState<CreateUserInput>({
+        full_name: '',
         email: '',
         phone: '',
-        address: '',
-        status: 'ACTIVE',
-        profileImgFile: null
+        password: '',
+        role_id: 0,
+        active: true
     });
+    const [roles, setRoles] = useState<Role[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+
+    // Load roles when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            loadRoles();
+        }
+    }, [isOpen]);
+
+    const loadRoles = async () => {
+        console.log('Fetching roles...');
+        setIsLoadingRoles(true);
+        try {
+            const response = await roleService.getAllRoles();
+            console.log('Roles raw response:', response);
+            const rolesData = Array.isArray(response.data?.roles) ? response.data.roles : [];
+            setRoles(rolesData);
+        } catch (error: any) {
+            console.error('Error loading roles:', error);
+            setErrors([error.message || 'Failed to load roles']);
+        } finally {
+            setIsLoadingRoles(false);
+        }
+    };
+
+    const generateRandomPassword = () => {
+        try {
+            const length = 12;
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            let password = "";
+            
+            if (!charset || charset.length === 0) {
+                throw new Error('Charset is empty');
+            }
+            
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * charset.length);
+                if (randomIndex < charset.length) {
+                    password += charset.charAt(randomIndex);
+                }
+            }
+            
+            if (password && password.length > 0) {
+                setFormData((prev) => ({ ...prev, password }));
+                if (errors.length > 0) {
+                    setErrors([]);
+                }
+            }
+        } catch (error) {
+            console.error('Error generating password:', error);
+            setErrors(['Failed to generate password']);
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-        if (errors.length > 0) {
-            setErrors([]);
+        try {
+            const { name, value, type } = e.target;
+            let processedValue: any = value;
+            
+            if (type === 'checkbox') {
+                processedValue = (e.target as HTMLInputElement).checked;
+            } else if (name === 'role_id') {
+                processedValue = value ? parseInt(value, 10) : 0;
+            }
+            
+            setFormData((prev) => ({ ...prev, [name]: processedValue }));
+            if (errors.length > 0) {
+                setErrors([]);
+            }
+        } catch (error) {
+            console.error('Error handling form change:', error);
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
-        setFormData((prev) => ({ ...prev, profileImgFile: file }));
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setImagePreview(null);
-        }
-    };
+    const validateForm = (): { isValid: boolean; errors: string[] } => {
+        const validationErrors: string[] = [];
 
-    const handleRemoveImage = () => {
-        setFormData((prev) => ({ ...prev, profileImgFile: null }));
-        setImagePreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+        if (!formData.full_name || !formData.full_name.trim()) {
+            validationErrors.push('Full name is required');
         }
-    };
 
-    const triggerFileInput = () => {
-        fileInputRef.current?.click();
+        if (!formData.email || !formData.email.trim()) {
+            validationErrors.push('Email is required');
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            validationErrors.push('Please enter a valid email address');
+        }
+
+        if (!formData.phone || !formData.phone.trim()) {
+            validationErrors.push('Phone number is required');
+        }
+
+        if (!formData.password || !formData.password.trim()) {
+            validationErrors.push('Password is required');
+        } else if (formData.password.trim().length < 6) {
+            validationErrors.push('Password must be at least 6 characters long');
+        }
+
+        if (!formData.role_id || formData.role_id === 0) {
+            validationErrors.push('Please select a role');
+        }
+
+        return {
+            isValid: validationErrors.length === 0,
+            errors: validationErrors
+        };
     };
 
     useEffect(() => {
         if (!isOpen) {
             setFormData({
-                firstname: '',
-                lastname: '',
+                full_name: '',
                 email: '',
                 phone: '',
-                address: '',
-                status: 'ACTIVE',
-                profileImgFile: null
+                password: '',
+                role_id: 0,
+                active: true
             });
             setErrors([]);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-            setImagePreview(null);
         }
     }, [isOpen]);
 
@@ -80,7 +146,7 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        const validation = clientService.validateClientData(formData);
+        const validation = validateForm();
         if (!validation.isValid) {
             setErrors(validation.errors);
             setIsSubmitting(false);
@@ -91,21 +157,16 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
             await onSave(formData);
             setErrors([]);
             setFormData({
-                firstname: '',
-                lastname: '',
+                full_name: '',
                 email: '',
                 phone: '',
-                address: '',
-                status: 'ACTIVE',
-                profileImgFile: null
+                password: '',
+                role_id: 0,
+                active: true
             });
-            setImagePreview(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
             onClose();
         } catch (error: any) {
-            const errorMessage = error.message || 'Failed to add client';
+            const errorMessage = error.message || 'Failed to add employee';
             console.error('Error in handleSubmit:', error);
             setErrors([errorMessage]);
         } finally {
@@ -121,8 +182,8 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
                 <div className="bg-primary-500 rounded-t-lg p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-semibold text-white">Add New Client</h2>
-                            <p className="text-sm text-primary-100 mt-1">Create a new client profile</p>
+                            <h2 className="text-xl font-semibold text-white">Add New Employee</h2>
+                            <p className="text-sm text-primary-100 mt-1">Create a new employee account</p>
                         </div>
                         <button 
                             onClick={onClose} 
@@ -135,79 +196,19 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="flex flex-col items-center space-y-4">
-                        <div className="relative group">
-                            {imagePreview ? (
-                                <div className="relative">
-                                    <img
-                                        src={imagePreview}
-                                        alt="Profile Preview"
-                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveImage}
-                                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div 
-                                    onClick={triggerFileInput}
-                                    className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors"
-                                >
-                                    <Camera className="w-12 h-12 text-gray-400 group-hover:text-primary-500 transition-colors" />
-                                </div>
-                            )}
-                        </div>
-                        
-                        <button
-                            type="button"
-                            onClick={triggerFileInput}
-                            className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
-                        >
-                            <Upload className="w-4 h-4" />
-                            <span>{imagePreview ? 'Change Photo' : 'Upload Photo'}</span>
-                        </button>
-                        
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
                                 <User className="w-4 h-4 text-gray-400" />
-                                <span>First Name <span className="text-red-500">*</span></span>
+                                <span>Full Name <span className="text-red-500">*</span></span>
                             </label>
                             <input
                                 type="text"
-                                name="firstname"
-                                value={formData.firstname}
+                                name="full_name"
+                                value={formData.full_name}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter first name"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                                <User className="w-4 h-4 text-gray-400" />
-                                <span>Last Name <span className="text-red-500">*</span></span>
-                            </label>
-                            <input
-                                type="text"
-                                name="lastname"
-                                value={formData.lastname}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter last name"
+                                placeholder="Enter full name"
                             />
                         </div>
 
@@ -229,45 +230,62 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
                         <div className="space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
                                 <Phone className="w-4 h-4 text-gray-400" />
-                                <span>Phone Number</span>
+                                <span>Phone Number <span className="text-red-500">*</span></span>
                             </label>
                             <input
                                 type="tel"
                                 name="phone"
-                                value={formData.phone || ''}
+                                value={formData.phone}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                                 placeholder="Enter phone number"
                             />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                                <MapPin className="w-4 h-4 text-gray-400" />
-                                <span>Address</span>
+                                <span>Password <span className="text-red-500">*</span></span>
                             </label>
-                            <input
-                                type="text"
-                                name="address"
-                                value={formData.address || ''}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter address"
-                            />
+                            <div className="flex space-x-2">
+                                <input
+                                    type="text"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                    placeholder="Enter password or generate random"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={generateRandomPassword}
+                                    className="px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors flex items-center space-x-2"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    <span>Generate</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                                <span>Status</span>
+                                <UserCheck className="w-4 h-4 text-gray-400" />
+                                <span>Role <span className="text-red-500">*</span></span>
                             </label>
                             <select
-                                name="status"
-                                value={formData.status}
+                                name="role_id"
+                                value={formData.role_id}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                disabled={isLoadingRoles}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
-                                <option value="ACTIVE">Active</option>
-                                <option value="INACTIVE">Inactive</option>
+                                <option value={0}>
+                                    {isLoadingRoles ? 'Loading roles...' : 'Select a role'}
+                                </option>
+                                {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>
+                                        {role.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -297,7 +315,7 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isLoadingRoles}
                             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                         >
                             {isSubmitting ? (
@@ -308,7 +326,7 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
                             ) : (
                                 <>
                                     <Plus className="w-4 h-4" />
-                                    <span>Add Client</span>
+                                    <span>Add Employee</span>
                                 </>
                             )}
                         </button>
@@ -319,4 +337,4 @@ const AddClientModal = ({ isOpen, onClose, onSave }: AddClientModalProps) => {
     );
 };
 
-export default AddClientModal;
+export default AddEmployeeModal;

@@ -1,7 +1,7 @@
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 
-interface User {
+interface Client {
     id: string;
     firstname: string;
     lastname: string;
@@ -14,15 +14,15 @@ interface User {
     updatedAt: string;
 }
 
-interface DeleteUserModalProps {
+interface DeleteClientModalProps {
     isOpen: boolean;
-    user: User | null;
+    client: Client | null;
     onClose: () => void;
-    onDelete: (user: User) => Promise<void>;
+    onDelete: (client: Client) => Promise<void>;
 }
 
-const DeleteUserModal = ({ isOpen, user, onClose, onDelete }: DeleteUserModalProps) => {
-    if (!isOpen || !user) return null;
+const DeleteClientModal = ({ isOpen, client, onClose, onDelete }: DeleteClientModalProps) => {
+    if (!isOpen || !client) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -32,15 +32,14 @@ const DeleteUserModal = ({ isOpen, user, onClose, onDelete }: DeleteUserModalPro
                         <AlertTriangle className="w-6 h-6 text-red-600" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Delete Client</h3>
                         <p className="text-sm text-gray-500">This action cannot be undone</p>
                     </div>
                 </div>
                 <div className="mb-6">
                     <p className="text-gray-700">
-                        Are you sure you want to delete the user{" "}
-                        <span className="font-semibold">"{user.firstname} {user.lastname}"</span>? 
-                        This will permanently remove the user and all associated data.
+                        Are you sure you want to delete the client{" "}
+                        <span className="font-semibold">"{client.firstname} {client.lastname}"</span>? This will permanently remove the client and all associated data.
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3">
@@ -51,10 +50,10 @@ const DeleteUserModal = ({ isOpen, user, onClose, onDelete }: DeleteUserModalPro
                         Cancel
                     </button>
                     <button
-                        onClick={() => onDelete(user)}
+                        onClick={() => onDelete(client)}
                         className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                     >
-                        Delete User
+                        Delete Client
                     </button>
                 </div>
             </div>
@@ -62,4 +61,4 @@ const DeleteUserModal = ({ isOpen, user, onClose, onDelete }: DeleteUserModalPro
     );
 };
 
-export default DeleteUserModal;
+export default DeleteClientModal;
