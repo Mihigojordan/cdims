@@ -10,9 +10,7 @@ import routes from './router';
 const App: FC = () => {
   return (
     <>
-      
         <RouterProvider router={routes} />
-
     </>
   );
 };

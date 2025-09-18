@@ -17,7 +17,7 @@ import EmployeeDashboard from '../pages/dashboard/EmployeeDashboard';
 import EmployeeFormExample from '../components/dashboard/employee/EmployeeForm';
 import ContractDashboard from '../pages/dashboard/ContractManagement';
 import ViewEmployee from '../components/dashboard/employee/EmployeeViewMorePage';
-import RecruitementManagement from '../pages/dashboard/RecruitementManagement';
+import SitesManagement from '../pages/dashboard/SitesManagement';
 import UpserJobPost from '../components/dashboard/recruitment/UpsertJobPost';
 import JobView from '../components/dashboard/recruitment/JobView';
 import JobBoard from '../pages/landing/JobBoard';
@@ -238,10 +238,10 @@ const routes = createBrowserRouter([
                 ),
               },
               {
-                path: 'recruiting-management',
+                path: 'site-management',
                 element: (
                   <SuspenseWrapper>
-                    <RecruitementManagement />
+                    <SitesManagement />
                   </SuspenseWrapper>
                 ),
               },

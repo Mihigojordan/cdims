@@ -45,10 +45,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/department-management",
     },
     {
-      id: "recruiting",
-      label: "Recruiting Management",
-      icon: Briefcase,
-      path: "/admin/dashboard/recruiting-management",
+      id: "sites",
+      label: "Sites Management",
+      icon: MapPin,
+      path: "/admin/dashboard/site-management",
     },
     {
       id: "stores",
