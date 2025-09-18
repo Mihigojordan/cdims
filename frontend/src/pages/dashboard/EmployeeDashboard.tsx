@@ -13,28 +13,20 @@ import {
   XCircle,
   X,
   AlertCircle,
-  FileText,
-  Users,
-  UserCheck,
-  UserX,
-  UserPlus,
+  Store as StoreIcon,
+  MapPin,
+  Mail,
+  Phone,
   RefreshCw,
   Filter,
   Grid3X3,
   List,
   Settings,
   Minimize2,
-  Calendar,
-  MapPin,
-  Mail
 } from "lucide-react";
-import employeeService from "../../services/employeeService";
-import departmentService from "../../services/departmentService";
-import contractService from "../../services/contractService";
+import storeService, { type CreateStoreInput, type ValidationResult } from "../../services/storeService";
 import { useNavigate } from "react-router-dom";
-import type { Employee, Department, ContractData, Contract } from "../../types/model";
-import { useSocketEvent } from "../../context/SocketContext";
-import AddContractModal from "../../components/dashboard/contract/AddContractModal";
+import type { Store } from "../../types/model";
 
 type ViewMode = 'table' | 'grid' | 'list';
 
@@ -43,28 +35,37 @@ interface OperationStatus {
   message: string;
 }
 
-const EmployeeDashboard: React.FC = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+const StoreDashboard: React.FC = () => {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [allStores, setAllStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<keyof Employee>("first_name");
+  const [sortBy, setSortBy] = useState<keyof Store>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
-  const [deleteConfirm, setDeleteConfirm] = useState<Employee | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Store | null>(null);
   const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
   const [operationLoading, setOperationLoading] = useState<boolean>(false);
-  const [isContractModalOpen, setIsContractModalOpen] = useState<boolean>(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [employeeContractStatus, setEmployeeContractStatus] = useState<{ [key: string]: boolean }>({});
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [formData, setFormData] = useState<CreateStoreInput>({
+    code: '',
+    name: '',
+    location: '',
+    description: '',
+    manager_name: '',
+    contact_phone: '',
+    contact_email: '',
+  });
+  const [formError, setFormError] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -74,51 +75,16 @@ const EmployeeDashboard: React.FC = () => {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, sortBy, sortOrder, allEmployees, selectedDepartment, selectedStatus]);
-
-  // Real-time socket listeners
-  useSocketEvent('contractCreated', (contract: Contract) => {
-    showOperationStatus('info', `New contract created${contract.employeeId ? ` for employee ${contract.employeeId}` : ''}!`);
-    if (contract.employeeId) {
-      setEmployeeContractStatus((prev) => ({
-        ...prev,
-        [contract.employeeId]: true,
-      }));
-    }
-  });
-
-  useSocketEvent('contractUpdated', (contract: Contract) => {
-    showOperationStatus('info', `Contract ${contract.id} updated!`);
-  });
-
-  useSocketEvent('contractDeleted', ({ id }: { id: string }) => {
-    showOperationStatus('info', `Contract ${id} deleted!`);
-    loadData();
-  });
+  }, [searchTerm, sortBy, sortOrder, allStores, selectedLocation]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [employeeData, departmentData] = await Promise.all([
-        employeeService.getAllEmployees(),
-        departmentService.getAllDepartments(),
-      ]);
-      setAllEmployees(employeeData || []);
-      setDepartments(departmentData || []);
+      const { stores } = await storeService.getAllStores();
+      setAllStores(stores || []);
       setError(null);
-
-      // Fetch contract status for all employees
-      const contractStatus: { [key: string]: boolean } = {};
-      for (const employee of employeeData || []) {
-        if (employee.id) {
-          const contracts = await contractService.getContractsByEmployeeId(employee.id);
-          contractStatus[employee.id] = contracts.length > 0;
-        }
-      }
-      setEmployeeContractStatus(contractStatus);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setError(err.message || "Failed to load data");
+      setError(err.message || "Failed to load stores");
     } finally {
       setLoading(false);
     }
@@ -130,39 +96,28 @@ const EmployeeDashboard: React.FC = () => {
   };
 
   const handleFilterAndSort = () => {
-    let filtered = [...allEmployees];
+    let filtered = [...allStores];
 
-    // Search filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(
-        (emp) =>
-          emp.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          emp.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          emp.position?.toLowerCase().includes(searchTerm.toLowerCase())
+        (store) =>
+          store.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          store.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          store.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          store.manager_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          store.contact_email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Department filter
-    if (selectedDepartment) {
-      filtered = filtered.filter(emp => emp.departmentId === selectedDepartment);
+    if (selectedLocation) {
+      filtered = filtered.filter(store => store.location?.toLowerCase() === selectedLocation.toLowerCase());
     }
 
-    // Status filter (assuming you have status field, otherwise we'll use contract status)
-    if (selectedStatus) {
-      filtered = filtered.filter(emp => {
-        if (selectedStatus === 'active') return emp.id && employeeContractStatus[emp.id];
-        if (selectedStatus === 'inactive') return emp.id && !employeeContractStatus[emp.id];
-        return true;
-      });
-    }
-
-    // Sorting
     filtered.sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
-      if (sortBy === "date_hired" || sortBy === "date_of_birth") {
+      if (sortBy === "created_at" || sortBy === "updated_at") {
         const aDate = typeof aValue === "string" || aValue instanceof Date ? new Date(aValue) : new Date(0);
         const bDate = typeof bValue === "string" || bValue instanceof Date ? new Date(bValue) : new Date(0);
         return sortOrder === "asc" ? aDate.getTime() - bDate.getTime() : bDate.getTime() - aDate.getTime();
@@ -175,313 +130,269 @@ const EmployeeDashboard: React.FC = () => {
       else return aStr < bStr ? 1 : aStr > bStr ? -1 : 0;
     });
 
-    setEmployees(filtered);
+    setStores(filtered);
     setCurrentPage(1);
   };
 
-  // Calculate summary statistics
-  const totalEmployees = allEmployees.length;
-  const activeEmployees = allEmployees.filter(emp => emp.id && employeeContractStatus[emp.id]).length;
-  const inactiveEmployees = totalEmployees - activeEmployees;
-  const newJoiners = allEmployees.filter(emp => {
-    if (!emp.date_hired) return false;
-    const hiredDate = new Date(emp.date_hired);
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return hiredDate >= thirtyDaysAgo;
-  }).length;
+  const totalStores = allStores.length;
+  const uniqueLocations = [...new Set(allStores.map(store => store.location))].length;
 
-  const handleAddEmployee = () => {
-    navigate('/admin/dashboard/employee-management/create');
+  const handleAddStore = () => {
+    // Generate sequential store code
+    const storeCodes = allStores
+      .filter(store => store.code && store.code.startsWith('STORE-'))
+      .map(store => {
+        const match = store.code.match(/STORE-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(num => !isNaN(num));
+
+    const maxNum = storeCodes.length > 0 ? Math.max(...storeCodes) : 0;
+    const nextNum = maxNum + 1;
+    const nextCode = `STORE-${nextNum.toString().padStart(4, '0')}`;
+
+    setFormData({
+      code: nextCode,
+      name: '',
+      location: '',
+      description: '',
+      manager_name: '',
+      contact_phone: '',
+      contact_email: '',
+    });
+    setFormError('');
+    setShowAddModal(true);
   };
 
-  const handleEditEmployee = (employee: Employee) => {
-    if (!employee?.id) return;
-    navigate(`/admin/dashboard/employee-management/update/${employee.id}`);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleViewEmployee = (employee: Employee) => {
-    if (!employee?.id) return;
-    navigate(`/admin/dashboard/employee-management/${employee.id}`);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    const validation: ValidationResult = storeService.validateStoreData(formData);
+    if (!validation.isValid) {
+      setFormError(validation.errors.join(', '));
+      return;
+    }
+
+    try {
+      setOperationLoading(true);
+      const newStore = await storeService.createStore(formData);
+      setShowAddModal(false);
+      setFormData({
+        code: '',
+        name: '',
+        location: '',
+        description: '',
+        manager_name: '',
+        contact_phone: '',
+        contact_email: '',
+      });
+      loadData();
+      showOperationStatus("success", `${newStore.name} created successfully!`);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to create store");
+    } finally {
+      setOperationLoading(false);
+    }
   };
 
-  const handleDeleteEmployee = async (employee: Employee) => {
+  const handleEditStore = (store: Store) => {
+    if (!store?.id) return;
+    setSelectedStore(store);
+    setFormData({
+      code: store.code || '',
+      name: store.name || '',
+      location: store.location || '',
+      description: store.description || '',
+      manager_name: store.manager_name || '',
+      contact_phone: store.contact_phone || '',
+      contact_email: store.contact_email || '',
+    });
+    setShowUpdateModal(true);
+  };
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    const validation: ValidationResult = storeService.validateStoreData(formData);
+    if (!validation.isValid) {
+      setFormError(validation.errors.join(', '));
+      return;
+    }
+
+    if (!selectedStore?.id) {
+      setFormError("Invalid store ID");
+      return;
+    }
+
+    try {
+      setOperationLoading(true);
+      await storeService.updateStore(selectedStore.id, formData);
+      setShowUpdateModal(false);
+      setSelectedStore(null);
+      setFormData({
+        code: '',
+        name: '',
+        location: '',
+        description: '',
+        manager_name: '',
+        contact_phone: '',
+        contact_email: '',
+      });
+      loadData();
+      showOperationStatus("success", `${formData.name} updated successfully!`);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to update store");
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleViewStore = (store: Store) => {
+    if (!store?.id) return;
+    setSelectedStore(store);
+    setShowViewModal(true);
+  };
+
+  const handleDeleteStore = async (store: Store) => {
     try {
       setOperationLoading(true);
       setDeleteConfirm(null);
-      await employeeService.deleteEmployee(employee.id);
+      await storeService.deleteStore(store.id);
       loadData();
-      showOperationStatus("success", `${employee.first_name} ${employee.last_name} deleted successfully!`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      showOperationStatus("success", `${store.name} deleted successfully!`);
     } catch (err: any) {
-      showOperationStatus("error", err.message || "Failed to delete employee");
+      showOperationStatus("error", err.message || "Failed to delete store");
     } finally {
       setOperationLoading(false);
     }
   };
 
-  const handleCreateContract = async (employee: Employee) => {
-    try {
-      setOperationLoading(true);
-      const contracts = await contractService.getContractsByEmployeeId(employee.id);
-      if (contracts.length > 0) {
-        showOperationStatus('error', 'This employee already has a contract.');
-        return;
-      }
-      setSelectedEmployee(employee);
-      setIsContractModalOpen(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      showOperationStatus('error', err.message || 'Failed to check existing contracts');
-    } finally {
-      setOperationLoading(false);
-    }
-  };
-
-  const handleContractSubmit = async (data: ContractData) => {
-    try {
-      setOperationLoading(true);
-      const validation = contractService.validateContractData(data);
-      if (!validation.isValid) {
-        showOperationStatus('error', validation.errors.join(', '));
-        return;
-      }
-
-      const contract = await contractService.createContract(data);
-      if (selectedEmployee) {
-        await contractService.assignEmployeeToContract(contract.id, selectedEmployee.id);
-        setEmployeeContractStatus((prev) => ({
-          ...prev,
-          [selectedEmployee.id]: true,
-        }));
-      }
-      showOperationStatus('success', 'Contract created and assigned successfully!');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      showOperationStatus('error', err.message || 'Failed to create contract');
-    } finally {
-      setOperationLoading(false);
-      setIsContractModalOpen(false);
-      setSelectedEmployee(null);
-    }
-  };
-
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return new Date().toLocaleDateString("en-GB");
-    return new Date(dateString).toLocaleDateString("en-GB", {
+  const formatDate = (date?: Date | string): string => {
+    if (!date) return new Date().toLocaleDateString("en-GB");
+    return new Date(date).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   };
 
-  const getUrlImage = (url?: string): string | undefined => {
-    if (!url) return undefined;
-    if (url.includes('http')) return url;
-    // Replace with your actual API URL or base URL
-    const API_URL = process.env.VITE_API_URL || 'http://localhost:7000';
-    return `${API_URL}${url}`;
-  };
-
-  const getDepartmentName = (departmentId?: string): string => {
-    const department = departments.find((dept) => dept.id === departmentId);
-    return department ? department.name : "Unknown";
-  };
-
-  const totalPages = Math.ceil(employees.length / itemsPerPage);
+  const totalPages = Math.ceil(stores.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentEmployees = employees.slice(startIndex, endIndex);
+  const currentStores = stores.slice(startIndex, endIndex);
 
-const renderTableView = () => (
-  <div className="bg-white rounded border border-gray-200">
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
-            <th 
-              className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100" 
-              onClick={() => setSortBy("first_name")}
-            >
-              <div className="flex items-center space-x-1">
-                <span>Name</span>
-                <ChevronDown className={`w-3 h-3 ${sortBy === "first_name" ? "text-primary-600" : "text-gray-400"}`} />
-              </div>
-            </th>
-            <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Email</th>
-            <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Department</th>
-            <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
-            <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
-            <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {currentEmployees.map((employee, index) => (
-            <tr key={employee.id || index} className="hover:bg-gray-25">
-              {/* Row Number */}
-              <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
-              
-              {/* Name with profile image */}
-              <td className="py-2 px-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center overflow-hidden">
-                    {employee.profile_image ? (
-                      <img 
-                        src={getUrlImage(employee.profile_image)} 
-                        alt={`${employee.first_name} ${employee.last_name}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `<span class="text-xs font-medium text-primary-700">
-                              ${employee.first_name?.charAt(0) || ''}${employee.last_name?.charAt(0) || ''}
-                            </span>`;
-                          }
-                        }}
-                      />
-                    ) : (
-                      <span className="text-xs font-medium text-primary-700">
-                        {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-medium text-gray-900 text-xs">
-                    {employee.first_name} {employee.last_name}
-                  </div>
+  const renderTableView = () => (
+    <div className="bg-white rounded border border-gray-200">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
+              <th 
+                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100" 
+                onClick={() => setSortBy("name")}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Name</span>
+                  <ChevronDown className={`w-3 h-3 ${sortBy === "name" ? "text-primary-600" : "text-gray-400"}`} />
                 </div>
-              </td>
-
-              {/* Email */}
-              <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{employee.email}</td>
-
-              {/* Department */}
-              <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{getDepartmentName(employee.departmentId)}</td>
-
-              {/* Created Date */}
-              <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(employee.created_at)}</td>
-
-              {/* Status */}
-              <td className="py-2 px-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Active
-                </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-2 px-2">
-                <div className="flex items-center justify-end space-x-1">
-                  <button 
-                    onClick={() => handleViewEmployee(employee)} 
-                    className="text-gray-400 hover:text-primary-600 p-1" 
-                    title="View"
-                  >
-                    <Eye className="w-3 h-3" />
-                  </button>
-                  <button 
-                    onClick={() => handleEditEmployee(employee)} 
-                    className="text-gray-400 hover:text-primary-600 p-1" 
-                    title="Edit"
-                  >
-                    <Edit className="w-3 h-3" />
-                  </button>
-                  <button 
-                    onClick={() => setDeleteConfirm(employee)} 
-                    className="text-gray-400 hover:text-red-600 p-1" 
-                    title="Delete"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </td>
+              </th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Code</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Manager name</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Location</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
+              <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {currentStores.map((store, index) => (
+              <tr key={store.id || index} className="hover:bg-gray-25">
+                <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
+                <td className="py-2 px-2 font-medium text-gray-900 text-xs">{store.name}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{store.code}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{ store.manager_name ? store.manager_name : "N/A"}</td>
+                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{store.location}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(store.created_at)}</td>
+                <td className="py-2 px-2">
+                  <div className="flex items-center justify-end space-x-1">
+                    <button 
+                      onClick={() => handleViewStore(store)} 
+                      className="text-gray-400 hover:text-primary-600 p-1" 
+                      title="View"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+                    <button 
+                      onClick={() => handleEditStore(store)} 
+                      className="text-gray-400 hover:text-primary-600 p-1" 
+                      title="Edit"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
+                    <button 
+                      onClick={() => setDeleteConfirm(store)} 
+                      className="text-gray-400 hover:text-red-600 p-1" 
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
-
-
+  );
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {currentEmployees.map((employee) => (
-        <div key={employee.id} className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
+      {currentStores.map((store) => (
+        <div key={store.id} className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
           <div className="flex items-center space-x-2 mb-2">
-            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center overflow-hidden">
-              {employee.profile_image ? (
-                <img 
-                  src={getUrlImage(employee.profile_image)} 
-                  alt={`${employee.first_name} ${employee.last_name}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<span class="text-xs font-medium text-primary-700">
-                        ${employee.first_name?.charAt(0) || ''}${employee.last_name?.charAt(0) || ''}
-                      </span>`;
-                    }
-                  }}
-                />
-              ) : (
-                <span className="text-xs font-medium text-primary-700">
-                  {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
-                </span>
-              )}
+            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+              <StoreIcon className="w-4 h-4 text-primary-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-xs truncate">
-                {employee.first_name} {employee.last_name}
-              </div>
-              <div className="text-gray-500 text-xs truncate">{employee.position}</div>
+              <div className="font-medium text-gray-900 text-xs truncate">{store.name}</div>
+              <div className="text-gray-500 text-xs truncate">{store.code}</div>
             </div>
-            <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-              employee.id && employeeContractStatus[employee.id] 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-gray-100 text-gray-800'
-            }`}>
-              {employee.id && employeeContractStatus[employee.id] ? 'Active' : 'Inactive'}
-            </span>
           </div>
-          
           <div className="space-y-1 mb-3">
             <div className="flex items-center space-x-1 text-xs text-gray-600">
-              <Mail className="w-3 h-3" />
-              <span className="truncate">{employee.email}</span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs text-gray-600">
               <MapPin className="w-3 h-3" />
-              <span>{getDepartmentName(employee.departmentId)}</span>
+              <span>{store.location}</span>
             </div>
-            <div className="flex items-center space-x-1 text-xs text-gray-600">
-              <Calendar className="w-3 h-3" />
-              <span>{formatDate(employee.date_hired)}</span>
-            </div>
+            {store.contact_email && (
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Mail className="w-3 h-3" />
+                <span className="truncate">{store.contact_email}</span>
+              </div>
+            )}
+            {store.contact_phone && (
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Phone className="w-3 h-3" />
+                <span>{store.contact_phone}</span>
+              </div>
+            )}
           </div>
-
           <div className="flex items-center justify-between">
             <div className="flex space-x-1">
-              <button onClick={() => handleViewEmployee(employee)} className="text-gray-400 hover:text-primary-600 p-1" title="View">
+              <button onClick={() => handleViewStore(store)} className="text-gray-400 hover:text-primary-600 p-1" title="View">
                 <Eye className="w-3 h-3" />
               </button>
-              <button onClick={() => handleEditEmployee(employee)} className="text-gray-400 hover:text-primary-600 p-1" title="Edit">
+              <button onClick={() => handleEditStore(store)} className="text-gray-400 hover:text-primary-600 p-1" title="Edit">
                 <Edit className="w-3 h-3" />
               </button>
-              <button 
-                onClick={() => handleCreateContract(employee)} 
-                disabled={!!(employee.id && employeeContractStatus[employee.id])}
-                className="text-gray-400 hover:text-primary-600 p-1 disabled:opacity-50" 
-                title="Contract"
-              >
-                <FileText className="w-3 h-3" />
-              </button>
             </div>
-            <button onClick={() => setDeleteConfirm(employee)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
+            <button onClick={() => setDeleteConfirm(store)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
               <Trash2 className="w-3 h-3" />
             </button>
           </div>
@@ -490,85 +401,53 @@ const renderTableView = () => (
     </div>
   );
 
-// Improved List View (Full Name, Email, Department, Status, Created Date)
-const renderListView = () => (
-  <div className="bg-white rounded border border-gray-200 divide-y divide-gray-100">
-    {currentEmployees.map((employee) => (
-      <div key={employee.id} className="px-4 py-3 hover:bg-gray-25">
-        <div className="flex items-center justify-between">
-          
-          {/* Profile + Name */}
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            {/* Profile Image */}
-            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-              {employee.profile_image ? (
-                <img 
-                  src={getUrlImage(employee.profile_image)} 
-                  alt={`${employee.first_name} ${employee.last_name}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<span class="text-sm font-medium text-primary-700">
-                        ${employee.first_name?.charAt(0) || ''}${employee.last_name?.charAt(0) || ''}
-                      </span>`;
-                    }
-                  }}
-                />
-              ) : (
-                <span className="text-sm font-medium text-primary-700">
-                  {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
-                </span>
-              )}
-            </div>
-
-            {/* Full Name */}
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-sm truncate">
-                {employee.first_name} {employee.last_name}
+  const renderListView = () => (
+    <div className="bg-white rounded border border-gray-200 divide-y divide-gray-100">
+      {currentStores.map((store) => (
+        <div key={store.id} className="px-4 py-3 hover:bg-gray-25">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
+              <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <StoreIcon className="w-5 h-5 text-primary-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 text-sm truncate">{store.name}</div>
+                <div className="text-gray-500 text-xs truncate">{store.code}</div>
               </div>
             </div>
-          </div>
-
-          {/* Info Columns */}
-          <div className="hidden md:grid grid-cols-4 gap-4 text-xs text-gray-600 flex-1 max-w-3xl px-4">
-            <span className="truncate">{employee.email}</span>
-            <span className="truncate">{getDepartmentName(employee.departmentId)}</span>
-            <span className="text-green-700 font-medium">Active</span>
-            <span>{formatDate(employee.created_at)}</span>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center space-x-1 flex-shrink-0">
-            <button 
-              onClick={() => handleViewEmployee(employee)} 
-              className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
-              title="View Employee"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => handleEditEmployee(employee)} 
-              className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
-              title="Edit Employee"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setDeleteConfirm(employee)} 
-              className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" 
-              title="Delete Employee"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="hidden md:grid grid-cols-3 gap-4 text-xs text-gray-600 flex-1 max-w-2xl px-4">
+              <span className="truncate">{store.location}</span>
+              <span className="truncate">{store.contact_email || '-'}</span>
+              <span>{formatDate(store.created_at)}</span>
+            </div>
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <button 
+                onClick={() => handleViewStore(store)} 
+                className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
+                title="View Store"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => handleEditStore(store)} 
+                className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
+                title="Edit Store"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setDeleteConfirm(store)} 
+                className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" 
+                title="Delete Store"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
 
   const renderPagination = () => {
     const pages: number[] = [];
@@ -587,7 +466,7 @@ const renderListView = () => (
     return (
       <div className="flex items-center justify-between bg-white px-3 py-2 border-t border-gray-200">
         <div className="text-xs text-gray-600">
-          Showing {startIndex + 1}-{Math.min(endIndex, employees.length)} of {employees.length}
+          Showing {startIndex + 1}-{Math.min(endIndex, stores.length)} of {stores.length}
         </div>
         <div className="flex items-center space-x-1">
           <button
@@ -624,8 +503,7 @@ const renderListView = () => (
 
   return (
     <div className="min-h-screen bg-gray-50 text-xs">
-      {/* Header */}
- <div className="bg-white shadow-md">
+      <div className="bg-white shadow-md">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -637,8 +515,8 @@ const renderListView = () => (
                 <Minimize2 className="w-4 h-4" />
               </button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Employee Management</h1>
-                <p className="text-xs text-gray-500 mt-0.5">Manage your organization's workforce</p>
+                <h1 className="text-lg font-semibold text-gray-900">Store Management</h1>
+                <p className="text-xs text-gray-500 mt-0.5">Manage your organization's stores</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -652,79 +530,44 @@ const renderListView = () => (
                 <span>Refresh</span>
               </button>
               <button
-                onClick={handleAddEmployee}
+                onClick={handleAddStore}
                 disabled={operationLoading}
                 className="flex items-center space-x-1 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50"
               >
                 <Plus className="w-3 h-3" />
-                <span>Add Employee</span>
+                <span>Add Store</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-<div className="px-4 py-4 space-y-4">
-  {/* Summary Cards */}
-  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {/* Total Employees */}
-    <div className="bg-white rounded shadow p-4">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-          <Users className="w-5 h-5 text-primary-600" />
+      <div className="px-4 py-4 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white rounded shadow p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
+                <StoreIcon className="w-5 h-5 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Total Stores</p>
+                <p className="text-lg font-semibold text-gray-900">{totalStores}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded shadow p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Unique Locations</p>
+                <p className="text-lg font-semibold text-gray-900">{uniqueLocations}</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <p className="text-xs text-gray-600">Total Employees</p>
-          <p className="text-lg font-semibold text-gray-900">{totalEmployees}</p>
-        </div>
-      </div>
-    </div>
 
-    {/* Active */}
-    <div className="bg-white rounded shadow p-4">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
-          <UserCheck className="w-5 h-5 text-green-600" />
-        </div>
-        <div>
-          <p className="text-xs text-gray-600">Active</p>
-          <p className="text-lg font-semibold text-gray-900">{activeEmployees}</p>
-        </div>
-      </div>
-    </div>
-
-    {/* Inactive */}
-    <div className="bg-white rounded shadow p-4">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 bg-orange-100 rounded-full flex items-center justify-center">
-          <UserX className="w-5 h-5 text-orange-600" />
-        </div>
-        <div>
-          <p className="text-xs text-gray-600">Inactive</p>
-          <p className="text-lg font-semibold text-gray-900">{inactiveEmployees}</p>
-        </div>
-      </div>
-    </div>
-
-    {/* New Joiners */}
-    <div className="bg-white rounded shadow p-4">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 bg-purple-100 rounded-full flex items-center justify-center">
-          <UserPlus className="w-5 h-5 text-purple-600" />
-        </div>
-        <div>
-          <p className="text-xs text-gray-600">New Joiners (30d)</p>
-          <p className="text-lg font-semibold text-gray-900">{newJoiners}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-
-
-
-        {/* Controls */}
         <div className="bg-white rounded border border-gray-200 p-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 gap-3">
             <div className="flex items-center space-x-2">
@@ -732,13 +575,12 @@ const renderListView = () => (
                 <Search className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search employees..."
+                  placeholder="Search stores..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-48 pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
-              
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center space-x-1 px-2 py-1.5 text-xs border rounded transition-colors ${
@@ -749,24 +591,23 @@ const renderListView = () => (
                 <span>Filter</span>
               </button>
             </div>
-            
             <div className="flex items-center space-x-2">
               <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
-                  const [field, order] = e.target.value.split("-") as [keyof Employee, "asc" | "desc"];
+                  const [field, order] = e.target.value.split("-") as [keyof Store, "asc" | "desc"];
                   setSortBy(field);
                   setSortOrder(order);
                 }}
                 className="text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
-                <option value="first_name-asc">Name (A-Z)</option>
-                <option value="first_name-desc">Name (Z-A)</option>
-                <option value="position-asc">Position (A-Z)</option>
-                <option value="date_hired-desc">Newest</option>
-                <option value="date_hired-asc">Oldest</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="code-asc">Code (A-Z)</option>
+                <option value="location-asc">Location (A-Z)</option>
+                <option value="created_at-desc">Newest</option>
+                <option value="created_at-asc">Oldest</option>
               </select>
-              
               <div className="flex items-center border border-gray-200 rounded">
                 <button
                   onClick={() => setViewMode('table')}
@@ -798,38 +639,22 @@ const renderListView = () => (
               </div>
             </div>
           </div>
-          
-          {/* Filters */}
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-2">
                 <select
-                  value={selectedDepartment}
-                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
-                  <option value="">All Departments</option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  <option value="">All Locations</option>
+                  {[...new Set(allStores.map(store => store.location))].map((location, index) => (
+                    <option key={index} value={location}>{location}</option>
                   ))}
                 </select>
-                
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                
-                {(selectedDepartment || selectedStatus) && (
+                {selectedLocation && (
                   <button
-                    onClick={() => {
-                      setSelectedDepartment("");
-                      setSelectedStatus("");
-                    }}
+                    onClick={() => setSelectedLocation("")}
                     className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
                   >
                     Clear Filters
@@ -846,18 +671,17 @@ const renderListView = () => (
           </div>
         )}
 
-        {/* Content */}
         {loading ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="inline-flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-xs">Loading employees...</span>
+              <span className="text-xs">Loading stores...</span>
             </div>
           </div>
-        ) : currentEmployees.length === 0 ? (
+        ) : currentStores.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm || selectedDepartment || selectedStatus ? 'No employees found matching your criteria' : 'No employees found'}
+              {searchTerm || selectedLocation ? 'No stores found matching your criteria' : 'No stores found'}
             </div>
           </div>
         ) : (
@@ -869,19 +693,6 @@ const renderListView = () => (
           </div>
         )}
       </div>
-
-      {/* Modals and Status */}
-      <AddContractModal
-        isOpen={isContractModalOpen}
-        onClose={() => {
-          setIsContractModalOpen(false);
-          setSelectedEmployee(null);
-        }}
-        onSubmit={handleContractSubmit}
-        departments={departments}
-        loading={operationLoading}
-        employee={selectedEmployee}
-      />
 
       {operationStatus && (
         <div className="fixed top-4 right-4 z-50">
@@ -920,16 +731,14 @@ const renderListView = () => (
                 <AlertTriangle className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Delete Employee</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Delete Store</h3>
                 <p className="text-xs text-gray-500">This action cannot be undone</p>
               </div>
             </div>
             <div className="mb-4">
               <p className="text-xs text-gray-700">
                 Are you sure you want to delete{" "}
-                <span className="font-semibold">
-                  {deleteConfirm.first_name} {deleteConfirm.last_name}
-                </span>
+                <span className="font-semibold">{deleteConfirm.name}</span>
                 ?
               </p>
             </div>
@@ -941,10 +750,312 @@ const renderListView = () => (
                 Cancel
               </button>
               <button
-                onClick={() => handleDeleteEmployee(deleteConfirm)}
+                onClick={() => handleDeleteStore(deleteConfirm)}
                 className="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Add New Store</h3>
+            {formError && (
+              <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-xs mb-4">
+                {formError}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store code"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Location *</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store location"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store description"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
+                <input
+                  type="text"
+                  name="manager_name"
+                  value={formData.manager_name}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter manager name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  name="contact_email"
+                  value={formData.contact_email}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter contact email"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
+                <input
+                  type="tel"
+                  name="contact_phone"
+                  value={formData.contact_phone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter contact phone"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setFormData({
+                      code: '',
+                      name: '',
+                      location: '',
+                      description: '',
+                      manager_name: '',
+                      contact_phone: '',
+                      contact_email: '',
+                    });
+                    setFormError('');
+                  }}
+                  className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={operationLoading}
+                  className="px-4 py-2 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {operationLoading ? 'Creating...' : 'Create Store'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showUpdateModal && selectedStore && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Update Store</h3>
+            {formError && (
+              <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-xs mb-4">
+                {formError}
+              </div>
+            )}
+            <form onSubmit={handleUpdateSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store code"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Location *</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store location"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter store description"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
+                <input
+                  type="text"
+                  name="manager_name"
+                  value={formData.manager_name}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter manager name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  name="contact_email"
+                  value={formData.contact_email}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter contact email"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
+                <input
+                  type="tel"
+                  name="contact_phone"
+                  value={formData.contact_phone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter contact phone"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpdateModal(false);
+                    setSelectedStore(null);
+                    setFormData({
+                      code: '',
+                      name: '',
+                      location: '',
+                      description: '',
+                      manager_name: '',
+                      contact_phone: '',
+                      contact_email: '',
+                    });
+                    setFormError('');
+                  }}
+                  className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={operationLoading}
+                  className="px-4 py-2 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {operationLoading ? 'Updating...' : 'Update Store'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showViewModal && selectedStore && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Store Details</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Code</label>
+                <p className="text-xs text-gray-900">{selectedStore.code || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Store Name</label>
+                <p className="text-xs text-gray-900">{selectedStore.name || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                <p className="text-xs text-gray-900">{selectedStore.location || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <p className="text-xs text-gray-900">{selectedStore.description || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Manager Name</label>
+                <p className="text-xs text-gray-900">{selectedStore.manager_name || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email</label>
+                <p className="text-xs text-gray-900">{selectedStore.contact_email || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Phone</label>
+                <p className="text-xs text-gray-900">{selectedStore.contact_phone || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
+                <p className="text-xs text-gray-900">{formatDate(selectedStore.created_at)}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>
+                <p className="text-xs text-gray-900">{formatDate(selectedStore.updated_at)}</p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedStore(null);
+                }}
+                className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+              >
+                Close
               </button>
             </div>
           </div>
@@ -954,4 +1065,4 @@ const renderListView = () => (
   );
 };
 
-export default EmployeeDashboard;
+export default StoreDashboard;

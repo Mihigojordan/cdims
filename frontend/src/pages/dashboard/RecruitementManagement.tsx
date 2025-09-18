@@ -24,7 +24,7 @@ import {
   Minimize2,
   RefreshCw,
 } from "lucide-react";
-import jobService from "../../services/jobService";
+import jobService from "../../services/siteService";
 import { useNavigate } from "react-router-dom";
 import { useSocketEvent, useSocket } from "../../context/SocketContext";
 import type { Job } from "../../types/model";

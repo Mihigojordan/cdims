@@ -21,7 +21,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import company_logo from '../../../src/assets/images/aby_hr.png';
-import jobService from '../../services/jobService';
+import jobService from '../../services/siteService';
 import type { Job } from '../../types/model';
 
 const JobDetailView: React.FC = () => {

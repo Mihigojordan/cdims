@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Clock, Users, Briefcase, Calendar, ChevronRight, ChevronLeft, CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
 import company_logo from '../../../src/assets/images/aby_hr.png';
-import jobService from '../../services/jobService';
+import jobService from '../../services/siteService';
 import { useSocketEvent } from '../../context/SocketContext';
 import type { Job } from '../../types/model';
 import { useNavigate } from 'react-router-dom';

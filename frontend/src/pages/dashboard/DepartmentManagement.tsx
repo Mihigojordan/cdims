@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Calendar,
 } from "lucide-react";
-import departmentService from "../../services/departmentService";
+import departmentService from "../../services/reportService";
 
 interface Department {
   id: string;
