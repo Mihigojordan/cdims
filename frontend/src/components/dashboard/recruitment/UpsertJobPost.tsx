@@ -17,7 +17,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import ReactQuill from 'react-quill-new'; // Import ReactQuill
 import 'react-quill-new/dist/quill.snow.css'; // Import Quill styles
-import jobService, { type CreateJobInput, type UpdateJobInput } from '../../../services/jobService';
+import jobService, { type CreateJobInput, type UpdateJobInput } from '../../../services/siteService';
 import Swal from 'sweetalert2';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP'] as const;

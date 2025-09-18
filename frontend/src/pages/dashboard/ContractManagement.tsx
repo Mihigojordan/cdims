@@ -17,9 +17,9 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
-import contractService from "../../services/contractService";
-import employeeService from "../../services/employeeService";
-import departmentService from "../../services/departmentService";
+import contractService from "../../services/stockService";
+import employeeService from "../../services/storeService";
+import departmentService from "../../services/reportService";
 import { useSocket, useSocketEvent } from "../../context/SocketContext";
 import AddContractModal from "../../components/dashboard/contract/AddContractModal";
 import EditContractModal from "../../components/dashboard/contract/EditContractModal";
