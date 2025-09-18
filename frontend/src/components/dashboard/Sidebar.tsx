@@ -63,8 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/employee-management",
     },
     {
-      id: "clients",
-      label: "Clients Management",
+      id: "User Management",
+      label: "User Management",
       icon: User2,
       path: "/admin/dashboard/client-management",
     },
