@@ -159,9 +159,9 @@ const routes = createBrowserRouter([
         path: 'admin',
         element: (
           <SuspenseWrapper>
-            <ProtectPrivateAdminRoute>
+            {/* <ProtectPrivateAdminRoute> */}
               <Outlet />
-            </ProtectPrivateAdminRoute>
+            {/* </ProtectPrivateAdminRoute> */}
           </SuspenseWrapper>
         ),
         children: [
