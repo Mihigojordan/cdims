@@ -34,7 +34,7 @@ const userService = {
   getAllUsers: async (): Promise<User[]> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data } = await api.get<User[]>('/api/users', {
+      const { data } = await api.get<User[]>('/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
       return data;
@@ -47,7 +47,7 @@ const userService = {
   getUserById: async (id: string): Promise<User> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data } = await api.get<User>(`/api/users/${id}`, {
+      const { data } = await api.get<User>(`/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return data;
@@ -60,7 +60,7 @@ const userService = {
   createUser: async (data: CreateUserInput): Promise<User> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data: newUser } = await api.post<User>('/api/users', data, {
+      const { data: newUser } = await api.post<User>('/users', data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return newUser;
@@ -73,7 +73,7 @@ const userService = {
   updateUser: async (id: string, data: UpdateUserInput): Promise<User> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data: updatedUser } = await api.put<User>(`/api/users/${id}`, data, {
+      const { data: updatedUser } = await api.put<User>(`/users/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return updatedUser;
@@ -86,7 +86,7 @@ const userService = {
   deleteUser: async (id: string): Promise<void> => {
     try {
       const token = localStorage.getItem('auth_token');
-      await api.delete(`/api/users/${id}`, {
+      await api.delete(`/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error: any) {
