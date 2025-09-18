@@ -17,6 +17,7 @@ import {
   Ruler,
   ChevronDown,
   ChevronUp,
+  Boxes,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAdminAuth from "../../context/AuthContext";
@@ -75,10 +76,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/role-management",
     },
     {
-      id: "departments",
-      label: "Departments Management",
-      icon: Building,
-      path: "/admin/dashboard/department-management",
+      id: "stocks",
+      label: "Stock Management",
+      icon: Boxes,
+      path: "/admin/dashboard/stock-management",
     },
     {
       id: "sites",
@@ -256,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
             </div>
             <div>
               <h2 className="font-bold text-lg text-primary-800">
-                Aby Hr Management
+                CIDMS 
               </h2>
               <p className="text-xs text-primary-500">Admin Portal</p>
             </div>
