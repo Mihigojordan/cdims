@@ -151,7 +151,7 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
               <Menu className="w-4 h-4 text-white" />
             </div>
             <h1 className="text-lg font-semibold text-gray-900 hidden sm:block">
-              Welcome Abytech hub LTD 
+              Welcome To CDIMS
             </h1>
           </div>
 

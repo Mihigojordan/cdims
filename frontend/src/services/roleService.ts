@@ -20,7 +20,7 @@ const roleService = {
   getAllRoles: async (): Promise<Role[]> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data } = await api.get<Role[]>('/api/users/roles', {
+      const { data } = await api.get<Role[]>('/users/roles', {
         headers: { Authorization: `Bearer ${token}` },
       });
       return data;
@@ -33,7 +33,7 @@ const roleService = {
   getRoleById: async (id: number): Promise<Role> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data } = await api.get<Role>(`/api/users/roles/${id}`, {
+      const { data } = await api.get<Role>(`/users/roles/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return data;
@@ -46,7 +46,7 @@ const roleService = {
   createRole: async (data: CreateRoleInput): Promise<Role> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data: newRole } = await api.post<Role>('/api/users/roles', data, {
+      const { data: newRole } = await api.post<Role>('/users/roles', data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return newRole;
@@ -59,7 +59,7 @@ const roleService = {
   updateRole: async (id: number, data: UpdateRoleInput): Promise<Role> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data: updatedRole } = await api.put<Role>(`/api/users/roles/${id}`, data, {
+      const { data: updatedRole } = await api.put<Role>(`/users/roles/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return updatedRole;
@@ -72,7 +72,7 @@ const roleService = {
   deleteRole: async (id: number): Promise<void> => {
     try {
       const token = localStorage.getItem('auth_token');
-      await api.delete(`/api/users/roles/${id}`, {
+      await api.delete(`/users/roles/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error: any) {

@@ -31,7 +31,7 @@ const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
 const AboutPage = lazy(() => import('../pages/landing/AboutPage'));
-const DepartmentDashboard = lazy(() => import('../pages/dashboard/DepartmentManagement'));
+const StockManagement = lazy(() => import('../pages/dashboard/StockManagement'));
 
 /**
  * Loading spinner component for Suspense fallback
@@ -191,10 +191,10 @@ const routes = createBrowserRouter([
                 ),
               },
               {
-                path: 'department-management',
+                path: 'stock-management',
                 element: (
                   <SuspenseWrapper>
-                    <DepartmentDashboard />
+                    <StockManagement />
                   </SuspenseWrapper>
                 ),
               },
