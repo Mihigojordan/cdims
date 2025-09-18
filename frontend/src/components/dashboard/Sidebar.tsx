@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       id: "stores",
       label: "Stores Management",
       icon: Store,
-      path: "/admin/dashboard/employee-management",
+      path: "/admin/dashboard/store-management",
     },
     {
       id: "User Management",
@@ -166,10 +166,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-normal text-gray-900 truncate">
-                {user?.adminName || "Admin User"}
+                {user?.full_name || "Admin User"}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {user?.adminEmail || "admin@example.com"}
+                {user?.email || "admin@example.com"}
               </p>
             </div>
           </div>
