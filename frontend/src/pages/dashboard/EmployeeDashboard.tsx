@@ -28,9 +28,9 @@ import {
   MapPin,
   Mail
 } from "lucide-react";
-import employeeService from "../../services/employeeService";
-import departmentService from "../../services/departmentService";
-import contractService from "../../services/contractService";
+import employeeService from "../../services/storeService";
+import departmentService from "../../services/reportService";
+import contractService from "../../services/stockService";
 import { useNavigate } from "react-router-dom";
 import type { Employee, Department, ContractData, Contract } from "../../types/model";
 import { useSocketEvent } from "../../context/SocketContext";

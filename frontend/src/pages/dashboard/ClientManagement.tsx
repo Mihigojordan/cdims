@@ -28,7 +28,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
-import clientService, { type CreateClientInput, type UpdateClientInput } from '../../services/clientService';
+import clientService, { type CreateClientInput, type UpdateClientInput } from '../../services/requestService';
 import AddClientModal from '../../components/dashboard/client/AddClientModal';
 import EditClientModal from '../../components/dashboard/client/EditClientModal';
 import DeleteClientModal from '../../components/dashboard/client/DeleteClientModal';

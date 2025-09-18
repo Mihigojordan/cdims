@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, User, Mail, Phone, MapPin, Camera, Plus } from 'lucide-react';
-import clientService, { type CreateClientInput } from '../../../services/clientService';
+import clientService, { type CreateClientInput } from '../../../services/requestService';
 
 interface AddClientModalProps {
     isOpen: boolean;

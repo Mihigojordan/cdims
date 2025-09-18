@@ -25,7 +25,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import employeeService from '../../../services/employeeService';
+import employeeService from '../../../services/storeService';
 import { API_URL } from '../../../api/api';
 
 // Define types and interfaces

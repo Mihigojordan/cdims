@@ -24,8 +24,8 @@ import {
   Search,
 } from "lucide-react";
 import DOMPurify from "dompurify";
-import jobService from "../../../services/jobService";
-import applicantService from "../../../services/applicantService";
+import jobService from "../../../services/siteService";
+import applicantService from "../../../services/materialsService";
 import { useSocketEvent } from "../../../context/SocketContext";
 import type { Job, Applicant } from "../../../types/model";
 import Swal from "sweetalert2";

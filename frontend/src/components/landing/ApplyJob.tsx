@@ -21,10 +21,10 @@ import {
 } from 'lucide-react';
 import Quill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import applicantService from '../../services/applicantService';
-import jobService from '../../services/jobService';
+import applicantService from '../../services/materialsService';
+import jobService from '../../services/siteService';
 import type { Job } from '../../types/model';
-import type { CreateApplicantInput } from '../../services/applicantService';
+import type { CreateApplicantInput } from '../../services/materialsService';
 import Swal from 'sweetalert2';
 
 // Define type for form data to ensure consistency

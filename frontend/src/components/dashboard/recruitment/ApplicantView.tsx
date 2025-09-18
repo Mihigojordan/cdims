@@ -28,7 +28,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import DOMPurify from "dompurify";
-import applicantService from "../../../services/applicantService";
+import applicantService from "../../../services/materialsService";
 import { useSocketEvent } from "../../../context/SocketContext";
 import { API_URL } from "../../../api/api";
 

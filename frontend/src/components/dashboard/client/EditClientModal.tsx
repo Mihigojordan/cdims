@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Mail, Phone, MapPin, Camera, Plus } from 'lucide-react';
-import clientService, { type UpdateClientInput } from '../../../services/clientService';
+import clientService, { type UpdateClientInput } from '../../../services/requestService';
 import { API_URL } from '../../../api/api';
 
 interface Client {
