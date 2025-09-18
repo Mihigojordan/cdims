@@ -68,6 +68,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       icon: User2,
       path: "/admin/dashboard/client-management",
     },
+        {
+      id: "Material Requisition ",
+      label: "Material Requisition",
+      icon: User2,
+      path: "/admin/dashboard/material-requisition",
+    },
   ];
 
   const getProfileRoute = () => "/admin/dashboard/profile";

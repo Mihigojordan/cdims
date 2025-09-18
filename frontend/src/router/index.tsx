@@ -28,6 +28,8 @@ import ClientManagement from '../pages/dashboard/ClientManagement';
 import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
+import RoleManagement from '../pages/dashboard/RoleManagement';
+import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -317,6 +319,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <RoleManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+                  {
+                path: 'material-requisition',
+                element: (
+                  <SuspenseWrapper>
+                     <MaterialRequisition />
                   </SuspenseWrapper>
                 ),
               },
