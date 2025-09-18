@@ -86,7 +86,7 @@ export const AdminAuthContextProvider: React.FC<
         // Authenticate only if user is active
         updateAuthState({
           user: userProfile,
-          isAuthenticated: !!userProfile.active,
+          isAuthenticated: true,
         });
       }
 
@@ -125,7 +125,7 @@ export const AdminAuthContextProvider: React.FC<
         };
         updateAuthState({
           user: mappedUser,
-          isAuthenticated: !!mappedUser.active,
+          isAuthenticated: true,
         });
       } else {
         updateAuthState({ user: null, isAuthenticated: false });
