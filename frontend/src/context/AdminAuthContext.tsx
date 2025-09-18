@@ -64,6 +64,9 @@ export const AdminAuthContextProvider: React.FC<
     setIsAuthenticated(authData.isAuthenticated);
   };
 
+
+  
+
   const login = async (data: LoginData): Promise<AuthResponse> => {
     try {
       const response = await adminAuthService.adminLogin(data);
@@ -108,7 +111,10 @@ export const AdminAuthContextProvider: React.FC<
     setIsLoading(true);
     try {
       const userProfile = await adminAuthService.getAdminProfile();
+      console.log(userProfile);
+      
       if (userProfile) {
+
         const mappedUser: Admin = {
           id: String(userProfile.id),
           adminName: userProfile.full_name,
