@@ -13,7 +13,7 @@ import DashboardLayout from '../layout/DashboardLayout';
 import DashboardHome from '../pages/dashboard/DashboardHome';
 import ProtectPrivateAdminRoute from '../components/protectors/ProtectPrivateAdminRoute';
 import AdminProfile from '../pages/dashboard/AdminProfile';
-import EmployeeDashboard from '../pages/dashboard/EmployeeDashboard';
+import StoreManagement from '../pages/dashboard/StoreManagement';
 import EmployeeFormExample from '../components/dashboard/employee/EmployeeForm';
 import ContractDashboard from '../pages/dashboard/ContractManagement';
 import ViewEmployee from '../components/dashboard/employee/EmployeeViewMorePage';
@@ -25,6 +25,9 @@ import JobPostView from '../components/landing/JobViewPage';
 import JobApplicationForm from '../components/landing/ApplyJob';
 import ApplicantView from '../components/dashboard/recruitment/ApplicantView';
 import ClientManagement from '../pages/dashboard/ClientManagement';
+import MaterialManagement from '../pages/dashboard/MaterialManagement';
+import CategoryDashboard from '../pages/dashboard/CategoryManagement';
+import UnitDashboard from '../pages/dashboard/UnitManagement';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -198,10 +201,10 @@ const routes = createBrowserRouter([
                 ),
               },
               {
-                path: 'employee-management',
+                path: 'store-management',
                 element: (
                   <SuspenseWrapper>
-                    <EmployeeDashboard />
+                    <StoreManagement />
                   </SuspenseWrapper>
                 ),
               },
@@ -226,6 +229,30 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <EmployeeFormExample />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'material-management',
+                element: (
+                  <SuspenseWrapper>
+                    <MaterialManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'category-management',
+                element: (
+                  <SuspenseWrapper>
+                    <CategoryDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'units-management',
+                element: (
+                  <SuspenseWrapper>
+                    <UnitDashboard />
                   </SuspenseWrapper>
                 ),
               },

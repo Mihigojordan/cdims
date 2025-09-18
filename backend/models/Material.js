@@ -1,3 +1,4 @@
+// Material.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../src/config/database');
 
@@ -24,7 +25,9 @@ const Material = sequelize.define('Material', {
     references: {
       model: 'categories',
       key: 'id'
-    }
+    },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE'
   },
   unit_id: {
     type: DataTypes.BIGINT,
@@ -32,7 +35,9 @@ const Material = sequelize.define('Material', {
     references: {
       model: 'units',
       key: 'id'
-    }
+    },
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE'
   },
   unit_price: {
     type: DataTypes.DECIMAL(10, 2),
