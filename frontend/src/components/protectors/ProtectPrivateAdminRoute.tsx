@@ -26,12 +26,12 @@ const ProtectPrivateAdminRoute: React.FC<ProtectPrivateAdminRouteProps> = ({
     );
   }
 
-  if (!isAuthenticated || !user?.active) {
+  if (!isAuthenticated ) {
     // Redirect to login if not authenticated or not active
     return <Navigate to="/auth/admin/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
+  if (requiredRole) {
     // Optionally restrict access by role
     return <Navigate to="/auth/admin/login" state={{ from: location }} replace />;
   }
