@@ -9,10 +9,16 @@ const api: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true,
+  withCredentials: false, // ❌ Don't send cookies
 });
 
-// Example usage
-// api.get('/users') will make a request to https://api.example.com/users
+// Attach Authorization header dynamically if token exists
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("auth_token"); // or sessionStorage if you prefer
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default api;

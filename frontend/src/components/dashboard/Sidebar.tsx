@@ -9,6 +9,7 @@ import {
   Building,
   Briefcase,
   User2,
+  Store,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -50,9 +51,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/recruiting-management",
     },
     {
-      id: "employees",
-      label: "Employees Management",
-      icon: Users,
+      id: "stores",
+      label: "Stores Management",
+      icon: Store,
       path: "/admin/dashboard/employee-management",
     },
     {
