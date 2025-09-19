@@ -125,7 +125,7 @@ const RequisitionManagement = () => {
                     requisition.site?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     requisition.requestedBy?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     requisition.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    requisition.id.toString().includes(searchTerm)
+                    requisition?.id?.toString()?.includes(searchTerm)
             );
         }
 
@@ -137,8 +137,8 @@ const RequisitionManagement = () => {
             let aValue = a[sortBy] ?? '';
             let bValue = b[sortBy] ?? '';
             
-            const strA = aValue.toString().toLowerCase();
-            const strB = bValue.toString().toLowerCase();
+            const strA = aValue?.toString()?.toLowerCase();
+            const strB = bValue?.toString()?.toLowerCase();
             return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
         });
 
@@ -149,7 +149,7 @@ const RequisitionManagement = () => {
     const handleExportPDF = async () => {
         try {
             setOperationLoading(true);
-            const date = new Date().toLocaleDateString('en-CA').replace(/\//g, '');
+            const date = new Date().toLocaleDateString('en-CA')?.replace(/\//g, '');
             const filename = `requisitions_export_${date}.pdf`;
 
             const tableRows = requisitions.map((requisition, index) => {
@@ -251,6 +251,8 @@ const RequisitionManagement = () => {
             setOperationLoading(true);
             if (isAddModalOpen) {
                 const newRequisition = await requisitionService.createRequisition(data as CreateRequisitionInput);
+                console.log('new request',newRequisition);
+                
                 if (!newRequisition) {
                     throw new Error('No requisition data returned from createRequisition');
                 }
@@ -262,7 +264,7 @@ const RequisitionManagement = () => {
                     throw new Error('No requisition selected for update');
                 }
                 const updatedRequisition = await requisitionService.updateRequisition(
-                    selectedRequisition.id.toString(), 
+                    selectedRequisition?.id?.toString(), 
                     data as UpdateRequisitionInput
                 );
                 setAllRequisitions((prevRequisitions) =>
@@ -282,7 +284,7 @@ const RequisitionManagement = () => {
     const handleDelete = async (requisition: MaterialRequisition) => {
         try {
             setOperationLoading(true);
-            await requisitionService.deleteRequisition(requisition.id.toString());
+            await requisitionService.deleteRequisition(requisition.id?.toString());
             setAllRequisitions((prevRequisitions) => prevRequisitions.filter((r) => r.id !== requisition.id));
             showOperationStatus('success', `Requisition #${requisition.id} deleted successfully`);
         } catch (err: any) {
@@ -409,7 +411,7 @@ const RequisitionManagement = () => {
                         }}
                     >
                         {getStatusIcon(requisition.status)}
-                        <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
+                        <span className="ml-1">{requisition.status?.replace('_', ' ')}</span>
                     </span>
                     <Link
                         to={`/requisitions/${requisition.id}`}
@@ -466,7 +468,7 @@ const RequisitionManagement = () => {
                                         }}
                                     >
                                         {getStatusIcon(requisition.status)}
-                                        <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
+                                        <span className="ml-1">{requisition.status?.replace('_', ' ')}</span>
                                     </span>
                                 </td>
                                 <td className="py-2 px-2">
@@ -535,7 +537,7 @@ const RequisitionManagement = () => {
                                 }}
                             >
                                 {getStatusIcon(requisition.status)}
-                                <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
+                                <span className="ml-1">{requisition.status?.replace('_', ' ')}</span>
                             </span>
                             <Link
                                 to={`${requisition.id}`}
