@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAdminAuth from "../../context/AuthContext";
+import Logo from '../../assets/hello.jpg';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -261,10 +262,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-4 border-b border-primary-200">
           <div className="flex items-center space-x-2">
-            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg">
+            <div className="flex items-center justify-center w-16 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg">
               <div className="flex items-center space-x-0.5">
-                <MapPin className="w-3 h-3 text-white" />
-                <Plane className="w-2 h-2 text-white" />
+               <img src={Logo} alt="" />
               </div>
             </div>
             <div>
