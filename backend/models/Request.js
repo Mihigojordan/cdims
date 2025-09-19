@@ -24,7 +24,7 @@ const Request = sequelize.define('Request', {
     allowNull: false,
     references: {
       model: 'users',
-      key: 'id'
+      key: 'id',
     }
   },
   status: {

@@ -29,7 +29,11 @@ import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
-import ReportManagement from '../pages/dashboard/ReportManagement'
+import RequestsReportManagement from '../pages/dashboard/report/RequestsReportManagement'
+import UserReportManagement from '../pages/dashboard/report/UserReportManagement'
+import StockReportManagement from '../pages/dashboard/report/StockReportManagement'
+import InventoryReportManagement from '../pages/dashboard/report/InventoryReportManagement'
+import SiteReportManagement from '../pages/dashboard/report/SiteReportManagement'
 
 import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
@@ -329,10 +333,42 @@ const routes = createBrowserRouter([
                 ),
               },
               {
-                path: 'report',
+                path: 'request-report',
                 element: (
                   <SuspenseWrapper>
-                    <ReportManagement />
+                    <RequestsReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'site-report',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'inventory-report',
+                element: (
+                  <SuspenseWrapper>
+                    <InventoryReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'user-report',
+                element: (
+                  <SuspenseWrapper>
+                    <UserReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'stock-report',
+                element: (
+                  <SuspenseWrapper>
+                    <StockReportManagement />
                   </SuspenseWrapper>
                 ),
               },

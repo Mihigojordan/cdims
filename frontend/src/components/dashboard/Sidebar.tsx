@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Boxes,
   MapMinusIcon,
+  FileText,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAdminAuth from "../../context/AuthContext";
@@ -63,16 +64,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
     ];
     const sitePages = [
       "/admin/dashboard/site-assign-management",
-      "/admin/dashboard/site-management"
+      "/admin/dashboard/site-management",
+    ];
+    const reportPages = [
+      "/admin/dashboard/request-report",
+      "/admin/dashboard/inventory-report",
+      "/admin/dashboard/stock-report",
+      "/admin/dashboard/site-report",
+      "/admin/dashboard/user-report",
     ];
 
     if (materialPages.includes(currentPath)) {
       setOpenDropdown("materialManagement");
-    } 
-    else if(sitePages.includes(currentPath)){
+    } else if (sitePages.includes(currentPath)) {
       setOpenDropdown("siteManagement");
-    }
-    else {
+    } else if (reportPages.includes(currentPath)) {
+      setOpenDropdown("reports");
+    } else {
       setOpenDropdown(null);
     }
   }, [location.pathname]);
@@ -87,14 +95,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       label: "Dashboard",
       icon: TrendingUp,
       path: "/admin/dashboard",
-      // Dashboard accessible to all roles
     },
     {
       id: "role",
       label: "Role Management",
       icon: User2,
       path: "/admin/dashboard/role-management",
-      allowedRoles: ["ADMIN"], // Only admin can manage roles
+      allowedRoles: ["ADMIN"],
     },
     {
       id: "stocks",
@@ -112,14 +119,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       children: [
         {
           id: "sites",
-          label: "Sites ",
+          label: "Sites",
           icon: MapPin,
           path: "/admin/dashboard/site-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
         {
           id: "site-assign",
-          label: "Site Assign ",
+          label: "Site Assign",
           icon: MapMinusIcon,
           path: "/admin/dashboard/site-assign-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
@@ -141,12 +148,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       allowedRoles: ["PADIRI", "ADMIN"],
     },
     {
-      id: "Material Requisition ",
+      id: "materialRequisition",
       label: "Material Requisition",
       icon: User2,
       path: "/admin/dashboard/material-requisition",
-       allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER","SITE_ENGINEER"],
-      // Accessible to all roles (you can modify this based on your requirements)
+      allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER", "SITE_ENGINEER"],
     },
     {
       id: "materialManagement",
@@ -174,6 +180,49 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
           label: "Units",
           icon: Ruler,
           path: "/admin/dashboard/units-management",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+      ],
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: FileText,
+      isDropdown: true,
+      children: [
+        {
+          id: "request-report",
+          label: "Requests Report",
+          icon: FileText,
+          path: "/admin/dashboard/request-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "inventory-report",
+          label: "Inventory Report",
+          icon: FileText,
+          path: "/admin/dashboard/inventory-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "stock-report",
+          label: "Stock Movement Report",
+          icon: FileText,
+          path: "/admin/dashboard/stock-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "site-report",
+          label: "Site Performance Report",
+          icon: FileText,
+          path: "/admin/dashboard/site-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "user-report",
+          label: "User Activity Report",
+          icon: FileText,
+          path: "/admin/dashboard/user-report",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
       ],
@@ -217,28 +266,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         <div key={item.id} className="space-y-1">
           <button
             onClick={() => toggleDropdown(item.id)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group ${hasActiveChild
-              ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white"
-              : "text-black hover:bg-primary-50"
-              }`}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group ${
+              hasActiveChild
+                ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white"
+                : "text-black hover:bg-primary-50"
+            }`}
           >
             <div className="flex items-center space-x-2">
               <Icon
-                className={`w-4 h-4 ${hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
-                  }`}
+                className={`w-4 h-4 ${
+                  hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
+                }`}
               />
-              <span className="text-sm  font-light">{item.label}</span>
+              <span className="text-sm font-light">{item.label}</span>
             </div>
             <div className="transition-transform duration-200">
               {isOpen ? (
                 <ChevronUp
-                  className={`w-4 h-4 ${hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
-                    }`}
+                  className={`w-4 h-4 ${
+                    hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
+                  }`}
                 />
               ) : (
                 <ChevronDown
-                  className={`w-4 h-4 ${hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
-                    }`}
+                  className={`w-4 h-4 ${
+                    hasActiveChild ? "text-white" : "text-gray-600 group-hover:text-primary-600"
+                  }`}
                 />
               )}
             </div>
@@ -251,9 +304,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
                   to={child.path!}
                   end
                   className={({ isActive }) =>
-                    `flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${isActive
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-gray-600 hover:bg-primary-50 hover:text-primary-700"
+                    `flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? "bg-primary-50 text-primary-700"
+                        : "text-gray-600 hover:bg-primary-50 hover:text-primary-700"
                     }`
                   }
                   onClick={() => {
@@ -276,9 +330,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         to={item.path!}
         end
         className={({ isActive }) =>
-          `w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 group ${isActive
-            ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white"
-            : "text-black hover:bg-primary-50"
+          `w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 group ${
+            isActive
+              ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white"
+              : "text-black hover:bg-primary-50"
           }`
         }
         onClick={() => {
@@ -288,7 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         <Icon
           className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-600 group-hover:text-primary-600"}`}
         />
-        <span className="text-sm  font-light">{item.label}</span>
+        <span className="text-sm font-light">{item.label}</span>
       </NavLink>
     );
   };
@@ -305,8 +360,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
 
       {/* Sidebar Container */}
       <div
-        className={`fixed left-0 top-0 min-h-screen bg-white flex flex-col border-r border-primary-200 shadow-lg transform transition-transform duration-300 z-50 lg:relative lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"
-          } w-64 lg:w-70`}
+        className={`fixed left-0 top-0 min-h-screen bg-white flex flex-col border-r border-primary-200 shadow-lg transform transition-transform duration-300 z-50 lg:relative lg:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } w-64 lg:w-70`}
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-4 border-b border-primary-200">
@@ -318,9 +374,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
               </div>
             </div>
             <div>
-              <h2 className="font-bold text-lg text-primary-800">
-                CIDMS
-              </h2>
+              <h2 className="font-bold text-lg text-primary-800">CIDMS</h2>
               <p className="text-xs text-primary-500">Admin Portal</p>
             </div>
           </div>
