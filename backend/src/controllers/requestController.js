@@ -24,6 +24,34 @@ const getAllRequests = async (req, res) => {
             model: Role,
             as: 'role'
           }]
+        },
+         {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
+        },
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            {
+              model: Material,
+              as: 'material'
+            },
+            {
+              model: Unit,
+              as: 'unit'
+            }
+          ]
         }
       ],
       limit: parseInt(limit),
@@ -148,6 +176,20 @@ const getRequestById = async (req, res) => {
             model: Role,
             as: 'role'
           }]
+        },
+        {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
         },
         {
           model: RequestItem,
@@ -447,14 +489,29 @@ const submitRequest = async (req, res) => {
     });
   }
 };
-
 const approveRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { level, comment, item_modifications } = req.body;
     const reviewer_id = req.user.id;
+    console.log(
+    'items :', item_modifications
+    );
+    
 
-    const request = await Request.findByPk(id);
+    const request = await Request.findByPk(id, {
+      include: [
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            { model: Material, as: 'material' },
+            { model: Unit, as: 'unit' }
+          ]
+        }
+      ]
+    });
+
     if (!request) {
       return res.status(404).json({
         success: false,
@@ -462,26 +519,32 @@ const approveRequest = async (req, res) => {
       });
     }
 
-    // Update item quantities if modifications provided (only for DSE)
-    if (item_modifications && level === 'DSE') {
+    // Update item quantities
+    if (level === 'DSE' && item_modifications) {
       for (const modification of item_modifications) {
         await RequestItem.update(
           { qty_approved: modification.qty_approved },
           { where: { id: modification.request_item_id } }
         );
       }
-    }
+    } 
 
-    // Create approval record
-    await Approval.create({
-      request_id: id,
-      level: level,
-      reviewer_id: reviewer_id,
-      action: 'APPROVED',
-      comment: comment
+    // Prevent duplicate approvals by same user & level
+    const existingApproval = await Approval.findOne({
+      where: { request_id: id, level, reviewer_id }
     });
 
-    // Update request status based on approval level
+    if (!existingApproval) {
+      await Approval.create({
+        request_id: id,
+        level,
+        reviewer_id,
+        action: 'APPROVED',
+        comment
+      });
+    }
+
+    // Update request status
     if (level === 'DSE') {
       request.status = 'PADIRI_REVIEW';
     } else if (level === 'PADIRI') {
@@ -490,8 +553,42 @@ const approveRequest = async (req, res) => {
 
     await request.save();
 
+    const updatedRequest = await Request.findByPk(request.id, {
+      include: [
+        { model: Site, as: 'site' },
+        {
+          model: User,
+          as: 'requestedBy',
+          include: [{ model: Role, as: 'role' }]
+        },
+                {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
+        },
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            { model: Material, as: 'material' },
+            { model: Unit, as: 'unit' }
+          ]
+        }
+      ]
+    });
+
     res.json({
       success: true,
+      data: { request: updatedRequest },
       message: `Request approved by ${level} and forwarded to next level`
     });
   } catch (error) {
@@ -530,8 +627,44 @@ const rejectRequest = async (req, res) => {
     request.status = 'REJECTED';
     await request.save();
 
+    const updatedRequest = await Request.findByPk(request.id, {
+      include: [
+        { model: Site, as: 'site' },
+        {
+          model: User,
+          as: 'requestedBy',
+          include: [{ model: Role, as: 'role' }]
+        },
+                {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
+        },
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            { model: Material, as: 'material' },
+            { model: Unit, as: 'unit' }
+          ]
+        }
+      ]
+    });
+
+
     res.json({
       success: true,
+     
+      data: { request: updatedRequest },
       message: `Request rejected by ${level}. Site Engineer and Diocesan Site Engineer will be notified.`
     });
   } catch (error) {

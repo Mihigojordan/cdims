@@ -34,7 +34,9 @@ import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
 import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
 import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDetail';
-import InvetoryManagementReport from '../pages/dashboard/InvetoryManagementReport';
+import StockMovementsDashboard from '../pages/dashboard/StockMovement';
+import IssuableRequestsDashboard from '../pages/dashboard/IssuableRequestsDashboard';
+import IssuableMaterialsDashboard from '../pages/dashboard/IssuableMaterialsDashboard';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -351,7 +353,30 @@ const routes = createBrowserRouter([
                   </SuspenseWrapper>
                 ),
               },
-        
+                 {
+                path: 'stock-movement',
+                element: (
+                  <SuspenseWrapper>
+                     <StockMovementsDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'issuable-requests',
+                element: (
+                  <SuspenseWrapper>
+                     <IssuableRequestsDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'issuable-materials',
+                element: (
+                  <SuspenseWrapper>
+                     <IssuableMaterialsDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
             ],
           },
         ],
