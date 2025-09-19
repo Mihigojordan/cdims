@@ -28,12 +28,15 @@ import ClientManagement from '../pages/dashboard/ClientManagement';
 import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
+import RoleManagement from '../pages/dashboard/RoleManagement';
+import ReportManagement from '../pages/dashboard/ReportManagement'
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
 const AboutPage = lazy(() => import('../pages/landing/AboutPage'));
 const StockManagement = lazy(() => import('../pages/dashboard/StockManagement'));
+
 
 /**
  * Loading spinner component for Suspense fallback
@@ -309,6 +312,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <ClientManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'report',
+                element: (
+                  <SuspenseWrapper>
+                    <ReportManagement />
                   </SuspenseWrapper>
                 ),
               },
