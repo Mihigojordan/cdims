@@ -46,34 +46,34 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
         }
     };
 
-    const generateRandomPassword = () => {
-        try {
-            const length = 12;
-            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-            let password = "";
-            
-            if (!charset || charset.length === 0) {
-                throw new Error('Charset is empty');
-            }
-            
-            for (let i = 0; i < length; i++) {
-                const randomIndex = Math.floor(Math.random() * charset.length);
-                if (randomIndex < charset.length) {
-                    password += charset.charAt(randomIndex);
-                }
-            }
-            
-            if (password && password.length > 0) {
-                setFormData((prev) => ({ ...prev, password }));
-                if (errors.length > 0) {
-                    setErrors([]);
-                }
-            }
-        } catch (error) {
-            console.error('Error generating password:', error);
-            setErrors(['Failed to generate password']);
+ const generateRandomPassword = () => {
+    try {
+        const length = 12;
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+        let password = "";
+        
+        if (!charset || charset.length === 0) {
+            throw new Error('Charset is empty');
         }
-    };
+        
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * charset.length);
+            if (randomIndex < charset.length) {
+                password += charset.charAt(randomIndex);
+            }
+        }
+        
+        if (password && password.length > 0) {
+            setFormData((prev) => ({ ...prev, password }));
+            if (errors.length > 0) {
+                setErrors([]);
+            }
+        }
+    } catch (error) {
+        console.error('Error generating password:', error);
+        setErrors(['Failed to generate password']);
+    }
+};
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         try {
