@@ -34,6 +34,7 @@ import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
 import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
 import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDetail';
+import InvetoryManagementReport from '../pages/dashboard/InvetoryManagementReport';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -350,6 +351,7 @@ const routes = createBrowserRouter([
                   </SuspenseWrapper>
                 ),
               },
+        
             ],
           },
         ],
