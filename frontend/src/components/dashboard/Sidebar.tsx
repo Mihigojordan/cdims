@@ -237,7 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         <Icon
           className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-600 group-hover:text-primary-600"}`}
         />
-        <span className="text-xs font-medium">{item.label}</span>
+        <span className="text-sm  font-light">{item.label}</span>
       </NavLink>
     );
   };

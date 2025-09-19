@@ -33,6 +33,7 @@ import RoleManagement from '../pages/dashboard/RoleManagement';
 import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
 import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
+import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDetail';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -338,6 +339,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                      <MaterialRequisition />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'material-requisition/:id',
+                element: (
+                  <SuspenseWrapper>
+                     <MaterialRequisitionDetail />
                   </SuspenseWrapper>
                 ),
               },

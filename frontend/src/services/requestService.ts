@@ -1,539 +1,244 @@
-import { type AxiosInstance, type AxiosResponse } from 'axios'; // Type-only imports for verbatimModuleSyntax
-import api from '../api/api'; // Adjust the import path as needed
-import type { Unit } from './stockService';
-import type {  Material } from './materialsService';
+import api from '../api/api';
 
-// Interface for Request
-export interface Request {
+// Define interfaces for the requisition data structure
+export interface MaterialRequisition {
   id: number;
   site_id: number;
   requested_by: number;
-  notes?: string;
-  status: 'DRAFT' | 'DSE_REVIEW' | 'PADIRI_REVIEW' | 'APPROVED' | 'REJECTED' | 'ISSUED';
-  created_at?: Date;
-  updated_at?: Date;
-  site?: Site;
-  requestedBy?: User;
-  items?: RequestItem[];
-  approvals?: Approval[];
+  notes: string;
+  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'PARTIALLY_APPROVED';
+  site: {
+    id: number;
+    code: string;
+    name: string;
+    location: string;
+    created_at: string;
+    updated_at: string;
+  };
+  requestedBy: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone: string;
+    role: {
+      id: number;
+      name: string;
+    };
+    active: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+  items: {
+    id: number;
+    material_id: number;
+    unit_id: number;
+    qty_requested: number;
+    qty_approved: number;
+    material: {
+      id: number;
+      name: string;
+      description: string;
+      code: string;
+      specifications: string;
+      unit_price: number;
+      category: {
+        id: number;
+        name: string;
+      };
+      unit?: {
+        // Made unit optional to handle cases where it might be missing
+        id: number;
+        name: string;
+        symbol?: string; // Made symbol optional to prevent undefined errors
+      };
+      created_at: string;
+      updated_at: string;
+    };
+  }[];
+  approvals: {
+    id: number;
+    level: 'DSE' | 'MANAGER' | 'DIRECTOR';
+    action: 'APPROVED' | 'REJECTED' | 'PENDING';
+    comment: string;
+    reviewer: {
+      id: number;
+      full_name: string;
+      email: string;
+      phone: string;
+      role: {
+        id: number;
+        name: string;
+      };
+      active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    created_at: string;
+  }[];
+  created_at: string;
+  updated_at: string;
 }
 
-// Interface for RequestItem
-export interface RequestItem {
-  id: number;
-  request_id: number;
-  material_id: number;
-  unit_id: number;
-  qty_requested: number;
-  qty_approved?: number;
-  material?: Material;
-  unit?: Unit;
-}
-
-// Interface for Site
-export interface Site {
-  id: number;
-  name: string;
-  location?: string;
-  description?: string;
-}
-
-// Interface for User
-export interface User {
-  id: number;
-  name: string;
-  role?: Role;
-}
-
-// Interface for Role
-export interface Role {
-  id: number;
-  name: string;
-}
-
-// Interface for Approval
-export interface Approval {
-  id: number;
-  request_id: number;
-  level: 'DSE' | 'PADIRI';
-  reviewer_id: number;
-  action: 'APPROVED' | 'REJECTED' | 'NEEDS_CHANGES';
-  comment?: string;
-  reviewer?: User;
-  created_at?: Date;
-}
-
-// Interface for Comment
-export interface Comment {
-  id: number;
-  comment: string;
-  user_id: number;
-  user?: { name: string };
-  created_at?: Date;
-}
-
-// Interface for Attachment
-export interface Attachment {
-  id: number;
-  filename: string;
-  original_name: string;
-  file_path: string;
-  file_size: number;
-  mime_type: string;
-  user_id: number;
-  created_at?: Date;
-}
-
-// Interfaces for input data
-export type CreateRequestInput = {
+export interface CreateRequisitionInput {
   site_id: number;
-  notes?: string;
-  items: { material_id: number; unit_id: number; qty_requested: number }[];
-};
+  notes: string;
+  items: {
+    material_id: number;
+    unit_id: number;
+    qty_requested: number;
+  }[];
+}
 
-export type UpdateRequestInput = {
+export interface UpdateRequisitionInput {
   site_id?: number;
   notes?: string;
-  items?: { id?: number; material_id: number; unit_id: number; qty_requested: number }[];
-};
-
-export type ModifyRequestInput = {
-  notes?: string;
-  item_modifications?: { request_item_id: number; qty_requested: number; qty_approved?: number }[];
-};
-
-export type ApproveRequestInput = {
-  level: 'DSE' | 'PADIRI';
-  comment?: string;
-  item_modifications?: { request_item_id: number; qty_approved: number }[];
-};
-
-export type RejectRequestInput = {
-  level: 'DSE' | 'PADIRI';
-  reason: string;
-  comment?: string;
-};
-
-export type CommentInput = {
-  comment: string;
-};
-
-export type AttachmentInput = {
-  file: File;
-  description?: string;
-};
-
-// Interface for filtering
-interface FilterParams {
-  page?: number;
-  limit?: number;
-  status?: string;
-  site_id?: number;
-  requested_by?: number;
+  status?: MaterialRequisition['status'];
+  items?: {
+    id?: number;
+    material_id: number;
+    unit_id: number;
+    qty_requested: number;
+    qty_approved?: number;
+  }[];
 }
 
-// Interface for pagination response
-interface Pagination {
-  current_page: number;
-  total_pages: number;
-  total_items: number;
-  items_per_page: number;
-}
-
-// Interface for validation result
-interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
-
-// Interface for delete response
-interface DeleteResponse {
+export interface RequisitionResponse {
   success: boolean;
-  message: string;
+  data: {
+    requests: MaterialRequisition[];
+    pagination: {
+      current_page: number;
+      total_pages: number;
+      total_items: number;
+      items_per_page: number;
+    };
+  };
 }
 
-/**
- * Request Service
- * Handles all material request-related API calls
- */
-class RequestService {
-  private api: AxiosInstance = api; // Reference to axios instance
-
-  /**
-   * Get all requests with optional filtering and pagination
-   * @param params - Query parameters for filtering and pagination
-   * @returns Object containing requests array and pagination info
-   */
-  async getAllRequests(params?: FilterParams): Promise<{ requests: Request[]; pagination: Pagination }> {
+const requisitionService = {
+  // Fetch all requisitions with pagination
+  getAllRequisitions: async (): Promise<RequisitionResponse> => {
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.status) queryParams.append('status', params.status);
-      if (params?.site_id) queryParams.append('site_id', params.site_id.toString());
-      if (params?.requested_by) queryParams.append('requested_by', params.requested_by.toString());
-
-      const response: AxiosResponse<{ success: boolean; data: { requests: Request[]; pagination: Pagination } }> = 
-        await this.api.get(`/requests?${queryParams.toString()}`);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching requests:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch requests';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get requests for the current user (SITE_ENGINEER only)
-   * @param params - Query parameters for filtering and pagination
-   * @returns Object containing user's requests array and pagination info
-   */
-  async getMyRequests(params?: FilterParams): Promise<{ requests: Request[]; pagination: Pagination }> {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.status) queryParams.append('status', params.status);
-
-      const response: AxiosResponse<{ success: boolean; data: { requests: Request[]; pagination: Pagination } }> = 
-        await this.api.get(`/requests/my-requests?${queryParams.toString()}`);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching my requests:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch my requests';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get requests for a specific site
-   * @param siteId - Site ID
-   * @param params - Query parameters for filtering and pagination
-   * @returns Object containing requests array and pagination info
-   */
-  async getRequestsBySite(siteId: number | string, params?: FilterParams): Promise<{ requests: Request[]; pagination: Pagination }> {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.status) queryParams.append('status', params.status);
-
-      const response: AxiosResponse<{ success: boolean; data: { requests: Request[]; pagination: Pagination } }> = 
-        await this.api.get(`/requests/site/${siteId}?${queryParams.toString()}`);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching requests by site:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch site requests';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get request by ID
-   * @param id - Request ID
-   * @returns Request or null if not found
-   */
-  async getRequestById(id: number | string): Promise<Request | null> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: { request: Request } }> = 
-        await this.api.get(`/requests/${id}`);
-      return response.data.data.request;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return null;
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
       }
-      console.error('Error fetching request by ID:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get available sites for the current user
-   * @returns Array of available sites
-   */
-  async getAvailableSites(): Promise<Site[]> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: Site[] }> = 
-        await this.api.get('/requests/available-sites');
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching available sites:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch available sites';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Create a new material request
-   * @param requestData - Request data
-   * @returns Created request
-   */
-  async createRequest(requestData: CreateRequestInput): Promise<Request> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: { request: Request }; message: string }> = 
-        await this.api.post('/requests', requestData);
-      return response.data.data.request;
-    } catch (error: any) {
-      console.error('Error creating request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to create request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Update a request (SITE_ENGINEER only)
-   * @param id - Request ID
-   * @param updateData - Data to update
-   * @returns Updated request
-   */
-  async updateRequest(id: number | string, updateData: UpdateRequestInput): Promise<Request> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: { request: Request }; message: string }> = 
-        await this.api.put(`/requests/${id}`, updateData);
-      return response.data.data.request;
-    } catch (error: any) {
-      console.error('Error updating request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to update request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Modify a request (DIOCESAN_SITE_ENGINEER only)
-   * @param id - Request ID
-   * @param modifyData - Modification data
-   * @returns Response with success message
-   */
-  async modifyRequest(id: number | string, modifyData: ModifyRequestInput): Promise<DeleteResponse> {
-    try {
-      const response: AxiosResponse<DeleteResponse> = 
-        await this.api.put(`/requests/${id}/modify`, modifyData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error modifying request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to modify request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Submit a request
-   * @param id - Request ID
-   * @returns Response with success message
-   */
-  async submitRequest(id: number | string): Promise<DeleteResponse> {
-    try {
-      const response: AxiosResponse<DeleteResponse> = 
-        await this.api.put(`/requests/${id}/submit`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error submitting request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to submit request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Approve a request (DIOCESAN_SITE_ENGINEER or PADIRI)
-   * @param id - Request ID
-   * @param approveData - Approval data
-   * @returns Response with success message
-   */
-  async approveRequest(id: number | string, approveData: ApproveRequestInput): Promise<DeleteResponse> {
-    try {
-      const response: AxiosResponse<DeleteResponse> = 
-        await this.api.post(`/requests/${id}/approve`, approveData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error approving request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to approve request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Approve a request for storekeeper (PADIRI only)
-   * @param id - Request ID
-   * @param comment - Approval comment
-   * @returns Response with success message
-   */
-  async approveForStorekeeper(id: number | string, comment?: string): Promise<DeleteResponse> {
-    try {
-      const response: AxiosResponse<DeleteResponse> = 
-        await this.api.post(`/requests/${id}/approve-storekeeper`, { comment });
-      return response.data;
-    } catch (error: any) {
-      console.error('Error approving request for storekeeper:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to approve request for storekeeper';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Reject a request (DIOCESAN_SITE_ENGINEER or PADIRI)
-   * @param id - Request ID
-   * @param rejectData - Rejection data
-   * @returns Response with success message
-   */
-  async rejectRequest(id: number | string, rejectData: RejectRequestInput): Promise<DeleteResponse> {
-    try {
-      const response: AxiosResponse<DeleteResponse> = 
-        await this.api.post(`/requests/${id}/reject`, rejectData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error rejecting request:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to reject request';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get request comments
-   * @param id - Request ID
-   * @returns Array of comments
-   */
-  async getRequestComments(id: number | string): Promise<Comment[]> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: Comment[] }> = 
-        await this.api.get(`/requests/${id}/comments`);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching request comments:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch comments';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Add a comment to a request
-   * @param id - Request ID
-   * @param commentData - Comment data
-   * @returns Created comment
-   */
-  async addComment(id: number | string, commentData: CommentInput): Promise<Comment> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: { comment: Comment }; message: string }> = 
-        await this.api.post(`/requests/${id}/comments`, commentData);
-      return response.data.data.comment;
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to add comment';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Get request attachments
-   * @param id - Request ID
-   * @returns Array of attachments
-   */
-  async getRequestAttachments(id: number | string): Promise<Attachment[]> {
-    try {
-      const response: AxiosResponse<{ success: boolean; data: Attachment[] }> = 
-        await this.api.get(`/requests/${id}/attachments`);
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error fetching request attachments:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to fetch attachments';
-      throw new Error(errorMessage);
-    }
-  }
-
-  /**
-   * Upload an attachment to a request
-   * @param id - Request ID
-   * @param attachmentData - Attachment data
-   * @returns Uploaded attachment
-   */
-  async uploadAttachment(id: number | string, attachmentData: AttachmentInput): Promise<Attachment> {
-    try {
-      const formData = new FormData();
-      formData.append('file', attachmentData.file);
-      if (attachmentData.description) {
-        formData.append('description', attachmentData.description);
+      const { data } = await api.get<RequisitionResponse>('/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Validate response structure
+      if (!data?.success || !data?.data?.requests) {
+        throw new Error('Invalid response structure');
       }
-
-      const response: AxiosResponse<{ success: boolean; data: { attachment: Attachment }; message: string }> = 
-        await this.api.post(`/requests/${id}/attachments`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      return response.data.data.attachment;
+      return data;
     } catch (error: any) {
-      console.error('Error uploading attachment:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Failed to upload attachment';
-      throw new Error(errorMessage);
+      console.error('Error fetching requisitions:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch requisitions');
     }
-  }
+  },
 
-  /**
-   * Validate request data
-   * @param data - Request data to validate
-   * @returns Validation result with isValid boolean and errors array
-   */
-  validateRequestData(data: CreateRequestInput): ValidationResult {
-    const errors: string[] = [];
-
-    if (!data.site_id) {
-      errors.push('Site ID is required');
+  // Fetch a single requisition by ID
+  getRequisitionById: async (id: string): Promise<MaterialRequisition> => {
+    if (!id) {
+      throw new Error('Requisition ID is required');
     }
-    if (!data.items || data.items.length === 0) {
-      errors.push('At least one item is required');
-    } else {
-      data.items.forEach((item, index) => {
-        if (!item.material_id) {
-          errors.push(`Item ${index + 1}: Material ID is required`);
-        }
-        if (!item.unit_id) {
-          errors.push(`Item ${index + 1}: Unit ID is required`);
-        }
-        if (!item.qty_requested || item.qty_requested <= 0) {
-          errors.push(`Item ${index + 1}: Valid quantity requested is required`);
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      const { data } = await api.get<MaterialRequisition>(`/requests/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Validate that the material unit exists to prevent undefined errors
+      data.items?.forEach((item) => {
+        if (!item.material.unit) {
+          console.warn(`Missing unit for material ID ${item.material_id}`);
+          item.material.unit = { id: item.unit_id, name: 'Unknown', symbol: '' };
         }
       });
+      return data;
+    } catch (error: any) {
+      console.error('Error fetching requisition:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch requisition');
     }
+  },
 
-    return { isValid: errors.length === 0, errors };
-  }
-}
+  // Create a new requisition
+  createRequisition: async (data: CreateRequisitionInput): Promise<MaterialRequisition> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      const { data: newRequisition } = await api.post<MaterialRequisition>('/requests', data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return newRequisition;
+    } catch (error: any) {
+      console.error('Error creating requisition:', error);
+      throw new Error(error.response?.data?.message || 'Failed to create requisition');
+    }
+  },
 
-// Singleton instance
-const requestService = new RequestService();
-export default requestService;
+  // Update an existing requisition
+  updateRequisition: async (id: string, data: UpdateRequisitionInput): Promise<MaterialRequisition> => {
+    if (!id) {
+      throw new Error('Requisition ID is required');
+    }
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      const { data: updatedRequisition } = await api.put<MaterialRequisition>(`/requests/${id}`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return updatedRequisition;
+    } catch (error: any) {
+      console.error('Error updating requisition:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update requisition');
+    }
+  },
 
-// Named exports for individual methods
-export const {
-  getAllRequests,
-  getMyRequests,
-  getRequestsBySite,
-  getRequestById,
-  getAvailableSites,
-  createRequest,
-  updateRequest,
-  modifyRequest,
-  submitRequest,
-  approveRequest,
-  approveForStorekeeper,
-  rejectRequest,
-  getRequestComments,
-  addComment,
-  getRequestAttachments,
-  uploadAttachment,
-  validateRequestData,
-} = requestService;
+  // Delete a requisition
+  deleteRequisition: async (id: string): Promise<void> => {
+    if (!id) {
+      throw new Error('Requisition ID is required');
+    }
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      await api.delete(`/requests/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (error: any) {
+      console.error('Error deleting requisition:', error);
+      throw new Error(error.response?.data?.message || 'Failed to delete requisition');
+    }
+  },
+
+  // Approve or reject a requisition
+  approveRequisition: async (id: string, action: 'APPROVED' | 'REJECTED', comment?: string): Promise<MaterialRequisition> => {
+    if (!id) {
+      throw new Error('Requisition ID is required');
+    }
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      const { data } = await api.post<MaterialRequisition>(`/requests/${id}/approve`, { action, comment }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return data;
+    } catch (error: any) {
+      console.error('Error approving requisition:', error);
+      throw new Error(error.response?.data?.message || 'Failed to approve requisition');
+    }
+  },
+};
+
+export default requisitionService;

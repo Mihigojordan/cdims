@@ -5,10 +5,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Plus,
     Search,
-    Edit,
+    Pencil,
     Trash2,
     Download,
-    Grid3X3,
+    LayoutGrid,
     List,
     Filter,
     RefreshCw,
@@ -25,14 +25,16 @@ import {
     Truck,
     CheckSquare,
     Clock,
-    AlertTriangle
+    AlertTriangle,
+    Edit
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
 import requisitionService, { 
   type MaterialRequisition, 
   type CreateRequisitionInput, 
   type UpdateRequisitionInput 
-} from '../../services/materialsService';
+} from '../../services/requestService';
 import AddRequisitionModal from '../../components/dashboard/MaterialRequest/AddClientModal';
 import EditRequisitionModal from '../../components/dashboard/MaterialRequest/EditClientModal';
 import DeleteRequisitionModal from '../../components/dashboard/MaterialRequest/EditClientModal';
@@ -45,6 +47,22 @@ interface OperationStatus {
 
 type ViewMode = 'table' | 'grid' | 'list';
 
+interface RequisitionItem {
+  material_id: number;
+  unit_id: number;
+  qty_requested: number;
+}
+
+interface MaterialRequisition {
+  id: number;
+  site_id: number;
+  notes: string;
+  items: RequisitionItem[];
+  site?: { name: string };
+  requestedBy?: { full_name: string };
+  status: string;
+}
+
 const RequisitionManagement = () => {
     const [requisitions, setRequisitions] = useState<MaterialRequisition[]>([]);
     const [allRequisitions, setAllRequisitions] = useState<MaterialRequisition[]>([]);
@@ -52,8 +70,8 @@ const RequisitionManagement = () => {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [sortBy, setSortBy] = useState<keyof MaterialRequisition>('created_at');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [sortBy, setSortBy] = useState<keyof MaterialRequisition>('site_id');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [rowsPerPage] = useState(8);
     const [currentPage, setCurrentPage] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -68,41 +86,26 @@ const RequisitionManagement = () => {
 
     const pdfContentRef = useRef<HTMLDivElement>(null);
 
-useEffect(() => {
-    const fetchRequisitions = async () => {
-        try {
-            setLoading(true);
-
-            const response = await requisitionService.getAllRequisitions();
-
-            // Log the raw response
-            console.log("✅ Raw response from API:", response);
-
-            // Log deeper levels if needed
-            console.log("📦 Response.data:", response?.data);
-            console.log("📝 Response.data.requisitions:", response?.data?.requisitions);
-
-            // Extract requisitions safely
-            const requisitions = Array.isArray(response?.data?.requisitions)
-                ? response.data.requisitions
-                : [];
-
-            setAllRequisitions(requisitions);
-            setError(null);
-
-            console.log("✔️ Final requisitions state set:", requisitions);
-        } catch (err: any) {
-            const errorMessage = err.message || "Failed to load requisitions";
-            console.error("❌ Error fetching requisitions:", err);
-            setError(errorMessage);
-            showOperationStatus("error", errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    fetchRequisitions();
-}, []);
+    useEffect(() => {
+        const fetchRequisitions = async () => {
+            try {
+                setLoading(true);
+                const response = await requisitionService.getAllRequisitions();
+                const requisitions = Array.isArray(response?.data?.requests)
+                    ? response.data.requests
+                    : [];
+                setAllRequisitions(requisitions);
+                setError(null);
+            } catch (err: any) {
+                const errorMessage = err.message || "Failed to load requisitions";
+                setError(errorMessage);
+                showOperationStatus("error", errorMessage);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRequisitions();
+    }, []);
 
     useEffect(() => {
         handleFilterAndSort();
@@ -134,15 +137,9 @@ useEffect(() => {
             let aValue = a[sortBy] ?? '';
             let bValue = b[sortBy] ?? '';
             
-            if (sortBy === 'created_at' || sortBy === 'updated_at') {
-                const dateA = new Date(aValue as string).getTime();
-                const dateB = new Date(bValue as string).getTime();
-                return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-            } else {
-                const strA = aValue.toString().toLowerCase();
-                const strB = bValue.toString().toLowerCase();
-                return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
-            }
+            const strA = aValue.toString().toLowerCase();
+            const strB = bValue.toString().toLowerCase();
+            return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
         });
 
         setRequisitions(filtered);
@@ -156,17 +153,17 @@ useEffect(() => {
             const filename = `requisitions_export_${date}.pdf`;
 
             const tableRows = requisitions.map((requisition, index) => {
+                const totalQuantity = requisition.items?.reduce((sum, item) => sum + item.qty_requested, 0) || 0;
                 return `
-                    <tr>
+                    <tr style="${index % 2 === 0 ? 'background-color: #f9fafb;' : ''}">
                         <td style="font-size:10px;">${index + 1}</td>
                         <td style="font-size:10px;">${requisition.id}</td>
                         <td style="font-size:10px;">${requisition.site?.name || 'N/A'}</td>
                         <td style="font-size:10px;">${requisition.requestedBy?.full_name || 'N/A'}</td>
-                        <td style="font-size:10px;">${requisition.items?.length || 0}</td>
+                        <td style="font-size:10px;">${totalQuantity}</td>
                         <td style="font-size:10px; color: ${getStatusColor(requisition.status)};">
                             ${requisition.status}
                         </td>
-                        <td style="font-size:10px;">${formatDate(requisition.created_at)}</td>
                     </tr>
                 `;
             }).join('');
@@ -181,7 +178,6 @@ useEffect(() => {
                         table { width: 100%; border-collapse: collapse; font-size: 10px; }
                         th, td { border: 1px solid #ddd; padding: 4px; text-align: left; vertical-align: middle; }
                         th { background-color: #2563eb; color: white; font-weight: bold; font-size: 10px; }
-                        tr:nth-child(even) { background-color: #f2f2f2; }
                     </style>
                 </head>
                 <body>
@@ -194,9 +190,8 @@ useEffect(() => {
                                 <th>Req ID</th>
                                 <th>Site</th>
                                 <th>Requested By</th>
-                                <th>Items</th>
+                                <th>Quantity</th>
                                 <th>Status</th>
-                                <th>Created Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -300,14 +295,6 @@ useEffect(() => {
         }
     };
 
-    const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        });
-    };
-
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'DRAFT': return '#6B7280';
@@ -338,7 +325,6 @@ useEffect(() => {
     const endIndex = startIndex + rowsPerPage;
     const currentRequisitions = filteredRequisitions.slice(startIndex, endIndex);
 
-    // Summary statistics
     const totalRequisitions = allRequisitions.length;
     const draftRequisitions = allRequisitions.filter((r) => r.status === 'DRAFT').length;
     const pendingRequisitions = allRequisitions.filter((r) => r.status === 'PENDING').length;
@@ -360,6 +346,8 @@ useEffect(() => {
             };
         }, []);
 
+        const totalQuantity = requisition.items?.reduce((sum, item) => sum + item.qty_requested, 0) || 0;
+
         return (
             <div className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
                 <div className="flex items-center justify-between mb-2">
@@ -373,16 +361,13 @@ useEffect(() => {
                         </button>
                         {isDropdownOpen && (
                             <div className="absolute right-0 top-6 bg-white shadow-lg rounded border py-1 z-10">
-                                <button
-                                    onClick={() => {
-                                        handleViewRequisition(requisition);
-                                        setIsDropdownOpen(false);
-                                    }}
+                                <Link
+                                    to={`/requisitions/${requisition.id}`}
                                     className="flex items-center px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 w-full"
                                 >
                                     <Eye className="w-3 h-3 mr-1" />
-                                    View
-                                </button>
+                                    View More
+                                </Link>
                                 <button
                                     onClick={() => {
                                         handleEditRequisition(requisition);
@@ -390,7 +375,7 @@ useEffect(() => {
                                     }}
                                     className="flex items-center px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 w-full"
                                 >
-                                    <Edit className="w-3 h-3 mr-1" />
+                                    <Pencil className="w-3 h-3 mr-1" />
                                     Edit
                                 </button>
                                 <button
@@ -414,10 +399,7 @@ useEffect(() => {
                     <div className="text-gray-500 text-xs">
                         Requested by: {requisition.requestedBy?.full_name || 'N/A'}
                     </div>
-                    <div className="text-gray-500 text-xs">
-                        Items: {requisition.items?.length || 0}
-                    </div>
-                </div>
+             </div>
                 <div className="flex items-center justify-between">
                     <span 
                         className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full"
@@ -429,9 +411,12 @@ useEffect(() => {
                         {getStatusIcon(requisition.status)}
                         <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
                     </span>
-                    <div className="text-xs text-gray-500">
-                        {formatDate(requisition.created_at)}
-                    </div>
+                    <Link
+                        to={`/requisitions/${requisition.id}`}
+                        className="text-xs text-primary-600 hover:text-primary-800"
+                    >
+                        View More
+                    </Link>
                 </div>
             </div>
         );
@@ -448,41 +433,30 @@ useEffect(() => {
                             <th
                                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
                                 onClick={() => {
-                                    setSortBy('site');
-                                    setSortOrder(sortBy === 'site' && sortOrder === 'asc' ? 'desc' : 'asc');
+                                    setSortBy('site_id');
+                                    setSortOrder(sortBy === 'site_id' && sortOrder === 'asc' ? 'desc' : 'asc');
                                 }}
                             >
                                 <div className="flex items-center space-x-1">
                                     <span>Site</span>
-                                    <ChevronDown className={`w-3 h-3 ${sortBy === 'site' ? 'text-primary-600' : 'text-gray-400'}`} />
+                                    <ChevronDown className={`w-3 h-3 ${sortBy === 'site_id' ? 'text-primary-600' : 'text-gray-400'}`} />
                                 </div>
                             </th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium">Requested By</th>
-                            <th className="text-left py-2 px-2 text-gray-600 font-medium">Items</th>
-                            <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
-                            <th
-                                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
-                                onClick={() => {
-                                    setSortBy('created_at');
-                                    setSortOrder(sortBy === 'created_at' && sortOrder === 'asc' ? 'desc' : 'asc');
-                                }}
-                            >
-                                <div className="flex items-center space-x-1">
-                                    <span>Created</span>
-                                    <ChevronDown className={`w-3 h-3 ${sortBy === 'created_at' ? 'text-primary-600' : 'text-gray-400'}`} />
-                                </div>
-                            </th>
+                      <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
                             <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {currentRequisitions.map((requisition, index) => (
-                            <tr key={requisition.id} className="hover:bg-gray-25">
+                            <tr 
+                                key={requisition.id} 
+                                className={`hover:bg-gray-25 ${index % 2 === 0 ? 'bg-gray-50' : ''}`}
+                            >
                                 <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
                                 <td className="py-2 px-2 text-gray-700">#{requisition.id}</td>
                                 <td className="py-2 px-2 text-gray-700">{requisition.site?.name || 'N/A'}</td>
                                 <td className="py-2 px-2 text-gray-700">{requisition.requestedBy?.full_name || 'N/A'}</td>
-                                <td className="py-2 px-2 text-gray-700">{requisition.items?.length || 0}</td>
                                 <td className="py-2 px-2">
                                     <span 
                                         className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full"
@@ -495,32 +469,24 @@ useEffect(() => {
                                         <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
                                     </span>
                                 </td>
-                                <td className="py-2 px-2 text-gray-700">{formatDate(requisition.created_at)}</td>
                                 <td className="py-2 px-2">
                                     <div className="flex items-center justify-end space-x-1">
-                                        <button
-                                            onClick={() => handleViewRequisition(requisition)}
+                                        <Link
+                                            to={`${requisition.id}`}
                                             className="text-gray-400 hover:text-primary-600 p-1"
-                                            title="View"
+                                            title="View More"
                                         >
                                             <Eye className="w-3 h-3" />
-                                        </button>
+                                        </Link>
                                         <button
                                             onClick={() => handleEditRequisition(requisition)}
                                             disabled={operationLoading}
                                             className="text-gray-400 hover:text-primary-600 p-1 disabled:opacity-50"
                                             title="Edit"
                                         >
-                                            <Edit className="w-3 h-3" />
+                                            <Pencil className="w-3 h-3" />
                                         </button>
-                                        <button
-                                            onClick={() => handleDeleteRequisition(requisition)}
-                                            disabled={operationLoading}
-                                            className="text-gray-400 hover:text-red-600 p-1 disabled:opacity-50"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
+                                      
                                     </div>
                                 </td>
                             </tr>
@@ -541,8 +507,11 @@ useEffect(() => {
 
     const renderListView = () => (
         <div className="bg-white rounded border border-gray-200 divide-y divide-gray-100">
-            {currentRequisitions.map((requisition) => (
-                <div key={requisition.id} className="px-4 py-3 hover:bg-gray-25">
+            {currentRequisitions.map((requisition, index) => (
+                <div 
+                    key={requisition.id} 
+                    className={`px-4 py-3 hover:bg-gray-25 ${index % 2 === 0 ? 'bg-gray-50' : ''}`}
+                >
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                             <div className="p-2 bg-primary-100 rounded-full flex items-center justify-center">
@@ -550,11 +519,11 @@ useEffect(() => {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-900 text-sm truncate">
-                                    #{requisition.id} - {requisition.site?.name || 'N/A'}
+                                    {requisition.id} - {requisition.site?.name || 'N/A'}
                                 </div>
                                 <div className="text-gray-500 text-xs truncate">
-                                    Requested by: {requisition.requestedBy?.full_name || 'N/A'} • {requisition.items?.length || 0} items
-                                </div>
+                                    Requested by: {requisition.requestedBy?.full_name || 'N/A'} • 
+                              </div>
                             </div>
                         </div>
                         <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
@@ -568,32 +537,30 @@ useEffect(() => {
                                 {getStatusIcon(requisition.status)}
                                 <span className="ml-1">{requisition.status.replace('_', ' ')}</span>
                             </span>
-                            <span>{formatDate(requisition.created_at)}</span>
+                            <Link
+                                to={`${requisition.id}`}
+                                className="text-primary-600 hover:text-primary-800"
+                            >
+                                View More
+                            </Link>
                         </div>
                         <div className="flex items-center space-x-1 flex-shrink-0">
-                            <button
-                                onClick={() => handleViewRequisition(requisition)}
+                            <Link
+                                to={`${requisition.id}`}
                                 className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors"
-                                title="View Requisition"
+                                title="View More"
                             >
                                 <Eye className="w-4 h-4" />
-                            </button>
+                            </Link>
                             <button
                                 onClick={() => handleEditRequisition(requisition)}
                                 disabled={operationLoading}
                                 className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
                                 title="Edit Requisition"
                             >
-                                <Edit className="w-4 h-4" />
+                                <Pencil className="w-4 h-4" />
                             </button>
-                            <button
-                                onClick={() => handleDeleteRequisition(requisition)}
-                                disabled={operationLoading}
-                                className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-                                title="Delete Requisition"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                          
                         </div>
                     </div>
                 </div>
@@ -666,12 +633,7 @@ useEffect(() => {
                 requisition={selectedRequisition}
                 onSave={handleSaveRequisition}
             />
-            <DeleteRequisitionModal
-                isOpen={isDeleteModalOpen}
-                requisition={selectedRequisition}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onDelete={handleDelete}
-            />
+         
             <ViewRequisitionModal
                 isOpen={isViewModalOpen}
                 requisition={selectedRequisition}
@@ -811,7 +773,6 @@ useEffect(() => {
                         </div>
                         <div className="flex items-center space-x-2">
                             <select
-                                                
                                 value={`${sortBy}-${sortOrder}`}
                                 onChange={(e) => {
                                     const [newSortBy, newSortOrder] = e.target.value.split('-') as [keyof MaterialRequisition, 'asc' | 'desc'];
@@ -820,10 +781,8 @@ useEffect(() => {
                                 }}
                                 className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
                             >
-                                <option value="created_at-desc">Created: Newest</option>
-                                <option value="created_at-asc">Created: Oldest</option>
-                                <option value="site-asc">Site: A-Z</option>
-                                <option value="site-desc">Site: Z-A</option>
+                                <option value="site_id-asc">Site: A-Z</option>
+                                <option value="site_id-desc">Site: Z-A</option>
                                 <option value="status-asc">Status: A-Z</option>
                                 <option value="status-desc">Status: Z-A</option>
                             </select>
@@ -842,13 +801,13 @@ useEffect(() => {
                                     onClick={() => setViewMode('table')}
                                     className={`p-1.5 rounded transition-colors ${viewMode === 'table' ? 'bg-primary-100 text-primary-600' : 'text-gray-500 hover:bg-gray-100'}`}
                                 >
-                                    <Grid3X3 className="w-3 h-3" />
+                                    <LayoutGrid className="w-3 h-3" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('grid')}
                                     className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-primary-100 text-primary-600' : 'text-gray-500 hover:bg-gray-100'}`}
                                 >
-                                    <Grid3X3 className="w-3 h-3 rotate-90" />
+                                    <LayoutGrid className="w-3 h-3 rotate-45" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('list')}
