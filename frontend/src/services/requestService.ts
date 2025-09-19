@@ -137,6 +137,27 @@ const requisitionService = {
     }
   },
 
+    getAllMyRequisitions: async (): Promise<RequisitionResponse> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      const { data } = await api.get<RequisitionResponse>('/requests/my-requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Validate response structure
+      if (!data?.success || !data?.data?.requests) {
+        throw new Error('Invalid response structure');
+      }
+      return data;
+    } catch (error: any) {
+      console.error('Error fetching requisitions:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch requisitions');
+    }
+  },
+
+
   // Fetch a single requisition by ID
   getRequisitionById: async (id: string): Promise<MaterialRequisition> => {
     if (!id) {
@@ -163,6 +184,47 @@ const requisitionService = {
       throw new Error(error.response?.data?.message || 'Failed to fetch requisition');
     }
   },
+// Approve a requisition
+approveRequisition: async (
+  id: string,
+  level: 'DSE' | 'PADIRI',
+  comment: string,
+  item_modifications?: { request_item_id: number; qty_approved: number }[]
+): Promise<MaterialRequisition> => {
+  if (!id) {
+    throw new Error('Requisition ID is required');
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const payload: {
+      level: string;
+      comment: string;
+      item_modifications?: { request_item_id: number; qty_approved: number }[];
+    } = { level, comment };
+
+    if (item_modifications) {
+      payload.item_modifications = item_modifications;
+    }
+
+    const { data } = await api.post<{ success: boolean; data: { request: MaterialRequisition } }>(
+      `/requests/${id}/approve`,
+      payload,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    return data.data.request;
+  } catch (error: any) {
+    console.error('Error approving requisition:', error);
+    throw new Error(error.response?.data?.message || 'Failed to approve requisition');
+  }
+},
 
   // Create a new requisition
   createRequisition: async (data: CreateRequisitionInput): Promise<MaterialRequisition> => {
@@ -200,6 +262,50 @@ const requisitionService = {
       throw new Error(error.response?.data?.message || 'Failed to update requisition');
     }
   },
+  
+
+  // Reject a requisition
+rejectRequisition: async (
+  id: string,
+  level: string,
+  reason: string,
+  comment?: string
+): Promise<MaterialRequisition> => {
+  if (!id) {
+    throw new Error('Requisition ID is required');
+  }
+  if (!reason) {
+    throw new Error('Rejection reason is required');
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const { data } = await api.post<{
+      success: boolean;
+      data: { request: MaterialRequisition };
+    }>(
+      `/requests/${id}/reject`,
+      { level, reason, comment },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!data?.success || !data?.data?.request) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data.data.request;
+  } catch (error: any) {
+    console.error('Error rejecting requisition:', error);
+    throw new Error(error.response?.data?.message || 'Failed to reject requisition');
+  }
+},
+
 
   // Delete a requisition
   deleteRequisition: async (id: string): Promise<void> => {
@@ -220,25 +326,7 @@ const requisitionService = {
     }
   },
 
-  // Approve or reject a requisition
-  approveRequisition: async (id: string, action: 'APPROVED' | 'REJECTED', comment?: string): Promise<MaterialRequisition> => {
-    if (!id) {
-      throw new Error('Requisition ID is required');
-    }
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-      const { data } = await api.post<MaterialRequisition>(`/requests/${id}/approve`, { action, comment }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return data;
-    } catch (error: any) {
-      console.error('Error approving requisition:', error);
-      throw new Error(error.response?.data?.message || 'Failed to approve requisition');
-    }
-  },
+
 };
 
 export default requisitionService;
