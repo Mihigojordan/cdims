@@ -72,27 +72,46 @@ const SiteAssignmentDashboard: React.FC = () => {
   useEffect(() => {
     handleFilterAndSort();
   }, [searchTerm, sortBy, sortOrder, allAssignments]);
+const loadData = async () => {
+  try {
+    setLoading(true);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [assignmentRes, userRes, siteRes] = await Promise.all([
-        siteAssignmentService.getAllSiteAssignments({}), // Get all without pagination
-        userService.getAllUsers(),
-        siteService.getAllSites({}), // Get all without pagination
-      ]);
-      console.log('assing:',assignmentRes.assignments);
-      
-      setAllAssignments(assignmentRes.assignments || []);
-      setUsers(userRes?.data?.users || []);
-      setSites(siteRes.sites || []);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to load data");
-    } finally {
-      setLoading(false);
+    const [assignmentRes, userRes, siteRes] = await Promise.allSettled([
+      siteAssignmentService.getAllSiteAssignments({}), // Get all without pagination
+      userService.getAllUsers(),
+      siteService.getAllSites({}), // Get all without pagination
+    ]);
+
+    if (assignmentRes.status === "fulfilled") {
+      setAllAssignments(assignmentRes.value.assignments || []);
+    } else {
+      console.error("Assignments fetch failed:", assignmentRes.reason);
+      setAllAssignments([]); // fallback
     }
-  };
+
+    if (userRes.status === "fulfilled") {
+      setUsers(userRes.value?.data?.users || []);
+    } else {
+      console.error("Users fetch failed:", userRes.reason);
+      setUsers([]);
+    }
+
+    if (siteRes.status === "fulfilled") {
+      setSites(siteRes.value.sites || []);
+    } else {
+      console.error("Sites fetch failed:", siteRes.reason);
+      setSites([]);
+    }
+
+    setError(null);
+  } catch (err: any) {
+    // This catch now will only fire for unexpected runtime errors
+    setError(err.message || "Unexpected error while loading data");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const showOperationStatus = (type: OperationStatus["type"], message: string, duration: number = 3000) => {
     setOperationStatus({ type, message });
