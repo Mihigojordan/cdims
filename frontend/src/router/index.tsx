@@ -31,6 +31,11 @@ import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
 import ReportManagement from '../pages/dashboard/ReportManagement'
 
+import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
+
+import SiteAssignmentDashboard from '../pages/dashboard/SiteAssignmentDashboard';
+import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDetail';
+
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
@@ -276,6 +281,14 @@ const routes = createBrowserRouter([
                 ),
               },
               {
+                path: 'site-assign-management',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteAssignmentDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
                 path: 'recruiting-management/create',
                 element: (
                   <SuspenseWrapper>
@@ -328,6 +341,22 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <RoleManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+                  {
+                path: 'material-requisition',
+                element: (
+                  <SuspenseWrapper>
+                     <MaterialRequisition />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'material-requisition/:id',
+                element: (
+                  <SuspenseWrapper>
+                     <MaterialRequisitionDetail />
                   </SuspenseWrapper>
                 ),
               },

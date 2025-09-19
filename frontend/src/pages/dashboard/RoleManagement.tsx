@@ -79,7 +79,6 @@ const RoleManagement = () => {
                 const roles = Array.isArray(response.data?.roles) ? response.data.roles : [];
                 setAllRoles(roles);
                 setError(null);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 const errorMessage = err.message || 'Failed to load roles';
                 console.error('Error fetching roles:', err);
