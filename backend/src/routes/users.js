@@ -77,7 +77,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authenticate, authorize('ADMIN', 'PADIRI'), userController.getAllUsers);
+router.get('/', authenticate, authorize('ADMIN', 'PADIRI','DIOCESAN_SITE_ENGINEER'), userController.getAllUsers);
 
 /**
  * @swagger
@@ -119,7 +119,7 @@ router.get('/', authenticate, authorize('ADMIN', 'PADIRI'), userController.getAl
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/roles', authenticate, authorize('ADMIN', 'PADIRI'), userController.getRoles);
+router.get('/roles', authenticate, authorize('ADMIN', 'PADIRI',), userController.getRoles);
 
 /**
  * @swagger

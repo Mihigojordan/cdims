@@ -174,7 +174,7 @@ const requisitionService = {
       const { data: newRequisition } = await api.post<MaterialRequisition>('/requests', data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return newRequisition;
+      return newRequisition.data.request;
     } catch (error: any) {
       console.error('Error creating requisition:', error);
       throw new Error(error.response?.data?.message || 'Failed to create requisition');

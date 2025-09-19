@@ -307,7 +307,7 @@ router.get('/:id', authenticate, requestController.getRequestById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticate, authorize('ADMIN'), requestController.createRequest);
+router.post('/', authenticate, authorize('SITE_ENGINEER','ADMIN'), requestController.createRequest);
 
 /**
  * @swagger

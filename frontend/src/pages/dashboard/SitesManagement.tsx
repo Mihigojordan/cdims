@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import {
   Plus,
   Edit,
@@ -24,6 +24,7 @@ import {
 import siteService, { type CreateSiteInput, type ValidationResult } from "../../services/siteService";
 import { useNavigate } from "react-router-dom";
 import type { Site } from "../../types/model";
+import useAuth from "../../context/AuthContext";
 
 type ViewMode = 'table' | 'grid' | 'list';
 
@@ -59,6 +60,8 @@ const SiteDashboard: React.FC = () => {
     location: '',
   });
   const [formError, setFormError] = useState<string>('');
+
+  const {user}= useAuth();
 
   const navigate = useNavigate();
 
@@ -360,6 +363,9 @@ const SiteDashboard: React.FC = () => {
       ))}
     </div>
   );
+
+
+  
 
   const renderListView = () => (
     <div className="bg-white rounded border border-gray-200 divide-y divide-gray-100">
@@ -869,6 +875,8 @@ const SiteDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+     
 
       {showViewModal && selectedSite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
