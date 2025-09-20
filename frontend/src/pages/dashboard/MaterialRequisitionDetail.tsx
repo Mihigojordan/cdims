@@ -354,7 +354,7 @@ const RequestDetailView: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Total Quantity:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {request.items.reduce((sum, item) => sum + item.qty_approved, 0)} units
+                  {request.items.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0)?.toFixed(3)} units
                 </span>
               </div>
               <div className="flex justify-between pt-2 border-t">

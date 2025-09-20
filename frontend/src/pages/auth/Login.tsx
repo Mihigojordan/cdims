@@ -220,7 +220,7 @@ const AdminLogin: React.FC = () => {
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3">
                 <Building2 className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">ABY HR</h2>
+              <h2 className="text-2xl font-bold text-gray-900">CDIMS</h2>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign In</h3>
             <p className="text-gray-600 text-sm">Please enter your details to sign in</p>
@@ -336,7 +336,7 @@ const AdminLogin: React.FC = () => {
           {/* Footer */}
           <div className="text-center mt-8">
             <p className="text-xs text-gray-500">
-              Copyright © 2024 - ABY HR
+              Copyright © 2024 - CDIMS
             </p>
           </div>
         </div>

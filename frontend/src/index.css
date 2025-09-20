@@ -6,5 +6,5 @@
 
 body {
   @apply font-inter; /* makes Inter the default */
-  text-transform:capitalize;
+  /* text-transform:capitalize; */
 }
