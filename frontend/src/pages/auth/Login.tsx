@@ -1,8 +1,9 @@
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import  useAuth from "../../context/AuthContext";
+import useAuth from "../../context/AuthContext";
 
 // Define interfaces
 interface FormData {
@@ -22,7 +23,7 @@ interface Touched {
 }
 
 const AdminLogin: React.FC = () => {
-  const { login, isLoading: authLoading, isAuthenticated } = useAuth() ;
+  const { login, isLoading: authLoading, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -202,10 +203,10 @@ const AdminLogin: React.FC = () => {
         <div className="max-w-lg text-white relative z-10">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
             <h1 className="text-4xl font-bold mb-6 text-white">
-              Empowering people through seamless HR management.
+              Streamlining Infrastructure for the Catholic Diocese
             </h1>
             <p className="text-orange-100 text-lg leading-relaxed">
-              Efficiently manage your workforce, streamline operations effortlessly.
+              Manage diocese infrastructure, materials, and sites with ease.
             </p>
           </div>
         </div>
@@ -223,7 +224,7 @@ const AdminLogin: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-900">CDIMS</h2>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign In</h3>
-            <p className="text-gray-600 text-sm">Please enter your details to sign in</p>
+            <p className="text-gray-600 text-sm">Please enter your details to access the CDIMS</p>
           </div>
 
           {/* Error message */}
@@ -336,7 +337,7 @@ const AdminLogin: React.FC = () => {
           {/* Footer */}
           <div className="text-center mt-8">
             <p className="text-xs text-gray-500">
-              Copyright © 2024 - CDIMS
+              Copyright © 2025 - CDIMS
             </p>
           </div>
         </div>

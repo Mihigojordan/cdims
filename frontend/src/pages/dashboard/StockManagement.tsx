@@ -215,12 +215,12 @@ const StockDashboard: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'material_id' || name === 'store_id' || name === 'qty_on_hand' || name === 'reorder_level' || name === 'low_stock_threshold' ? parseInt(value) || 0 : value });
+    setFormData({ ...formData, [name]: name === 'material_id' || name === 'store_id' || name === 'qty_on_hand' || name === 'reorder_level' || name === 'low_stock_threshold' ? parseInt(value): value });
   };
 
   const handleThresholdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setThresholdFormData({ low_stock_threshold: parseInt(value) || 0 });
+    setThresholdFormData({ low_stock_threshold: parseInt(value) });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
