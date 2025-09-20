@@ -29,6 +29,11 @@ import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
+import RequestsReportManagement from '../pages/dashboard/report/RequestsReportManagement'
+import UserReportManagement from '../pages/dashboard/report/UserReportManagement'
+import StockReportManagement from '../pages/dashboard/report/StockReportManagement'
+import InventoryReportManagement from '../pages/dashboard/report/InventoryReportManagement'
+import SiteReportManagement from '../pages/dashboard/report/SiteReportManagement'
 
 import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
@@ -43,6 +48,7 @@ const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
 const AboutPage = lazy(() => import('../pages/landing/AboutPage'));
 const StockManagement = lazy(() => import('../pages/dashboard/StockManagement'));
+
 
 /**
  * Loading spinner component for Suspense fallback
@@ -236,6 +242,46 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <ClientManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'request-report',
+                element: (
+                  <SuspenseWrapper>
+                    <RequestsReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'site-report',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'inventory-report',
+                element: (
+                  <SuspenseWrapper>
+                    <InventoryReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'user-report',
+                element: (
+                  <SuspenseWrapper>
+                    <UserReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'stock-report',
+                element: (
+                  <SuspenseWrapper>
+                    <StockReportManagement />
                   </SuspenseWrapper>
                 ),
               },

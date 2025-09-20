@@ -1,13 +1,18 @@
 import { type AxiosInstance, type AxiosResponse } from 'axios';
 import api from '../api/api';
 
-// Interface for Request Report
-export interface RequestReport {
+// Interface for Material (simplified, referencing the MaterialService)
+export interface Material {
   id: number;
-  site_id?: number;
-  status: string;
-  created_at: Date;
-  items: RequestItem[];
+  name: string;
+  code?: string;
+  unit_price?: number;
+  description?: string;
+  unit?: {
+    id: number;
+    name: string;
+    symbol: string;
+  };
 }
 
 // Interface for Request Item
@@ -16,7 +21,61 @@ export interface RequestItem {
   request_id: number;
   material_id: number;
   qty_requested: number;
+  qty_approved?: number;
   material?: Material;
+}
+
+// Interface for Request Report
+export interface RequestReport {
+  id: number;
+  site_id?: number;
+  requested_by?: number;
+  notes?: string;
+  status: string;
+  created_at: Date | string;
+  updated_at?: Date | string;
+  site?: {
+    id: number;
+    code: string;
+    name: string;
+    location: string;
+    created_at: Date | string;
+    updated_at: Date | string;
+  };
+  requestedBy?: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone?: string;
+    role?: {
+      id: number;
+      name: string;
+    };
+    active?: boolean;
+    created_at?: Date | string;
+    updated_at?: Date | string;
+  };
+  items: RequestItem[];
+  approvals?: {
+    id: number;
+    level: string;
+    action: string;
+    comment?: string;
+    reviewer?: {
+      id: number;
+      full_name: string;
+      email: string;
+      phone?: string;
+      role?: {
+        id: number;
+        name: string;
+      };
+      active?: boolean;
+      created_at?: Date | string;
+      updated_at?: Date | string;
+    };
+    created_at: Date | string;
+  }[];
 }
 
 // Interface for Inventory Report
@@ -83,13 +142,6 @@ export interface SitePerformanceReport {
     pending_requests: number;
     average_processing_time: number;
   };
-}
-
-// Interface for Material (simplified, referencing the MaterialService)
-export interface Material {
-  id: number;
-  name: string;
-  unit_price?: number;
 }
 
 // Interface for Report Summary

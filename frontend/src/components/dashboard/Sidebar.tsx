@@ -70,6 +70,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       "/admin/dashboard/site-assign-management",
       "/admin/dashboard/site-management",
     ];
+    const reportPages = [
+      "/admin/dashboard/request-report",
+      "/admin/dashboard/inventory-report",
+      "/admin/dashboard/stock-report",
+      "/admin/dashboard/site-report",
+      "/admin/dashboard/user-report"
+    ];
     const stockPages = [
       "/admin/dashboard/stock-management",
       "/admin/dashboard/stock-movement",
@@ -98,7 +105,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       label: "Dashboard",
       icon: TrendingUp,
       path: "/admin/dashboard",
-      // Dashboard accessible to all roles
     },
     {
       id: "role",
@@ -211,6 +217,49 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
           label: "Units",
           icon: Ruler, // Kept Ruler for units
           path: "/admin/dashboard/units-management",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+      ],
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: FileText,
+      isDropdown: true,
+      children: [
+        {
+          id: "request-report",
+          label: "Requests Report",
+          icon: FileText,
+          path: "/admin/dashboard/request-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "inventory-report",
+          label: "Inventory Report",
+          icon: FileText,
+          path: "/admin/dashboard/inventory-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "stock-report",
+          label: "Stock Movement Report",
+          icon: FileText,
+          path: "/admin/dashboard/stock-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "site-report",
+          label: "Site Performance Report",
+          icon: FileText,
+          path: "/admin/dashboard/site-report",
+          allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
+        },
+        {
+          id: "user-report",
+          label: "User Activity Report",
+          icon: FileText,
+          path: "/admin/dashboard/user-report",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
       ],
@@ -362,6 +411,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
             </div>
             <div>
               <h2 className="font-bold text-lg text-primary-800">CIDMS</h2>
+              <p className="text-xs text-primary-500">Admin Portal</p>
               {/* <p className="text-xs text-primary-500">{user?.role?.name} Portal</p> */}
             </div>
           </div>

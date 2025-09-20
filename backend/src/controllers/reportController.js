@@ -26,7 +26,15 @@ const getRequestReports = async (req, res) => {
               as: 'material'
             }
           ]
-        }
+        },
+        {
+          model: User,
+          as:'requestedBy'
+        },
+        {
+          model: Site,
+          as:'site'
+        },
       ],
       order: [['created_at', 'DESC']]
     });
