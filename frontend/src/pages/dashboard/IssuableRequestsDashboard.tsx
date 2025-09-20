@@ -134,7 +134,7 @@ const IssuableRequestsDashboard: React.FC = () => {
           <td style="font-size:10px;">${request.requestedBy?.full_name || 'N/A'}</td>
           <td style="font-size:10px;">${request.status}</td>
           <td style="font-size:10px;">${request.items?.length || 0}</td>
-          <td style="font-size:10px;">${request.items?.reduce((sum, item) => sum + (item.qty_approved || 0), 0) || 0}</td>
+          <td style="font-size:10px;">${request.items?.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0) || 0}</td>
           <td style="font-size:10px;">${new Date(request.created_at || '').toLocaleDateString('en-GB')}</td>
         </tr>
       `).join('');
@@ -285,7 +285,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                 </td>
                 <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{request.items?.length || 0}</td>
                 <td className="py-2 px-2 text-gray-700 hidden xl:table-cell">
-                  {request.items?.reduce((sum, item) => sum + (item.qty_approved || 0), 0) || 0}
+                  {request.items?.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0) || 0}
                 </td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(request.created_at)}</td>
                 <td className="py-2 px-2">
@@ -333,7 +333,7 @@ const IssuableRequestsDashboard: React.FC = () => {
               </span>
             </div>
             <div className="text-xs text-gray-600">Items: {request.items?.length || 0}</div>
-            <div className="text-xs text-gray-600">Qty: {request.items?.reduce((sum, item) => sum + (item.qty_approved || 0), 0) || 0}</div>
+            <div className="text-xs text-gray-600">Qty: {request.items?.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0) || 0}</div>
             <div className="text-xs text-gray-600">Date: {formatDate(request.created_at)}</div>
           </div>
           <div className="flex items-center justify-end">

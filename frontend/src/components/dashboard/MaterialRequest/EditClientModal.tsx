@@ -3,6 +3,7 @@ import { X, FileText, Package, Plus, Trash2 } from 'lucide-react';
 import requisitionService, { type UpdateRequisitionInput, type MaterialRequisition } from '../../../services/requestService';
 import materialService, { type Material, type Unit } from '../../../services/materialsService';
 import siteService, { type Site } from '../../../services/siteService';
+import siteAssignmentService from '../../../services/siteAssignmentService';
 
 interface EditMaterialRequisitionModalProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ const EditMaterialRequisitionModal: React.FC<EditMaterialRequisitionModalProps> 
   const loadSites = async () => {
     setIsLoadingSites(true);
     try {
-      const { sites } = await siteService.getAllSites();
+      const  sites  = await siteAssignmentService.getUserAssignedSites();
       setSites(sites);
     } catch (error: any) {
       console.error('Error loading sites:', error);
@@ -122,29 +123,66 @@ const EditMaterialRequisitionModal: React.FC<EditMaterialRequisitionModalProps> 
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, index?: number) => {
-    try {
-      const { name, value } = e.target;
-      if (index !== undefined && name.startsWith('items.')) {
-        const field = name.split('.')[1];
-        setFormData((prev) => {
-          const newItems = [...prev.items];
-          newItems[index] = { ...newItems[index], [field]: field === 'qty_requested' ? parseFloat(value) || 0 : parseInt(value, 10) || 0 };
-          return { ...prev, items: newItems };
-        });
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: name === 'site_id' ? parseInt(value, 10) || 0 : value,
-        }));
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  index?: number
+) => {
+  try {
+    const { name, value } = e.target;
+
+    if (index !== undefined && name.startsWith("items.")) {
+      const field = name.split(".")[1];
+
+      // Prevent duplicate material selection
+      if (field === "material_id") {
+        const selectedMaterialId = parseInt(value, 10) || 0;
+        const isDuplicate = formData.items.some(
+          (item, i) => i !== index && item.material_id === selectedMaterialId
+        );
+
+        if (isDuplicate) {
+          const selectedMaterial = materials.find(
+            (m) => m.id === selectedMaterialId
+          );
+          const materialLabel = selectedMaterial
+            ? `${selectedMaterial.name}${
+                selectedMaterial.code ? ` (${selectedMaterial.code})` : ""
+              }`
+            : `Material ID: ${selectedMaterialId}`;
+
+          setErrors([
+            `You cannot select the same material twice: ${materialLabel}.`,
+          ]);
+          return; // stop updating state
+        }
       }
-      if (errors.length > 0) {
-        setErrors([]);
-      }
-    } catch (error) {
-      console.error('Error handling form change:', error);
+
+      setFormData((prev) => {
+        const newItems = [...prev.items];
+        newItems[index] = {
+          ...newItems[index],
+          [field]:
+            field === "qty_requested"
+              ? parseFloat(value) || 0
+              : parseInt(value, 10) || 0,
+        };
+        return { ...prev, items: newItems };
+      });
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: name === "site_id" ? parseInt(value, 10) || 0 : value,
+      }));
     }
-  };
+
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  } catch (error) {
+    console.error("Error handling form change:", error);
+  }
+};
+
 
   const addItem = () => {
     setFormData((prev) => ({

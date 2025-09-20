@@ -272,7 +272,7 @@ const createRequest = async (req, res) => {
       site_id,
       requested_by,
       notes,
-      status: 'DRAFT'
+      status: 'PENDING'
     });
 
     // Create request items
@@ -481,10 +481,10 @@ const submitRequest = async (req, res) => {
       });
     }
 
-    if (request.status !== 'DRAFT') {
+    if (request.status !== 'PENDING') {
       return res.status(400).json({
         success: false,
-        message: 'Only draft requests can be submitted'
+        message: 'Only PENDING requests can be submitted'
       });
     }
 
@@ -560,7 +560,7 @@ const approveRequest = async (req, res) => {
 
     // Update request status
     if (level === 'DSE') {
-      request.status = 'PADIRI_REVIEW';
+      request.status = 'WAITING_PADIRI_REVIEW';
     } else if (level === 'PADIRI') {
       request.status = 'APPROVED';
     }
@@ -798,10 +798,10 @@ const approveForStorekeeper = async (req, res) => {
       });
     }
 
-    if (request.status !== 'PADIRI_REVIEW') {
+    if (request.status !== 'WAITING_PADIRI_REVIEW') {
       return res.status(400).json({
         success: false,
-        message: 'Only requests in PADIRI_REVIEW status can be approved for storekeeper'
+        message: 'Only requests in WAITING_PADIRI_REVIEW status can be approved for storekeeper'
       });
     }
 

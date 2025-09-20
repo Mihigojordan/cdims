@@ -28,10 +28,15 @@ interface OperationStatus {
   message: string;
 }
 
-interface IssueMaterialForm {
-  request_id: number;
+interface IssueMaterialItem {
   request_item_id: number;
   qty_issued: number;
+  checked: boolean;
+}
+
+interface IssueMaterialForm {
+  request_id: number;
+  items: IssueMaterialItem[];
   store_id: number;
   notes: string;
 }
@@ -60,8 +65,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
   const [showIssueModal, setShowIssueModal] = useState<boolean>(false);
   const [issueForm, setIssueForm] = useState<IssueMaterialForm>({
     request_id: 0,
-    request_item_id: 0,
-    qty_issued: 0,
+    items: [],
     store_id: 0,
     notes: '',
   });
@@ -80,7 +84,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
       const [materialsResponse, storesResponse, requestsResponse, issuedMaterialsResponse] = await Promise.all([
         materialService.getAllMaterials(),
         storeService.getAllStores(),
-        stockService.getIssuableRequests({ page: 1, limit: 1000 }), // Fetch all requests for issue modal
+        stockService.getIssuableRequests({ page: 1, limit: 1000 }),
         stockService.getIssuedMaterials({ page: currentPage, limit: itemsPerPage }),
       ]);
       setMaterials(materialsResponse || []);
@@ -105,7 +109,6 @@ const IssuableMaterialsDashboard: React.FC = () => {
   const handleFilterAndSort = () => {
     let filtered = [...allIssuedMaterials];
 
-    // Apply search term filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(
         (material) =>
@@ -114,22 +117,18 @@ const IssuableMaterialsDashboard: React.FC = () => {
       );
     }
 
-    // Apply store filter
     if (selectedStore) {
       filtered = filtered.filter((material) => material.store?.name?.toLowerCase() === selectedStore.toLowerCase());
     }
 
-    // Apply material filter
     if (selectedMaterial) {
       filtered = filtered.filter((material) => material.material?.name?.toLowerCase() === selectedMaterial.toLowerCase());
     }
 
-    // Apply movement type filter
     if (selectedMovementType) {
       filtered = filtered.filter((material) => material.movement_type === selectedMovementType);
     }
 
-    // Sort issued materials
     filtered.sort((a, b) => {
       const aValue = sortBy === 'material_id' ? a.material?.name : sortBy === 'store_id' ? a.store?.name : a[sortBy];
       const bValue = sortBy === 'material_id' ? b.material?.name : sortBy === 'store_id' ? b.store?.name : b[sortBy];
@@ -142,7 +141,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
 
       const aStr = aValue ? aValue.toString().toLowerCase() : '';
       const bStr = bValue ? bValue.toString().toLowerCase() : '';
-      return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(bStr);
     });
 
     setIssuedMaterials(filtered);
@@ -150,8 +149,14 @@ const IssuableMaterialsDashboard: React.FC = () => {
   };
 
   const handleIssueMaterials = async () => {
-    if (!issueForm.request_id || !issueForm.request_item_id || !issueForm.qty_issued || !issueForm.store_id) {
-      showOperationStatus('error', 'Please fill in all required fields');
+    if (!issueForm.request_id || !issueForm.store_id || issueForm.items.every(item => !item.checked)) {
+      showOperationStatus('error', 'Please select a request, a store, and at least one item to issue');
+      return;
+    }
+
+    const invalidItems = issueForm.items.filter(item => item.checked && (item.qty_issued <= 0 || isNaN(item.qty_issued)));
+    if (invalidItems.length > 0) {
+      showOperationStatus('error', 'Please enter a valid quantity for all selected items');
       return;
     }
 
@@ -159,19 +164,19 @@ const IssuableMaterialsDashboard: React.FC = () => {
       setOperationLoading(true);
       const payload: IssueMaterialPayload = {
         request_id: issueForm.request_id,
-        items: [
-          {
-            request_item_id: issueForm.request_item_id,
-            qty_issued: issueForm.qty_issued,
+        items: issueForm.items
+          .filter(item => item.checked)
+          .map(item => ({
+            request_item_id: item.request_item_id,
+            qty_issued: item.qty_issued,
             store_id: issueForm.store_id,
             notes: issueForm.notes,
-          },
-        ],
+          })),
       };
       await stockService.issueMaterials(payload);
       showOperationStatus('success', 'Materials issued successfully');
       setShowIssueModal(false);
-      setIssueForm({ request_id: 0, request_item_id: 0, qty_issued: 0, store_id: 0, notes: '' });
+      setIssueForm({ request_id: 0, items: [], store_id: 0, notes: '' });
       await loadData();
     } catch (err: any) {
       showOperationStatus('error', err.message || 'Failed to issue materials');
@@ -277,6 +282,40 @@ const IssuableMaterialsDashboard: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentIssuedMaterials = issuedMaterials.slice(startIndex, endIndex);
+
+  const selectedRequest = requests.find((req) => req.id === issueForm.request_id);
+  const requestItems = selectedRequest?.items || [];
+
+  const handleRequestChange = (requestId: number) => {
+    const selectedReq = requests.find(req => req.id === requestId);
+    const items = selectedReq?.items.map(item => ({
+      request_item_id: item.id,
+      qty_issued: item.qty_approved || 0,
+      checked: false,
+    })) || [];
+    setIssueForm({ ...issueForm, request_id: requestId, items });
+  };
+
+  const handleItemCheck = (requestItemId: number, checked: boolean) => {
+    setIssueForm({
+      ...issueForm,
+      items: issueForm.items.map(item =>
+        item.request_item_id === requestItemId ? { ...item, checked } : item
+      ),
+    });
+  };
+
+  const handleQuantityChange = (requestItemId: number, qty: number) => {
+    const selectedItem = requestItems.find(item => item.id === requestItemId);
+    const maxQty = selectedItem?.qty_approved || 0;
+    const validatedQty = Math.max(0, Math.min(qty, maxQty));
+    setIssueForm({
+      ...issueForm,
+      items: issueForm.items.map(item =>
+        item.request_item_id === requestItemId ? { ...item, qty_issued: validatedQty } : item
+      ),
+    });
+  };
 
   const renderTableView = () => (
     <div className="bg-white rounded border border-gray-200">
@@ -473,9 +512,6 @@ const IssuableMaterialsDashboard: React.FC = () => {
       </div>
     );
   };
-
-  const selectedRequest = requests.find((req) => req.id === issueForm.request_id);
-  const requestItems = selectedRequest?.items || [];
 
   return (
     <div className="min-h-screen bg-gray-50 text-xs">
@@ -713,16 +749,24 @@ const IssuableMaterialsDashboard: React.FC = () => {
       {showIssueModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Issue Materials</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Issue Materials</h3>
+              <button
+                onClick={() => {
+                  setShowIssueModal(false);
+                  setIssueForm({ request_id: 0, items: [], store_id: 0, notes: '' });
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Request</label>
                 <select
                   value={issueForm.request_id}
-                  onChange={(e) => {
-                    const requestId = Number(e.target.value);
-                    setIssueForm({ ...issueForm, request_id: requestId, request_item_id: 0 });
-                  }}
+                  onChange={(e) => handleRequestChange(Number(e.target.value))}
                   className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value={0}>Select a request</option>
@@ -733,22 +777,51 @@ const IssuableMaterialsDashboard: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Request Item</label>
-                <select
-                  value={issueForm.request_item_id}
-                  onChange={(e) => setIssueForm({ ...issueForm, request_item_id: Number(e.target.value) })}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  disabled={!issueForm.request_id}
-                >
-                  <option value={0}>Select an item</option>
-                  {requestItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.material?.name || 'N/A'} (Requested: {item.qty_requested}, Approved: {item.qty_approved || 0})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {requestItems.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Requested Items</label>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {requestItems.map((item) => {
+                      const formItem = issueForm.items.find(i => i.request_item_id === item.id);
+                      const maxQty = item.qty_approved || 0;
+                      return (
+                        <div key={item.id} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                          <input
+                            type="checkbox"
+                            checked={formItem?.checked || false}
+                            onChange={(e) => handleItemCheck(item.id, e.target.checked)}
+                            className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                          />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-gray-900">{item.material?.name || 'N/A'}</p>
+                            <p className="text-xs text-gray-500">
+                              Requested: {item.qty_requested} {item.material?.unit?.symbol || ''}, 
+                              Approved: {item.qty_approved || 0} {item.material?.unit?.symbol || ''}
+                            </p>
+                            {formItem?.checked && (
+                              <div className="mt-1">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Quantity Issued</label>
+                                <input
+                                  type="number"
+                                  value={formItem.qty_issued}
+                                  onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))}
+                                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                  min="0"
+                                  max={maxQty}
+                                  placeholder={`Max ${maxQty}`}
+                                />
+                                {formItem.qty_issued > maxQty && (
+                                  <p className="text-xs text-red-600 mt-1">Cannot exceed approved quantity ({maxQty})</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
                 <select
@@ -761,16 +834,6 @@ const IssuableMaterialsDashboard: React.FC = () => {
                     <option key={store.id} value={store.id}>{store.name}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Quantity Issued</label>
-                <input
-                  type="number"
-                  value={issueForm.qty_issued}
-                  onChange={(e) => setIssueForm({ ...issueForm, qty_issued: Number(e.target.value) })}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  min="0"
-                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
@@ -786,7 +849,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
               <button
                 onClick={() => {
                   setShowIssueModal(false);
-                  setIssueForm({ request_id: 0, request_item_id: 0, qty_issued: 0, store_id: 0, notes: '' });
+                  setIssueForm({ request_id: 0, items: [], store_id: 0, notes: '' });
                 }}
                 className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
               >

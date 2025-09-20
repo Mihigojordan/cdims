@@ -106,7 +106,7 @@ const options = {
             notes: { type: 'string' },
             status: { 
               type: 'string',
-              enum: ['DRAFT', 'DSE_REVIEW', 'PADIRI_REVIEW', 'APPROVED', 'REJECTED', 'ISSUED']
+              enum: ['PENDING', 'DSE_REVIEW', 'WAITING_PADIRI_REVIEW', 'APPROVED', 'REJECTED', 'ISSUED']
             },
             site: { $ref: '#/components/schemas/Site' },
             requestedBy: { $ref: '#/components/schemas/User' },

@@ -6,7 +6,7 @@ export interface MaterialRequisition {
   site_id: number;
   requested_by: number;
   notes: string;
-  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'PARTIALLY_APPROVED';
+  status:  'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITING_PADIRI_REVEIW';
   site: {
     id: number;
     code: string;
