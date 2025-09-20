@@ -250,14 +250,10 @@ const RequisitionManagement = () => {
     };
 
     const handleEditRequisition = async (requisition: MaterialRequisition) => {
-        setOperationLoading(true);
-        if (requisition) {
+       
             setSelectedRequisition(requisition);
             setIsEditModalOpen(true);
-        } else {
-            showOperationStatus('error', 'Requisition not found');
-        }
-        setOperationLoading(false);
+      
     };
 
     const handleApproveRequisition = async (requisition: MaterialRequisition) => {

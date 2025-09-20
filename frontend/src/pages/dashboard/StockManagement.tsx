@@ -217,7 +217,7 @@ const StockDashboard: React.FC = () => {
 
   const handleThresholdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setThresholdFormData({ low_stock_threshold: parseInt(value) || 0 });
+    setThresholdFormData({ low_stock_threshold: parseInt(value) });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
