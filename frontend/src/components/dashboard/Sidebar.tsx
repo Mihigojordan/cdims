@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   MapPin,
@@ -18,7 +19,9 @@ import {
   ChevronUp,
   Boxes,
   MapMinusIcon,
-  FileText,
+  Truck, // Added for Stock Movement
+  FileText, // Added for Issuable Request
+  Archive, // Added for Issuable Materials
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAdminAuth from "../../context/AuthContext";
@@ -72,15 +75,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       "/admin/dashboard/inventory-report",
       "/admin/dashboard/stock-report",
       "/admin/dashboard/site-report",
-      "/admin/dashboard/user-report",
+      "/admin/dashboard/user-report"
+    ];
+    const stockPages = [
+      "/admin/dashboard/stock-management",
+      "/admin/dashboard/stock-movement",
+      "/admin/dashboard/issuable-requests",
+      "/admin/dashboard/issuable-materials",
     ];
 
     if (materialPages.includes(currentPath)) {
       setOpenDropdown("materialManagement");
     } else if (sitePages.includes(currentPath)) {
       setOpenDropdown("siteManagement");
-    } else if (reportPages.includes(currentPath)) {
-      setOpenDropdown("reports");
+    } else if (stockPages.includes(currentPath)) {
+      setOpenDropdown("stocks");
     } else {
       setOpenDropdown(null);
     }
@@ -110,25 +119,52 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       icon: Boxes,
       path: "/admin/dashboard/stock-management",
       allowedRoles: ["ADMIN", "STOREKEEPER"],
+      isDropdown: true,
+      children: [
+        {
+          id: "stocks-management",
+          label: "Stock",
+          icon: Boxes, // Kept Boxes for main stock management
+          path: "/admin/dashboard/stock-management",
+        },
+        {
+          id: "stock-movement",
+          label: "Stock Movement",
+          icon: Truck, // Unique icon for stock movement (transport/movement)
+          path: "/admin/dashboard/stock-movement",
+        },
+        {
+          id: "issuable-requests",
+          label: "Issuable Request",
+          icon: FileText, // Unique icon for requests (document/request)
+          path: "/admin/dashboard/issuable-requests",
+        },
+        {
+          id: "issuable-materials",
+          label: "Issuable Materials",
+          icon: Archive, // Unique icon for issuable materials (storage/archive)
+          path: "/admin/dashboard/issuable-materials",
+        },
+      ],
     },
     {
       id: "siteManagement",
       label: "Site Management",
-      icon: Package,
+      icon: Building, // Changed to Building for better context (site-related)
       isDropdown: true,
       allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
       children: [
         {
           id: "sites",
           label: "Sites",
-          icon: MapPin,
+          icon: MapPin, // Kept MapPin for sites (location-specific)
           path: "/admin/dashboard/site-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
         {
           id: "site-assign",
           label: "Site Assign",
-          icon: MapMinusIcon,
+          icon: MapMinusIcon, // Kept MapMinusIcon for site assignment
           path: "/admin/dashboard/site-assign-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
@@ -144,14 +180,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
     {
       id: "userManagement",
       label: "User Management",
-      icon: User2,
+      icon: Users, // Changed to Users for clarity (multiple users)
       path: "/admin/dashboard/client-management",
       allowedRoles: ["PADIRI", "ADMIN"],
     },
     {
       id: "materialRequisition",
       label: "Material Requisition",
-      icon: User2,
+      icon: Briefcase, // Changed to Briefcase for requisition (work-related)
       path: "/admin/dashboard/material-requisition",
       allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER", "SITE_ENGINEER"],
     },
@@ -165,21 +201,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
         {
           id: "materials",
           label: "Materials",
-          icon: Package,
+          icon: Package, // Kept Package for materials
           path: "/admin/dashboard/material-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
         {
           id: "categories",
           label: "Categories",
-          icon: Layers,
+          icon: Layers, // Kept Layers for categories
           path: "/admin/dashboard/category-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
         {
           id: "units",
           label: "Units",
-          icon: Ruler,
+          icon: Ruler, // Kept Ruler for units
           path: "/admin/dashboard/units-management",
           allowedRoles: ["PADIRI", "ADMIN", "DIOCESAN_SITE_ENGINEER"],
         },
@@ -370,12 +406,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
           <div className="flex items-center space-x-2">
             <div className="flex items-center justify-center w-16 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg">
               <div className="flex items-center space-x-0.5">
-               <img src={Logo} alt="" />
+                <img src={Logo} alt="CIDMS Logo" />
               </div>
             </div>
             <div>
               <h2 className="font-bold text-lg text-primary-800">CIDMS</h2>
               <p className="text-xs text-primary-500">Admin Portal</p>
+              {/* <p className="text-xs text-primary-500">{user?.role?.name} Portal</p> */}
             </div>
           </div>
           <button

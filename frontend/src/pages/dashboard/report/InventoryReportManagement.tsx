@@ -17,7 +17,7 @@ import {
   Settings,
   Minimize2,
 } from "lucide-react";
-import reportService, { type StockReport, type ReportSummary } from "../../../services/reportService";
+import reportService, { type InventoryReport, type ReportSummary } from "../../../services/reportService";
 import storeService, { type Store } from "../../../services/storeService";
 
 type ViewMode = "table" | "grid" | "list";
@@ -33,13 +33,13 @@ interface ReportFilters {
 }
 
 const InventoryReportsPage: React.FC = () => {
-  const [reports, setReports] = useState<StockReport[]>([]);
+  const [reports, setReports] = useState<InventoryReport[]>([]);
   const [summary, setSummary] = useState<ReportSummary>({});
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<keyof StockReport>("material_id");
+  const [sortBy, setSortBy] = useState<keyof InventoryReport>("material_id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
@@ -48,7 +48,7 @@ const InventoryReportsPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<StockReport | null>(null);
+  const [selectedStock, setSelectedStock] = useState<InventoryReport | null>(null);
   const [filters, setFilters] = useState<ReportFilters>({
     store_id: "",
     low_stock_only: false,
@@ -83,7 +83,7 @@ const InventoryReportsPage: React.FC = () => {
       const response = await reportService.getInventoryReports(params);
       
       if (response.success && response.data) {
-        setReports(response.data.inventory as StockReport[] || []);
+        setReports(response.data.stock as InventoryReport[] || []);
         setSummary(response.data.summary as ReportSummary || {});
       }
       setError(null);
@@ -160,14 +160,14 @@ const InventoryReportsPage: React.FC = () => {
     loadReports();
   };
 
-  const handleViewStock = (stock: StockReport) => {
+  const handleViewStock = (stock: InventoryReport) => {
     setSelectedStock(stock);
     setShowViewModal(true);
   };
 
-  const getStockStatusColor = (report: StockReport) => {
+  const getStockStatusColor = (report: InventoryReport) => {
     if (report.qty_on_hand <= 0) return "text-red-700 bg-red-100";
-    if (report.low_stock_alert || report.qty_on_hand <= report.reorder_level) return "text-yellow-700 bg-yellow-100";
+    if (report.qty_on_hand <= report.reorder_level) return "text-yellow-700 bg-yellow-100";
     return "text-green-700 bg-green-100";
   };
 
@@ -248,7 +248,7 @@ const InventoryReportsPage: React.FC = () => {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(report)}`}>
                     {report.qty_on_hand <= 0
                       ? "Out of Stock"
-                      : report.low_stock_alert || report.qty_on_hand <= report.reorder_level
+                      : report.qty_on_hand <= report.reorder_level
                       ? "Low Stock"
                       : "In Stock"}
                   </span>
@@ -296,7 +296,7 @@ const InventoryReportsPage: React.FC = () => {
               <span className={`px-2 py-1 rounded-full font-medium ${getStockStatusColor(report)}`}>
                 {report.qty_on_hand <= 0
                   ? "Out of Stock"
-                  : report.low_stock_alert || report.qty_on_hand <= report.reorder_level
+                  : report.qty_on_hand <= report.reorder_level
                   ? "Low Stock"
                   : "In Stock"}
               </span>
@@ -343,7 +343,7 @@ const InventoryReportsPage: React.FC = () => {
               <span className={`px-2 py-1 rounded-full font-medium text-center ${getStockStatusColor(report)}`}>
                 {report.qty_on_hand <= 0
                   ? "Out of Stock"
-                  : report.low_stock_alert || report.qty_on_hand <= report.reorder_level
+                  : report.qty_on_hand <= report.reorder_level
                   ? "Low Stock"
                   : "In Stock"}
               </span>
@@ -523,7 +523,7 @@ const InventoryReportsPage: React.FC = () => {
               <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
-                  const [field, order] = e.target.value.split("-") as [keyof StockReport, "asc" | "desc"];
+                  const [field, order] = e.target.value.split("-") as [keyof InventoryReport, "asc" | "desc"];
                   setSortBy(field);
                   setSortOrder(order);
                 }}
@@ -569,13 +569,13 @@ const InventoryReportsPage: React.FC = () => {
           </div>
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 md:grid-cols-2  mb-3 flex">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
                   <select
                     value={filters.store_id}
                     onChange={(e) => handleFilterChange("store_id", e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="w-1/2 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
                     <option value="">All Stores</option>
                     {stores.map((store) => (
@@ -731,7 +731,7 @@ const InventoryReportsPage: React.FC = () => {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(selectedStock)}`}>
                       {selectedStock.qty_on_hand <= 0
                         ? "Out of Stock"
-                        : selectedStock.low_stock_alert || selectedStock.qty_on_hand <= selectedStock.reorder_level
+                        : selectedStock.qty_on_hand <= selectedStock.reorder_level
                         ? "Low Stock"
                         : "In Stock"}
                     </span>
