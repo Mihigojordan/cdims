@@ -69,7 +69,7 @@ const EditMaterialRequisitionModal: React.FC<EditMaterialRequisitionModalProps> 
       });
       setErrors([]);
     }
-  }, [requisition]);
+  }, [requisition,isOpen]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -237,6 +237,7 @@ const EditMaterialRequisitionModal: React.FC<EditMaterialRequisitionModalProps> 
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="bg-primary-500 rounded-t-lg p-6">
           <div className="flex items-center justify-between">
+          
             <div>
               <h2 className="text-xl font-semibold text-white">Edit Material Requisition</h2>
               <p className="text-sm text-primary-100 mt-1">Update material requisition details</p>

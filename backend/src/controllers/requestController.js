@@ -424,6 +424,20 @@ const updateRequest = async (req, res) => {
             as: 'role'
           }]
         },
+                        {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
+        },
         {
           model: RequestItem,
           as: 'items',

@@ -256,7 +256,7 @@ approveRequisition: async (
       const { data: updatedRequisition } = await api.put<MaterialRequisition>(`/requests/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return updatedRequisition;
+      return updatedRequisition.data.request;
     } catch (error: any) {
       console.error('Error updating requisition:', error);
       throw new Error(error.response?.data?.message || 'Failed to update requisition');

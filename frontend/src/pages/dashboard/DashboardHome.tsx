@@ -27,6 +27,7 @@ import stockService, { type Stock } from '../../services/stockService';
 import storeService, { type Store } from '../../services/storeService';
 import userService, { type User } from '../../services/userService';
 import useAuth from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // --- Type Definitions ---
 interface DashboardData {
@@ -80,6 +81,7 @@ const DashboardHome: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate()
 
   // Helper function to check if user has access to a section or stat
   const hasAccess = (allowedRoles: string[]): boolean => {
@@ -388,7 +390,7 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2">
+                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2" onClick={()=> navigate('/admin/dashboard/material-requisition')}>
                       View All Requisitions →
                     </button>
                   </div>
@@ -439,7 +441,7 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2">
+                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"   onClick={()=> navigate('/admin/dashboard/stock-management')}>
                       View All Alerts →
                     </button>
                   </div>
@@ -464,7 +466,7 @@ const DashboardHome: React.FC = () => {
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold text-gray-900">Stores Overview</h3>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium"  onClick={()=> navigate('/admin/dashboard/store-management')}>
                       View Details
                     </button>
                   </div>
@@ -524,7 +526,7 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2">
+                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"  onClick={()=> navigate('/admin/dashboard/site-assign-management')}>
                       View All Assignments →
                     </button>
                   </div>
