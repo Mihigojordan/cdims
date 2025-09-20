@@ -490,7 +490,7 @@ const InventoryReportsPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-600">Total Stock Value</p>
-                <p className="text-lg font-semibold text-gray-900">${(summary.total_value || 0).toFixed(2)}</p>
+                <p className="text-lg font-semibold text-gray-900">RWF{(summary.total_value || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>

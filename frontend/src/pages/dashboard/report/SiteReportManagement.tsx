@@ -171,7 +171,7 @@ const SitePerformanceReportsPage: React.FC = () => {
   };
 
   const formatCurrency = (value: number | undefined): string => {
-    return value !== undefined ? `$${value.toFixed(2)}` : "-";
+    return value !== undefined ? `RWF${value.toLocaleString()}` : "-";
   };
 
   const formatTime = (seconds: number | undefined): string => {

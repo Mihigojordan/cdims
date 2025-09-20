@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -55,10 +54,13 @@ const MaterialManagement: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState<CreateMaterialInput>({
+    code: '',
     name: '',
-    description: '',
+    specification: '',
     category_id: undefined,
     unit_id: undefined,
+    unit_price: undefined,
+    active: true,
   });
   const [formError, setFormError] = useState<string>('');
 
@@ -96,6 +98,12 @@ const MaterialManagement: React.FC = () => {
     setTimeout(() => setOperationStatus(null), duration);
   };
 
+  const generateCode = (name: string): string => {
+    const prefix = name.trim().slice(0, 3).toUpperCase() || 'MAT';
+    const number = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefix}-${number}`;
+  };
+
   const handleFilterAndSort = () => {
     let filtered = [...allMaterials];
 
@@ -103,7 +111,8 @@ const MaterialManagement: React.FC = () => {
       filtered = filtered.filter(
         (material) =>
           material.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          material.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          material.specification?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.code?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -132,27 +141,43 @@ const MaterialManagement: React.FC = () => {
 
   const handleAddMaterial = () => {
     setFormData({
+      code: '',
       name: '',
-      description: '',
+      specification: '',
       category_id: undefined,
       unit_id: undefined,
+      unit_price: undefined,
+      active: true,
     });
     setFormError('');
     setShowAddModal(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const value = e.target.name === 'category_id' || e.target.name === 'unit_id' 
-      ? (e.target.value ? parseInt(e.target.value) : undefined) 
-      : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value, type } = e.target;
+    let newValue: any = value;
+
+    if (name === 'category_id' || name === 'unit_id') {
+      newValue = value ? parseInt(value) : undefined;
+    } else if (name === 'unit_price') {
+      newValue = value ? parseFloat(value) : undefined;
+    } else if (type === 'checkbox') {
+      newValue = (e.target as HTMLInputElement).checked;
+    }
+
+    setFormData({ ...formData, [name]: newValue });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
-    const validation: ValidationResult = materialService.validateMaterialData(formData);
+    const dataToValidate = { ...formData };
+    if (!dataToValidate.code) {
+      dataToValidate.code = generateCode(dataToValidate.name || 'MATERIAL');
+    }
+
+    const validation: ValidationResult = materialService.validateMaterialData(dataToValidate);
     if (!validation.isValid) {
       setFormError(validation.errors.join(', '));
       return;
@@ -160,13 +185,16 @@ const MaterialManagement: React.FC = () => {
 
     try {
       setOperationLoading(true);
-      const newMaterial = await materialService.createMaterial(formData);
+      const newMaterial = await materialService.createMaterial(dataToValidate);
       setShowAddModal(false);
       setFormData({
+        code: '',
         name: '',
-        description: '',
+        specification: '',
         category_id: undefined,
         unit_id: undefined,
+        unit_price: undefined,
+        active: true,
       });
       loadData();
       showOperationStatus("success", `${newMaterial.name} created successfully!`);
@@ -181,10 +209,13 @@ const MaterialManagement: React.FC = () => {
     if (!material?.id) return;
     setSelectedMaterial(material);
     setFormData({
+      code: material.code || '',
       name: material.name || '',
-      description: material.description || '',
-      category_id: material.category_id || undefined,
-      unit_id: material.unit_id || undefined,
+      specification: material.specification || '',
+      category_id: material.category_id,
+      unit_id: material.unit_id,
+      unit_price: material.unit_price,
+      active: material.active ?? true,
     });
     setShowUpdateModal(true);
   };
@@ -210,10 +241,13 @@ const MaterialManagement: React.FC = () => {
       setShowUpdateModal(false);
       setSelectedMaterial(null);
       setFormData({
+        code: '',
         name: '',
-        description: '',
+        specification: '',
         category_id: undefined,
         unit_id: undefined,
+        unit_price: undefined,
+        active: true,
       });
       loadData();
       showOperationStatus("success", `${formData.name} updated successfully!`);
@@ -253,6 +287,10 @@ const MaterialManagement: React.FC = () => {
     });
   };
 
+  const formatCurrency = (value?: number): string => {
+    return value ? `RWF${value?.toLocaleString()}` : 'N/A';
+  };
+
   const totalPages = Math.ceil(materials.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -274,9 +312,11 @@ const MaterialManagement: React.FC = () => {
                   <ChevronDown className={`w-3 h-3 ${sortBy === "name" ? "text-primary-600" : "text-gray-400"}`} />
                 </div>
               </th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Description</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden md:table-cell">Code</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Specification</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Category</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Unit</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden md:table-cell">Price</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
               <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
             </tr>
@@ -286,13 +326,15 @@ const MaterialManagement: React.FC = () => {
               <tr key={material.id || index} className="hover:bg-gray-25">
                 <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
                 <td className="py-2 px-2 font-medium text-gray-900 text-xs">{material.name}</td>
-                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{material.description || 'N/A'}</td>
+                <td className="py-2 px-2 text-gray-700 hidden md:table-cell">{material.code || 'N/A'}</td>
+                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{material.specification || 'N/A'}</td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">
                   {material.category_id ? categories.find(c => c.id === material.category_id)?.name || 'N/A' : 'None'}
                 </td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">
                   {material.unit_id ? units.find(u => u.id === material.unit_id)?.name || 'N/A' : 'None'}
                 </td>
+                <td className="py-2 px-2 text-gray-700 hidden md:table-cell">{formatCurrency(material.unit_price)}</td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(material.created_at)}</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
@@ -337,15 +379,21 @@ const MaterialManagement: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium text-gray-900 text-xs truncate">{material.name}</div>
-              <div className="text-gray-500 text-xs truncate">{material.description || 'No description'}</div>
+              <div className="text-gray-500 text-xs truncate">{material.code || 'No code'}</div>
             </div>
           </div>
           <div className="space-y-1 mb-3">
+            <div className="text-xs text-gray-600 truncate">
+              Specification: {material.specification || 'N/A'}
+            </div>
             <div className="text-xs text-gray-600 truncate">
               Category: {material.category_id ? categories.find(c => c.id === material.category_id)?.name || 'N/A' : 'None'}
             </div>
             <div className="text-xs text-gray-600 truncate">
               Unit: {material.unit_id ? units.find(u => u.id === material.unit_id)?.name || 'N/A' : 'None'}
+            </div>
+            <div className="text-xs text-gray-600 truncate">
+              Price: {formatCurrency(material.unit_price)}
             </div>
           </div>
           <div className="flex items-center justify-between">
@@ -377,12 +425,13 @@ const MaterialManagement: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 text-sm truncate">{material.name}</div>
-                <div className="text-gray-500 text-xs truncate">{material.description || 'No description'}</div>
+                <div className="text-gray-500 text-xs truncate">{material.code || 'No code'}</div>
               </div>
             </div>
-            <div className="hidden md:grid grid-cols-3 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
+            <div className="hidden md:grid grid-cols-4 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
+              <span className="truncate">{material.specification || 'N/A'}</span>
               <span className="truncate">{material.category_id ? categories.find(c => c.id === material.category_id)?.name || 'N/A' : 'None'}</span>
-              <span className="truncate">{material.unit_id ? units.find(u => u.id === material.unit_id)?.name || 'N/A' : 'None'}</span>
+              <span className="truncate">{formatCurrency(material.unit_price)}</span>
               <span>{formatDate(material.created_at)}</span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
@@ -710,15 +759,38 @@ const MaterialManagement: React.FC = () => {
                   placeholder="Enter material name"
                 />
               </div>
+              {/* <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter code or leave blank to auto-generate"
+                />
+              </div> */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Specification</label>
                 <textarea
-                  name="description"
-                  value={formData.description}
+                  name="specification"
+                  value={formData.specification}
                   onChange={handleInputChange}
                   rows={3}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter material description"
+                  placeholder="Enter material specification"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                <input
+                  type="number"
+                  name="unit_price"
+                  value={formData.unit_price ?? ''}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter unit price"
                 />
               </div>
               <div>
@@ -736,11 +808,12 @@ const MaterialManagement: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Unit *</label>
                 <select
                   name="unit_id"
                   value={formData.unit_id || ''}
                   onChange={handleInputChange}
+                  required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Select a unit</option>
@@ -755,10 +828,13 @@ const MaterialManagement: React.FC = () => {
                   onClick={() => {
                     setShowAddModal(false);
                     setFormData({
+                      code: '',
                       name: '',
-                      description: '',
+                      specification: '',
                       category_id: undefined,
                       unit_id: undefined,
+                      unit_price: undefined,
+                      active: true,
                     });
                     setFormError('');
                   }}
@@ -802,14 +878,37 @@ const MaterialManagement: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter code"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Specification</label>
                 <textarea
-                  name="description"
-                  value={formData.description}
+                  name="specification"
+                  value={formData.specification}
                   onChange={handleInputChange}
                   rows={3}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter material description"
+                  placeholder="Enter material specification"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                <input
+                  type="number"
+                  name="unit_price"
+                  value={formData.unit_price ?? ''}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter unit price"
                 />
               </div>
               <div>
@@ -827,11 +926,12 @@ const MaterialManagement: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Unit *</label>
                 <select
                   name="unit_id"
                   value={formData.unit_id || ''}
                   onChange={handleInputChange}
+                  required
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Select a unit</option>
@@ -840,6 +940,16 @@ const MaterialManagement: React.FC = () => {
                   ))}
                 </select>
               </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="active"
+                  checked={formData.active}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                />
+                <label className="text-xs font-medium text-gray-700">Active</label>
+              </div>
               <div className="flex justify-end space-x-2 pt-2">
                 <button
                   type="button"
@@ -847,10 +957,13 @@ const MaterialManagement: React.FC = () => {
                     setShowUpdateModal(false);
                     setSelectedMaterial(null);
                     setFormData({
+                      code: '',
                       name: '',
-                      description: '',
+                      specification: '',
                       category_id: undefined,
                       unit_id: undefined,
+                      unit_price: undefined,
+                      active: true,
                     });
                     setFormError('');
                   }}
@@ -881,8 +994,16 @@ const MaterialManagement: React.FC = () => {
                 <p className="text-xs text-gray-900">{selectedMaterial.name || '-'}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <p className="text-xs text-gray-900">{selectedMaterial.description || '-'}</p>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
+                <p className="text-xs text-gray-900">{selectedMaterial.code || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Specification</label>
+                <p className="text-xs text-gray-900">{selectedMaterial.specification || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                <p className="text-xs text-gray-900">{formatCurrency(selectedMaterial.unit_price)}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
@@ -891,6 +1012,10 @@ const MaterialManagement: React.FC = () => {
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
                 <p className="text-xs text-gray-900">{selectedMaterial.unit_id ? units.find(u => u.id === selectedMaterial.unit_id)?.name || '-' : 'None'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Active</label>
+                <p className="text-xs text-gray-900">{selectedMaterial.active ? 'Yes' : 'No'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>

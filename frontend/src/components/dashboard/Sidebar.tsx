@@ -90,7 +90,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       setOpenDropdown("siteManagement");
     } else if (stockPages.includes(currentPath)) {
       setOpenDropdown("stocks");
-    } else {
+    } else if (reportPages.includes(currentPath)){
+      setOpenDropdown("reports")
+    }else {
       setOpenDropdown(null);
     }
   }, [location.pathname]);
