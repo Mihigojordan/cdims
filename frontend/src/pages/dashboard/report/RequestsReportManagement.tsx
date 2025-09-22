@@ -156,267 +156,479 @@ const RequestReportsPage: React.FC = () => {
   const exportToPDF = () => {
     const element = document.createElement('div');
     element.innerHTML = `
-      <style>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Reports</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body { 
-          font-family: Arial, sans-serif; 
-          margin: 0; 
-          padding: 20px; 
-          line-height: 1.4; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: #ffffff;
+            margin: 0; 
+            padding: 20px; 
+            line-height: 1.5; 
+            color: #333;
         }
+        
         .company-header { 
-          display: flex; 
-          align-items: center; 
-          justify-content: space-between; 
-          margin-bottom: 30px; 
-          padding-bottom: 20px; 
-          border-bottom: 3px solid #007bff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 40px; 
+            padding: 30px 0;
+            border-bottom: 3px solid #ff6b35; 
+            position: relative;
         }
+        
+        .company-header::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 120px;
+            height: 3px;
+            background: #ff8c42;
+        }
+        
+        .company-left {
+            display: flex;
+            align-items: center;
+        }
+        
         .company-logo { 
-          width: 80px; 
-          height: 80px; 
-          border-radius: 8px; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          color: white; 
-          font-weight: bold; 
-          font-size: 24px; 
+            width: 80px; 
+            height: 80px; 
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: 700; 
+            font-size: 24px;
+            margin-right: 30px;
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
         }
+        
         .company-logo img {
-          width:100%;
-          height:100%;
-          object-fit:cover;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
         }
+        
         .company-info { 
-          flex: 1; 
-          margin-left: 30px; 
+            flex: 1; 
         }
+        
         .company-name { 
-          font-size: 28px; 
-          font-weight: bold; 
-          color: #333; 
-          margin-bottom: 5px; 
+            font-size: 28px; 
+            font-weight: 700; 
+            color: #333; 
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
         }
+        
         .company-tagline { 
-          font-size: 14px; 
-          color: #666; 
-          margin-bottom: 10px; 
-          font-style: italic; 
+            font-size: 14px; 
+            color: #666; 
+            margin-bottom: 12px; 
+            font-style: italic; 
         }
+        
         .company-details { 
-          font-size: 12px; 
-          color: #666; 
-          line-height: 1.3; 
+            font-size: 12px; 
+            color: #666; 
+            line-height: 1.4; 
         }
+        
+        .company-details div {
+            margin-bottom: 2px;
+        }
+        
         .report-info { 
-          text-align: right; 
-          font-size: 12px; 
-          color: #666; 
+            text-align: right; 
+            font-size: 12px; 
+            color: #666;
+            background: #fff;
+            padding: 20px;
+            border: 2px solid #ff6b35;
+            border-radius: 8px;
         }
+        
+        .report-info div {
+            margin-bottom: 6px;
+        }
+        
+        .report-info strong {
+            color: #ff6b35;
+        }
+        
         .report-title { 
-          font-size: 24px; 
-          font-weight: bold; 
-          color: #333; 
-          text-align: center; 
-          margin: 30px 0; 
-          padding: 15px; 
-          background: #f8f9fa; 
-          border-left: 5px solid #007bff; 
+            font-size: 24px; 
+            font-weight: 700; 
+            color: #333; 
+            text-align: center; 
+            margin: 30px 0 40px 0; 
+            padding: 20px; 
+            background: #ffffff; 
+            border-left: 6px solid #ff6b35;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 15px rgba(255, 107, 53, 0.1);
+            position: relative;
         }
+        
         .summary { 
-          display: grid; 
-          grid-template-columns: repeat(4, 1fr); 
-          gap: 20px; 
-          margin-bottom: 30px; 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 20px; 
+            margin-bottom: 40px; 
         }
+        
         .summary-card { 
-          border: 1px solid #ddd; 
-          padding: 15px; 
-          text-align: center; 
-          border-radius: 8px; 
-          background: #fff; 
+            background: #ffffff;
+            border: 1px solid #f0f0f0; 
+            padding: 24px; 
+            text-align: center; 
+            border-radius: 12px;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
+        
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.15);
+        }
+        
         .summary-card h3 { 
-          margin: 0 0 5px 0; 
-          font-size: 24px; 
-          color: #007bff; 
+            margin: 0 0 8px 0; 
+            font-size: 32px; 
+            color: #ff6b35;
+            font-weight: 700;
         }
+        
         .summary-card p { 
-          margin: 0; 
-          font-size: 12px; 
-          color: #666; 
+            margin: 0; 
+            font-size: 14px; 
+            color: #666;
+            font-weight: 500;
         }
+        
         .filters { 
-          background: #f8f9fa; 
-          padding: 20px; 
-          margin-bottom: 30px; 
-          border-radius: 8px; 
-          border: 1px solid #dee2e6; 
+            background: #fafafa; 
+            padding: 24px; 
+            margin-bottom: 30px; 
+            border-radius: 12px; 
+            border: 1px solid #f0f0f0;
+            position: relative;
         }
+        
+        .filters::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            border-radius: 12px 12px 0 0;
+        }
+        
         .filters h3 { 
-          margin-top: 0; 
-          color: #333; 
-          font-size: 16px; 
+            margin-top: 0; 
+            margin-bottom: 16px;
+            color: #333; 
+            font-size: 18px;
+            font-weight: 600;
         }
+        
         .filters p { 
-          margin: 8px 0; 
-          font-size: 12px; 
+            margin: 10px 0; 
+            font-size: 13px;
+            display: flex;
+            align-items: center;
         }
+        
+        .filters p strong {
+            color: #ff6b35;
+            min-width: 100px;
+            font-weight: 600;
+        }
+        
+        .table-container {
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            border: 1px solid #f0f0f0;
+            margin-bottom: 30px;
+        }
+        
         table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          margin-bottom: 30px; 
-          background: white; 
-          border-radius: 8px; 
-          overflow: hidden; 
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            width: 100%; 
+            border-collapse: collapse; 
         }
+        
         th, td { 
-          border: 1px solid #dee2e6; 
-          padding: 12px 8px; 
-          text-align: left; 
-          font-size: 11px; 
+            padding: 16px 12px; 
+            text-align: left; 
+            font-size: 12px;
+            border-bottom: 1px solid #f0f0f0;
         }
+        
         th { 
-          background-color: #007bff; 
-          color: white; 
-          font-weight: bold; 
-          font-size: 12px; 
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            color: white; 
+            font-weight: 600; 
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        
+        th:first-child {
+            border-radius: 0;
+        }
+        
+        th:last-child {
+            border-radius: 0;
+        }
+        
+        td {
+            color: #555;
+        }
+        
         tr:nth-child(even) { 
-          background-color: #f8f9fa; 
+            background-color: #fafafa; 
         }
+        
+        tr:hover {
+            background-color: #fff5f2;
+        }
+        
         .status { 
-          padding: 4px 8px; 
-          border-radius: 4px; 
-          font-size: 10px; 
-          font-weight: bold; 
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 10px; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            min-width: 70px;
+            text-align: center;
         }
+        
         .status.approved { 
-          background: #d4edda; 
-          color: #155724; 
+            background: #ff6b35; 
+            color: white;
         }
+        
         .status.rejected { 
-          background: #f8d7da; 
-          color: #721c24; 
+            background: #666; 
+            color: white; 
         }
+        
         .status.pending { 
-          background: #fff3cd; 
-          color: #856404; 
+            background: #ff8c42; 
+            color: white; 
         }
+        
         .status.issued { 
-          background: #cce5ff; 
-          color: #004085; 
+            background: #ff6b35; 
+            color: white;
+            opacity: 0.8;
         }
+        
         .status.draft { 
-          background: #e9ecef; 
-          color: #495057; 
+            background: #f0f0f0; 
+            color: #666; 
         }
+        
         .footer { 
-          margin-top: 40px; 
-          padding-top: 20px; 
-          border-top: 2px solid #dee2e6; 
-          text-align: center; 
-          font-size: 10px; 
-          color: #666; 
+            margin-top: 40px; 
+            padding: 24px 0;
+            border-top: 2px solid #ff6b35; 
+            text-align: center; 
+            font-size: 11px; 
+            color: #666;
+            position: relative;
         }
-        .page-break { 
-          page-break-before: always; 
+        
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            width: 100px;
+            height: 2px;
+            background: #ff8c42;
         }
-      </style>
-      <div class="company-header">
-        <div style="display: flex; align-items: center;">
-          <div class="company-logo">
-            <img src="${Logo}" alt="logo" >
-          </div>
-          <div class="company-info">
-            <div class="company-name">Your Company Name</div>
-            <div class="company-tagline">Excellence in Supply Chain Management</div>
-            <div class="company-details">
-              <div><strong>Address:</strong> 123 Business Street, City, Country</div>
-              <div><strong>Phone:</strong> +1 (555) 123-4567 | <strong>Email:</strong> contact@company.com</div>
-              <div><strong>Website:</strong> www.yourcompany.com</div>
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .summary-card:hover,
+            tr:hover {
+                transform: none;
+                background-color: transparent;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .company-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .company-left {
+                margin-bottom: 20px;
+            }
+            
+            .report-info {
+                width: 100%;
+            }
+            
+            .summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .summary {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 10px;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="company-header">
+        <div class="company-left">
+            <div class="company-logo">
+                <img src="${Logo}" alt="logo">
             </div>
-          </div>
+            <div class="company-info">
+                <div class="company-name">Catholic Diocese</div>
+                <div class="company-details">
+                    <div><strong>Address:</strong> Nyarugenge, Rwanda</div>
+                    <div><strong>Phone:</strong> 0791813289 | <strong>Email:</strong> contact@company.com</div>
+                </div>
+            </div>
         </div>
         <div class="report-info">
-          <div><strong>Report Type:</strong> Request Reports</div>
-          <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: 'long', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</div>
-          <div><strong>Total Records:</strong> ${filteredReports.length}</div>
+            <div><strong>Report Type:</strong> Request Reports</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { 
+                day: '2-digit', 
+                month: 'long', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })}</div>
+            <div><strong>Total Records:</strong> ${filteredReports.length}</div>
         </div>
-      </div>
-      
-      ${exportOptions.includeSummary ? `
-      <div class="summary">
+    </div>
+    
+    ${exportOptions.includeSummary ? `
+    <div class="summary">
         <div class="summary-card">
-          <h3>${summary.total_requests || 0}</h3>
-          <p>Total Requests</p>
-        </div>
-        <div class="summary-card">
-          <h3>${summary.approved_requests || 0}</h3>
-          <p>Approved</p>
+            <h3>${summary.total_requests || 0}</h3>
+            <p>Total Requests</p>
         </div>
         <div class="summary-card">
-          <h3>${summary.pending_requests || 0}</h3>
-          <p>Pending</p>
+            <h3>${summary.approved_requests || 0}</h3>
+            <p>Approved</p>
         </div>
         <div class="summary-card">
-          <h3>${summary.rejected_requests || 0}</h3>
-          <p>Rejected</p>
+            <h3>${summary.pending_requests || 0}</h3>
+            <p>Pending</p>
         </div>
-      </div>
-      ` : ''}
+        <div class="summary-card">
+            <h3>${summary.rejected_requests || 0}</h3>
+            <p>Rejected</p>
+        </div>
+    </div>
+    ` : ''}
 
-      ${exportOptions.includeFilters ? `
-      <div class="filters">
+    ${exportOptions.includeFilters ? `
+    <div class="filters">
         <h3>Applied Filters</h3>
         <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
         <p><strong>Site:</strong> ${sites.find(s => s.id?.toString() === filters.site_id)?.name || 'All Sites'}</p>
         <p><strong>Status:</strong> ${filters.status || 'All Statuses'}</p>
         <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
-      </div>
-      ` : ''}
+    </div>
+    ` : ''}
 
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Site</th>
-            <th>Requested By</th>
-            <th>Status</th>
-            <th>Items</th>
-            <th>Created Date</th>
-            ${exportOptions.includeItems ? '<th>Item Details</th>' : ''}
-          </tr>
-        </thead>
-        <tbody>
-          ${filteredReports.map(report => `
-            <tr>
-              <td>${report.id || '-'}</td>
-              <td>${report.site?.name || '-'}</td>
-              <td>${report.requestedBy?.full_name || '-'}</td>
-              <td><span class="status ${report.status?.toLowerCase()}">${report.status || '-'}</span></td>
-              <td>${report.items?.length || 0}</td>
-              <td>${formatDate(report.created_at)}</td>
-              ${exportOptions.includeItems ? `
-                <td>${report.items?.map(item => 
-                  `${item.material?.name || 'Unknown'}: ${item.qty_requested} ${item.material?.unit?.symbol || ''}`
-                ).join('<br>') || 'No items'}</td>
-              ` : ''}
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+    <div class="report-title">Request Reports</div>
 
-      <div class="footer">
-        Generated by Your Company Name | Page 1 of 1
-      </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Site</th>
+                    <th>Requested By</th>
+                    <th>Status</th>
+                    <th>Items</th>
+                    <th>Created Date</th>
+                    ${exportOptions.includeItems ? '<th>Item Details</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>
+                ${filteredReports.map(report => `
+                    <tr>
+                        <td>${report.id || '-'}</td>
+                        <td>${report.site?.name || '-'}</td>
+                        <td>${report.requestedBy?.full_name || '-'}</td>
+                        <td><span class="status ${report.status?.toLowerCase()}">${report.status || '-'}</span></td>
+                        <td>${report.items?.length || 0}</td>
+                        <td>${formatDate(report.created_at)}</td>
+                        ${exportOptions.includeItems ? `
+                            <td>${report.items?.map(item => 
+                                `${item.material?.name || 'Unknown'}: ${item.qty_requested} ${item.material?.unit?.symbol || ''}`
+                            ).join('<br>') || 'No items'}</td>
+                        ` : ''}
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        Generated by Catholic Diocese
+    </div>
+</body>
+</html>
     `;
 
     const opt = {
