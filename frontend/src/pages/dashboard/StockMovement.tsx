@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   ChevronDown,
@@ -14,11 +14,32 @@ import {
   Filter,
   Grid3X3,
   List,
+  AlignJustify,
 } from 'lucide-react';
-import stockService, { type StockMovement, type StockMovementsFilterParams, type Pagination } from '../../services/stockService';
+import stockService, { type StockMovement, type Request, type User, type StockMovementsFilterParams, type Pagination } from '../../services/stockService';
 import materialService, { type Material } from '../../services/materialsService';
 import storeService, { type Store } from '../../services/storeService';
 import html2pdf from 'html2pdf.js';
+
+interface StockMovement {
+  id?: number;
+  store_id: number;
+  material_id: number;
+  movement_type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER';
+  source_type: 'GRN' | 'ISSUE' | 'ADJUSTMENT';
+  source_id: number;
+  qty: number;
+  unit_price?: number;
+  notes?: string;
+  created_by?: number;
+  created_at?: Date;
+  reference_type?: string;
+  reference_id?: number;
+  store?: Store;
+  material?: Material;
+  request?: Request;
+  createdBy?: User;
+}
 
 type ViewMode = 'table' | 'grid' | 'list';
 
@@ -32,14 +53,13 @@ const StockMovementsDashboard: React.FC = () => {
   const [allMovements, setAllMovements] = useState<StockMovement[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ current_page: 1, total_pages: 1, total_items: 0, items_per_page: 8 });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortBy, setSortBy] = useState<keyof StockMovement>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(8);
+  const [itemsPerPage] = useState<number>(8); // Fixed to 8 to match DepartmentDashboard
   const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
   const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -47,6 +67,17 @@ const StockMovementsDashboard: React.FC = () => {
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
   const [selectedMovementType, setSelectedMovementType] = useState<string>('');
+
+  // Debounce search input
+  const debounce = useCallback((fn: (...args: any[]) => void, delay: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  }, []);
+
+  const debounceSearch = useCallback(debounce((value: string) => setSearchTerm(value), 300), []);
 
   useEffect(() => {
     loadData();
@@ -60,20 +91,21 @@ const StockMovementsDashboard: React.FC = () => {
     try {
       setLoading(true);
       const [movementsResponse, materialsResponse, storesResponse] = await Promise.all([
-        stockService.getStockMovements({ page: currentPage, limit: itemsPerPage }),
+        stockService.getStockMovements(),
         materialService.getAllMaterials(),
         storeService.getAllStores(),
       ]);
 
-
-      setAllMovements(movementsResponse.movements || []);
-      setPagination(movementsResponse.pagination || { current_page: 1, total_pages: 1, total_items: 0, items_per_page: 8 });
+      const fetchedMovements = movementsResponse.movements || [];
+      setAllMovements(fetchedMovements);
+      setMovements(fetchedMovements);
       setMaterials(materialsResponse || []);
       setStores(storesResponse.stores || []);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load stock movements');
-      showOperationStatus('error', err.message || 'Failed to load stock movements');
+      const errorMessage = err.message || 'An unexpected error occurred';
+      setError(errorMessage);
+      showOperationStatus('error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,34 +119,29 @@ const StockMovementsDashboard: React.FC = () => {
   const handleFilterAndSort = () => {
     let filtered = [...allMovements];
 
-    // Apply search term filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(
         (movement) =>
-          movement.material?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          movement.store?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+          (movement.material?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (movement.store?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Apply store filter
     if (selectedStore) {
-      filtered = filtered.filter((movement) => movement.store?.name?.toLowerCase() === selectedStore.toLowerCase());
+      filtered = filtered.filter((movement) => (movement.store?.name || '').toLowerCase() === selectedStore.toLowerCase());
     }
 
-    // Apply material filter
     if (selectedMaterial) {
-      filtered = filtered.filter((movement) => movement.material?.name?.toLowerCase() === selectedMaterial.toLowerCase());
+      filtered = filtered.filter((movement) => (movement.material?.name || '').toLowerCase() === selectedMaterial.toLowerCase());
     }
 
-    // Apply movement type filter
     if (selectedMovementType) {
       filtered = filtered.filter((movement) => movement.movement_type === selectedMovementType);
     }
 
-    // Sort movements
     filtered.sort((a, b) => {
-      const aValue = sortBy === 'material_id' ? a.material?.name : sortBy === 'store_id' ? a.store?.name : a[sortBy];
-      const bValue = sortBy === 'material_id' ? b.material?.name : sortBy === 'store_id' ? b.store?.name : b[sortBy];
+      const aValue = sortBy === 'material_id' ? (a.material?.name || '') : sortBy === 'store_id' ? (a.store?.name || '') : a[sortBy];
+      const bValue = sortBy === 'material_id' ? (b.material?.name || '') : sortBy === 'store_id' ? (b.store?.name || '') : b[sortBy];
 
       if (sortBy === 'created_at') {
         const aDate = aValue ? new Date(aValue as string | Date) : new Date(0);
@@ -128,7 +155,7 @@ const StockMovementsDashboard: React.FC = () => {
     });
 
     setMovements(filtered);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page, matching DepartmentDashboard
   };
 
   const handleExportPDF = async () => {
@@ -143,7 +170,7 @@ const StockMovementsDashboard: React.FC = () => {
           <td style="font-size:10px;">${movement.material?.name || 'N/A'}</td>
           <td style="font-size:10px;">${movement.store?.name || 'N/A'}</td>
           <td style="font-size:10px;">${movement.movement_type}</td>
-          <td style="font-size:10px;">${movement.quantity}</td>
+          <td style="font-size:10px;">${movement.qty}</td>
           <td style="font-size:10px;">${movement.reference_type || '-'}/${movement.reference_id || '-'}</td>
           <td style="font-size:10px;">${new Date(movement.created_at || '').toLocaleDateString('en-GB')}</td>
         </tr>
@@ -225,6 +252,7 @@ const StockMovementsDashboard: React.FC = () => {
   const uniqueStores = [...new Set(allMovements.map(movement => movement.store?.name))].filter(name => name).length;
   const uniqueMaterials = [...new Set(allMovements.map(movement => movement.material?.name))].filter(name => name).length;
 
+  const totalPages = Math.ceil(movements.length / itemsPerPage); // Match DepartmentDashboard
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentMovements = movements.slice(startIndex, endIndex);
@@ -235,8 +263,9 @@ const StockMovementsDashboard: React.FC = () => {
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
+              <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
               <th
+                scope="col"
                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => {
                   setSortBy('material_id');
@@ -248,8 +277,9 @@ const StockMovementsDashboard: React.FC = () => {
                   <ChevronDown className={`w-3 h-3 ${sortBy === 'material_id' ? 'text-primary-600' : 'text-gray-400'}`} />
                 </div>
               </th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Store</th>
+              <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Store</th>
               <th
+                scope="col"
                 className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell cursor-pointer hover:bg-gray-100"
                 onClick={() => {
                   setSortBy('movement_type');
@@ -261,9 +291,10 @@ const StockMovementsDashboard: React.FC = () => {
                   <ChevronDown className={`w-3 h-3 ${sortBy === 'movement_type' ? 'text-primary-600' : 'text-gray-400'}`} />
                 </div>
               </th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Quantity</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden xl:table-cell">Reference</th>
+              <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Quantity</th>
+              <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium hidden xl:table-cell">Reference</th>
               <th
+                scope="col"
                 className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell cursor-pointer hover:bg-gray-100"
                 onClick={() => {
                   setSortBy('created_at');
@@ -294,7 +325,7 @@ const StockMovementsDashboard: React.FC = () => {
                     {movement.movement_type}
                   </span>
                 </td>
-                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{movement.quantity}</td>
+                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{movement.qty}</td>
                 <td className="py-2 px-2 text-gray-700 hidden xl:table-cell">
                   {movement.reference_type || '-'}/{movement.reference_id || '-'}
                 </td>
@@ -332,7 +363,7 @@ const StockMovementsDashboard: React.FC = () => {
                 {movement.movement_type}
               </span>
             </div>
-            <div className="text-xs text-gray-600">Qty: {movement.quantity}</div>
+            <div className="text-xs text-gray-600">Qty: {movement.qty}</div>
             <div className="text-xs text-gray-600">Date: {formatDate(movement.created_at)}</div>
           </div>
         </div>
@@ -364,7 +395,7 @@ const StockMovementsDashboard: React.FC = () => {
               >
                 {movement.movement_type}
               </span>
-              <span>Qty: {movement.quantity}</span>
+              <span>Qty: {movement.qty}</span>
               <span>{formatDate(movement.created_at)}</span>
             </div>
           </div>
@@ -377,7 +408,7 @@ const StockMovementsDashboard: React.FC = () => {
     const pages: number[] = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(pagination.total_pages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
@@ -415,7 +446,7 @@ const StockMovementsDashboard: React.FC = () => {
           ))}
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            disabled={currentPage === pagination.total_pages}
+            disabled={currentPage === totalPages}
             className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronRight className="w-3 h-3" />
@@ -440,6 +471,7 @@ const StockMovementsDashboard: React.FC = () => {
                 disabled={operationLoading || movements.length === 0}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
                 title="Export PDF"
+                aria-label="Export to PDF"
               >
                 <RefreshCw className="w-3 h-3" />
                 <span>Export</span>
@@ -449,6 +481,7 @@ const StockMovementsDashboard: React.FC = () => {
                 disabled={loading}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
                 title="Refresh"
+                aria-label="Refresh data"
               >
                 <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
@@ -503,9 +536,9 @@ const StockMovementsDashboard: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Search by material or store..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => debounceSearch(e.target.value)}
                   className="w-48 pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                  aria-label="Search stock movements"
                 />
               </div>
               <button
@@ -513,6 +546,7 @@ const StockMovementsDashboard: React.FC = () => {
                 className={`flex items-center space-x-1 px-2 py-1.5 text-xs border rounded transition-colors ${
                   showFilters ? 'bg-primary-50 border-primary-200 text-primary-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
+                aria-label={showFilters ? 'Hide filters' : 'Show filters'}
               >
                 <Filter className="w-3 h-3" />
                 <span>Filter</span>
@@ -527,6 +561,7 @@ const StockMovementsDashboard: React.FC = () => {
                   setSortOrder(order);
                 }}
                 className="text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                aria-label="Sort options"
               >
                 <option value="material_id-asc">Material (A-Z)</option>
                 <option value="material_id-desc">Material (Z-A)</option>
@@ -544,6 +579,7 @@ const StockMovementsDashboard: React.FC = () => {
                     viewMode === 'table' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Table View"
+                  aria-label="Table view"
                 >
                   <List className="w-3 h-3" />
                 </button>
@@ -553,6 +589,7 @@ const StockMovementsDashboard: React.FC = () => {
                     viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Grid View"
+                  aria-label="Grid view"
                 >
                   <Grid3X3 className="w-3 h-3" />
                 </button>
@@ -562,8 +599,9 @@ const StockMovementsDashboard: React.FC = () => {
                     viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="List View"
+                  aria-label="List view"
                 >
-                  <List className="w-3 h-3" />
+                  <AlignJustify className="w-3 h-3" />
                 </button>
               </div>
             </div>
@@ -575,6 +613,7 @@ const StockMovementsDashboard: React.FC = () => {
                   value={selectedStore}
                   onChange={(e) => setSelectedStore(e.target.value)}
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  aria-label="Filter by store"
                 >
                   <option value="">All Stores</option>
                   {stores.map((store) => (
@@ -585,6 +624,7 @@ const StockMovementsDashboard: React.FC = () => {
                   value={selectedMaterial}
                   onChange={(e) => setSelectedMaterial(e.target.value)}
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  aria-label="Filter by material"
                 >
                   <option value="">All Materials</option>
                   {materials.map((material) => (
@@ -595,6 +635,7 @@ const StockMovementsDashboard: React.FC = () => {
                   value={selectedMovementType}
                   onChange={(e) => setSelectedMovementType(e.target.value)}
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  aria-label="Filter by movement type"
                 >
                   <option value="">All Movement Types</option>
                   <option value="IN">IN</option>
@@ -610,6 +651,7 @@ const StockMovementsDashboard: React.FC = () => {
                       setSelectedMovementType('');
                     }}
                     className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                    aria-label="Clear all filters"
                   >
                     Clear Filters
                   </button>
@@ -645,43 +687,43 @@ const StockMovementsDashboard: React.FC = () => {
             {viewMode === 'table' && renderTableView()}
             {viewMode === 'grid' && renderGridView()}
             {viewMode === 'list' && renderListView()}
-            {pagination.total_pages > 1 && renderPagination()}
+            {renderPagination()}
+          </div>
+        )}
+
+        {operationStatus && (
+          <div className="fixed top-4 right-4 z-50">
+            <div
+              className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
+                operationStatus.type === 'success'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : operationStatus.type === 'error'
+                  ? 'bg-red-50 border border-red-200 text-red-800'
+                  : 'bg-primary-50 border border-primary-200 text-primary-800'
+              }`}
+            >
+              {operationStatus.type === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
+              {operationStatus.type === 'error' && <XCircle className="w-4 h-4 text-red-600" />}
+              {operationStatus.type === 'info' && <AlertCircle className="w-4 h-4 text-primary-600" />}
+              <span className="font-medium">{operationStatus.message}</span>
+              <button onClick={() => setOperationStatus(null)} className="hover:opacity-70" aria-label="Close notification">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {operationLoading && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40">
+            <div className="bg-white rounded p-4 shadow-xl">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-gray-700 text-xs font-medium">Processing...</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {operationStatus && (
-        <div className="fixed top-4 right-4 z-50">
-          <div
-            className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
-              operationStatus.type === 'success'
-                ? 'bg-green-50 border border-green-200 text-green-800'
-                : operationStatus.type === 'error'
-                ? 'bg-red-50 border border-red-200 text-red-800'
-                : 'bg-primary-50 border border-primary-200 text-primary-800'
-            }`}
-          >
-            {operationStatus.type === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
-            {operationStatus.type === 'error' && <XCircle className="w-4 h-4 text-red-600" />}
-            {operationStatus.type === 'info' && <AlertCircle className="w-4 h-4 text-primary-600" />}
-            <span className="font-medium">{operationStatus.message}</span>
-            <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {operationLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40">
-          <div className="bg-white rounded p-4 shadow-xl">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-gray-700 text-xs font-medium">Processing...</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -543,6 +543,16 @@ const approveRequest = async (req, res) => {
       }
     } 
 
+    else if(level === 'PADIRI' && request.items){
+      for(const modification of request.items){
+         await RequestItem.update(
+          { qty_approved: modification.qty_approved ?? modification.qty_requested  },
+          
+          { where: { id: modification.id } }
+        );
+      }
+    }
+
     // Prevent duplicate approvals by same user & level
     const existingApproval = await Approval.findOne({
       where: { request_id: id, level, reviewer_id }

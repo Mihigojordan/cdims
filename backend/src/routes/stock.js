@@ -633,6 +633,7 @@ router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockControlle
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getStockById);
+router.get('material/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getStockByMaterialId);
 
 /**
  * @swagger

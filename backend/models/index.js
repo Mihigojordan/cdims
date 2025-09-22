@@ -86,10 +86,12 @@ const defineAssociations = () => {
   Stock.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
   Stock.belongsTo(Material, { foreignKey: 'material_id', as: 'material' });
 
-  // StockMovement associations
-  StockMovement.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
-  StockMovement.belongsTo(Material, { foreignKey: 'material_id', as: 'material' });
-  StockMovement.belongsTo(User, { foreignKey: 'created_by', as: 'createdBy' });
+ // StockMovement associations
+StockMovement.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+StockMovement.belongsTo(Material, { foreignKey: 'material_id', as: 'material' });
+StockMovement.belongsTo(User, { foreignKey: 'created_by', as: 'createdBy' });
+StockMovement.belongsTo(Request, { foreignKey: 'source_id', as: 'source' }); // <-- add this
+
 
   // Store associations
   Store.hasMany(Stock, { foreignKey: 'store_id', as: 'stock' });

@@ -16,7 +16,7 @@ import {
   List,
   Eye,
 } from 'lucide-react';
-import stockService, { type Request, type IssuableRequestsFilterParams, type Pagination } from '../../services/stockService';
+import stockService, { type Request } from '../../services/stockService';
 import siteService, { type Site } from '../../services/siteService';
 import html2pdf from 'html2pdf.js';
 
@@ -31,7 +31,6 @@ const IssuableRequestsDashboard: React.FC = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [allRequests, setAllRequests] = useState<Request[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ current_page: 1, total_pages: 1, total_items: 0, items_per_page: 8 });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -59,16 +58,18 @@ const IssuableRequestsDashboard: React.FC = () => {
     try {
       setLoading(true);
       const [requestsResponse, sitesResponse] = await Promise.all([
-        stockService.getIssuableRequests({ page: currentPage, limit: itemsPerPage }),
+        stockService.getIssuableRequests(), // Fetch all requests without pagination
         siteService.getAllSites(),
       ]);
-      setAllRequests(requestsResponse.requests || []);
-      setPagination(requestsResponse.pagination || { current_page: 1, total_pages: 1, total_items: 0, items_per_page: 8 });
+      const fetchedRequests = requestsResponse.requests || [];
+      setAllRequests(fetchedRequests);
+      setRequests(fetchedRequests);
       setSites(sitesResponse.sites || []);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load issuable requests');
-      showOperationStatus('error', err.message || 'Failed to load issuable requests');
+      const errorMessage = err.message || 'Failed to load issuable requests';
+      setError(errorMessage);
+      showOperationStatus('error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -213,6 +214,7 @@ const IssuableRequestsDashboard: React.FC = () => {
   const totalRequests = allRequests.length;
   const uniqueSites = [...new Set(allRequests.map(request => request.site?.name))].filter(name => name).length;
 
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentRequests = requests.slice(startIndex, endIndex);
@@ -293,7 +295,8 @@ const IssuableRequestsDashboard: React.FC = () => {
                     <button
                       onClick={() => handleViewRequest(request)}
                       className="text-gray-400 hover:text-primary-600 p-1"
-                      title="View"
+                      title="View Request"
+                      aria-label="View request details"
                     >
                       <Eye className="w-3 h-3" />
                     </button>
@@ -340,7 +343,8 @@ const IssuableRequestsDashboard: React.FC = () => {
             <button
               onClick={() => handleViewRequest(request)}
               className="text-gray-400 hover:text-primary-600 p-1"
-              title="View"
+              title="View Request"
+              aria-label="View request details"
             >
               <Eye className="w-3 h-3" />
             </button>
@@ -382,6 +386,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                 onClick={() => handleViewRequest(request)}
                 className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors"
                 title="View Request"
+                aria-label="View request details"
               >
                 <Eye className="w-4 h-4" />
               </button>
@@ -396,7 +401,7 @@ const IssuableRequestsDashboard: React.FC = () => {
     const pages: number[] = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(pagination.total_pages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
@@ -416,6 +421,7 @@ const IssuableRequestsDashboard: React.FC = () => {
             onClick={() => setCurrentPage(currentPage - 1)}
             disabled={currentPage === 1}
             className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Previous page"
           >
             <ChevronLeft className="w-3 h-3" />
           </button>
@@ -428,14 +434,16 @@ const IssuableRequestsDashboard: React.FC = () => {
                   ? 'bg-primary-500 text-white'
                   : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'
               }`}
+              aria-label={`Page ${page}`}
             >
               {page}
             </button>
           ))}
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            disabled={currentPage === pagination.total_pages}
+            disabled={currentPage === totalPages}
             className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Next page"
           >
             <ChevronRight className="w-3 h-3" />
           </button>
@@ -459,6 +467,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                 disabled={operationLoading || requests.length === 0}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
                 title="Export PDF"
+                aria-label="Export to PDF"
               >
                 <RefreshCw className="w-3 h-3" />
                 <span>Export</span>
@@ -468,6 +477,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                 disabled={loading}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
                 title="Refresh"
+                aria-label="Refresh data"
               >
                 <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
@@ -514,6 +524,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-48 pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                  aria-label="Search issuable requests"
                 />
               </div>
               <button
@@ -521,6 +532,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                 className={`flex items-center space-x-1 px-2 py-1.5 text-xs border rounded transition-colors ${
                   showFilters ? 'bg-primary-50 border-primary-200 text-primary-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
+                aria-label={showFilters ? 'Hide filters' : 'Show filters'}
               >
                 <Filter className="w-3 h-3" />
                 <span>Filter</span>
@@ -535,6 +547,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                   setSortOrder(order);
                 }}
                 className="text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                aria-label="Sort options"
               >
                 <option value="site_id-asc">Site (A-Z)</option>
                 <option value="site_id-desc">Site (Z-A)</option>
@@ -552,6 +565,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                     viewMode === 'table' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Table View"
+                  aria-label="Table view"
                 >
                   <List className="w-3 h-3" />
                 </button>
@@ -561,6 +575,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                     viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Grid View"
+                  aria-label="Grid view"
                 >
                   <Grid3X3 className="w-3 h-3" />
                 </button>
@@ -570,6 +585,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                     viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="List View"
+                  aria-label="List view"
                 >
                   <List className="w-3 h-3" />
                 </button>
@@ -583,6 +599,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                   value={selectedSite}
                   onChange={(e) => setSelectedSite(e.target.value)}
                   className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  aria-label="Filter by site"
                 >
                   <option value="">All Sites</option>
                   {sites.map((site) => (
@@ -593,6 +610,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                   <button
                     onClick={() => setSelectedSite('')}
                     className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                    aria-label="Clear filters"
                   >
                     Clear Filters
                   </button>
@@ -626,7 +644,7 @@ const IssuableRequestsDashboard: React.FC = () => {
             {viewMode === 'table' && renderTableView()}
             {viewMode === 'grid' && renderGridView()}
             {viewMode === 'list' && renderListView()}
-            {pagination.total_pages > 1 && renderPagination()}
+            {renderPagination()}
           </div>
         )}
       </div>
@@ -730,6 +748,7 @@ const IssuableRequestsDashboard: React.FC = () => {
                   setSelectedRequest(null);
                 }}
                 className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+                aria-label="Close modal"
               >
                 Close
               </button>
@@ -753,7 +772,7 @@ const IssuableRequestsDashboard: React.FC = () => {
             {operationStatus.type === 'error' && <XCircle className="w-4 h-4 text-red-600" />}
             {operationStatus.type === 'info' && <AlertCircle className="w-4 h-4 text-primary-600" />}
             <span className="font-medium">{operationStatus.message}</span>
-            <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
+            <button onClick={() => setOperationStatus(null)} className="hover:opacity-70" aria-label="Close notification">
               <X className="w-3 h-3" />
             </button>
           </div>
