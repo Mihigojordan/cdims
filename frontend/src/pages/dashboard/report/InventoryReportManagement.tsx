@@ -16,11 +16,16 @@ import {
   List,
   Settings,
   Minimize2,
+  Download,
+  FileImage,
 } from "lucide-react";
 import reportService, { type InventoryReport, type ReportSummary } from "../../../services/reportService";
 import storeService, { type Store } from "../../../services/storeService";
+import Logo from '../../../assets/hello.jpg';
+import html2pdf from 'html2pdf.js';
 
 type ViewMode = "table" | "grid" | "list";
+type ExportFormat = 'pdf';
 
 interface OperationStatus {
   type: "success" | "error" | "info";
@@ -30,6 +35,13 @@ interface OperationStatus {
 interface ReportFilters {
   store_id: string;
   low_stock_only: boolean;
+}
+
+interface ExportOptions {
+  format: ExportFormat;
+  includeFilters: boolean;
+  includeSummary: boolean;
+  includeItems: boolean;
 }
 
 const InventoryReportsPage: React.FC = () => {
@@ -49,10 +61,22 @@ const InventoryReportsPage: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState<InventoryReport | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>({
+    format: 'pdf',
+    includeFilters: true,
+    includeSummary: true,
+    includeItems: true,
+  });
   const [filters, setFilters] = useState<ReportFilters>({
     store_id: "",
     low_stock_only: false,
   });
+
+  const exportFormatOptions = [
+    { value: 'pdf', label: 'PDF Report', icon: FileImage, description: 'Comprehensive formatted report' },
+  ];
 
   useEffect(() => {
     loadStores();
@@ -100,6 +124,488 @@ const InventoryReportsPage: React.FC = () => {
   const showOperationStatus = (type: OperationStatus["type"], message: string, duration: number = 3000) => {
     setOperationStatus({ type, message });
     setTimeout(() => setOperationStatus(null), duration);
+  };
+
+  const getStockStatus = (report: InventoryReport) => {
+    if (report.qty_on_hand <= 0) return "Out of Stock";
+    if (report.qty_on_hand <= report.reorder_level) return "Low Stock";
+    return "In Stock";
+  };
+
+  const exportToPDF = () => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Inventory Reports</title>
+          <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+              
+              * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+              }
+              
+              body { 
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+                  background: #ffffff;
+                  margin: 0; 
+                  padding: 20px; 
+                  line-height: 1.5; 
+                  color: #333;
+              }
+              
+              .company-header { 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: space-between; 
+                  margin-bottom: 40px; 
+                  padding: 30px 0;
+                  border-bottom: 3px solid #ff6b35; 
+                  position: relative;
+              }
+              
+              .company-header::after {
+                  content: '';
+                  position: absolute;
+                  bottom: -3px;
+                  left: 0;
+                  width: 120px;
+                  height: 3px;
+                  background: #ff8c42;
+              }
+              
+              .company-left {
+                  display: flex;
+                  align-items: center;
+              }
+              
+              .company-logo { 
+                  width: 80px; 
+                  height: 80px; 
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px; 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  color: white; 
+                  font-weight: 700; 
+                  font-size: 24px;
+                  margin-right: 30px;
+                  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+              }
+              
+              .company-logo img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  border-radius: 8px;
+              }
+              
+              .company-info { 
+                  flex: 1; 
+              }
+              
+              .company-name { 
+                  font-size: 28px; 
+                  font-weight: 700; 
+                  color: #333; 
+                  margin-bottom: 8px;
+                  letter-spacing: -0.5px;
+              }
+              
+              .company-details { 
+                  font-size: 12px; 
+                  color: #666; 
+                  line-height: 1.4; 
+              }
+              
+              .company-details div {
+                  margin-bottom: 2px;
+              }
+              
+              .report-info { 
+                  text-align: right; 
+                  font-size: 12px; 
+                  color: #666;
+                  background: #fff;
+                  padding: 20px;
+                  border: 2px solid #ff6b35;
+                  border-radius: 8px;
+              }
+              
+              .report-info div {
+                  margin-bottom: 6px;
+              }
+              
+              .report-info strong {
+                  color: #ff6b35;
+              }
+              
+              .report-title { 
+                  font-size: 24px; 
+                  font-weight: 700; 
+                  color: #333; 
+                  text-align: center; 
+                  margin: 30px 0 40px 0; 
+                  padding: 20px; 
+                  background: #ffffff; 
+                  border-left: 6px solid #ff6b35;
+                  border-radius: 0 8px 8px 0;
+                  box-shadow: 0 2px 15px rgba(255, 107, 53, 0.1);
+                  position: relative;
+              }
+              
+              .summary { 
+                  display: grid; 
+                  grid-template-columns: repeat(4, 1fr); 
+                  gap: 20px; 
+                  margin-bottom: 40px; 
+              }
+              
+              .summary-card { 
+                  background: #ffffff;
+                  border: 1px solid #f0f0f0; 
+                  padding: 24px; 
+                  text-align: center; 
+                  border-radius: 12px;
+                  position: relative;
+                  transition: all 0.3s ease;
+                  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+              }
+              
+              .summary-card::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  height: 4px;
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px 12px 0 0;
+              }
+              
+              .summary-card:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.15);
+              }
+              
+              .summary-card h3 { 
+                  margin: 0 0 8px 0; 
+                  font-size: 32px; 
+                  color: #ff6b35;
+                  font-weight: 700;
+              }
+              
+              .summary-card p { 
+                  margin: 0; 
+                  font-size: 14px; 
+                  color: #666;
+                  font-weight: 500;
+              }
+              
+              .filters { 
+                  background: #fafafa; 
+                  padding: 24px; 
+                  margin-bottom: 30px; 
+                  border-radius: 12px; 
+                  border: 1px solid #f0f0f0;
+                  position: relative;
+              }
+              
+              .filters::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  height: 3px;
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px 12px 0 0;
+              }
+              
+              .filters h3 { 
+                  margin-top: 0; 
+                  margin-bottom: 16px;
+                  color: #333; 
+                  font-size: 18px;
+                  font-weight: 600;
+              }
+              
+              .filters p { 
+                  margin: 10px 0; 
+                  font-size: 13px;
+                  display: flex;
+                  align-items: center;
+              }
+              
+              .filters p strong {
+                  color: #ff6b35;
+                  min-width: 100px;
+                  font-weight: 600;
+              }
+              
+              .table-container {
+                  background: #ffffff;
+                  border-radius: 12px;
+                  overflow: hidden;
+                  box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                  border: 1px solid #f0f0f0;
+                  margin-bottom: 30px;
+              }
+              
+              table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+              }
+              
+              th, td { 
+                  padding: 16px 12px; 
+                  text-align: left; 
+                  font-size: 12px;
+                  border-bottom: 1px solid #f0f0f0;
+              }
+              
+              th { 
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  color: white; 
+                  font-weight: 600; 
+                  font-size: 13px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+              }
+              
+              td {
+                  color: #555;
+              }
+              
+              tr:nth-child(even) { 
+                  background-color: #fafafa; 
+              }
+              
+              tr:hover {
+                  background-color: #fff5f2;
+              }
+              
+              .status-out-of-stock { 
+                  background: #fee2e2; 
+                  color: #dc2626; 
+                  padding: 4px 8px; 
+                  border-radius: 9999px; 
+                  font-weight: 500; 
+              }
+              
+              .status-low-stock { 
+                  background: #fef9c3; 
+                  color: #ca8a04; 
+                  padding: 4px 8px; 
+                  border-radius: 9999px; 
+                  font-weight: 500; 
+              }
+              
+              .status-in-stock { 
+                  background: #d1fae5; 
+                  color: #15803d; 
+                  padding: 4px 8px; 
+                  border-radius: 9999px; 
+                  font-weight: 500; 
+              }
+              
+              .footer { 
+                  margin-top: 40px; 
+                  padding: 24px 0;
+                  border-top: 2px solid #ff6b35; 
+                  text-align: center; 
+                  font-size: 11px; 
+                  color: #666;
+                  position: relative;
+              }
+              
+              .footer::before {
+                  content: '';
+                  position: absolute;
+                  top: -2px;
+                  left: 0;
+                  width: 100px;
+                  height: 2px;
+                  background: #ff8c42;
+              }
+              
+              @media print {
+                  body {
+                      padding: 0;
+                  }
+                  
+                  .summary-card:hover,
+                  tr:hover {
+                      transform: none;
+                      background-color: transparent;
+                  }
+              }
+              
+              @media (max-width: 768px) {
+                  .company-header {
+                      flex-direction: column;
+                      text-align: center;
+                  }
+                  
+                  .company-left {
+                      margin-bottom: 20px;
+                  }
+                  
+                  .report-info {
+                      width: 100%;
+                  }
+                  
+                  .summary {
+                      grid-template-columns: repeat(2, 1fr);
+                  }
+              }
+              
+              @media (max-width: 480px) {
+                  .summary {
+                      grid-template-columns: 1fr;
+                  }
+                  
+                  table {
+                      font-size: 10px;
+                  }
+                  
+                  th, td {
+                      padding: 8px 6px;
+                  }
+              }
+          </style>
+      </head>
+      <body>
+          <div class="company-header">
+              <div class="company-left">
+                  <div class="company-logo">
+                      <img src="${Logo}" alt="logo">
+                  </div>
+                  <div class="company-info">
+                      <div class="company-name">Catholic Diocese</div>
+                      <div class="company-details">
+                          <div><strong>Address:</strong> Nyarugenge, Rwanda</div>
+                          <div><strong>Phone:</strong> 0791813289 | <strong>Email:</strong> contact@company.com</div>
+                      </div>
+                  </div>
+              </div>
+              <div class="report-info">
+                  <div><strong>Report Type:</strong> Inventory Reports</div>
+                  <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                  })}</div>
+                  <div><strong>Total Records:</strong> ${filteredReports.length}</div>
+              </div>
+          </div>
+          
+          ${exportOptions.includeSummary ? `
+          <div class="summary">
+              <div class="summary-card">
+                  <h3>${summary.total_items || 0}</h3>
+                  <p>Total Stock Items</p>
+              </div>
+              <div class="summary-card">
+                  <h3>${summary.low_stock_items || 0}</h3>
+                  <p>Low Stock Items</p>
+              </div>
+              <div class="summary-card">
+                  <h3>${summary.out_of_stock_items || 0}</h3>
+                  <p>Out of Stock Items</p>
+              </div>
+              <div class="summary-card">
+                  <h3>RWF ${(summary.total_value || 0).toLocaleString()}</h3>
+                  <p>Total Stock Value</p>
+              </div>
+          </div>
+          ` : ''}
+
+          ${exportOptions.includeFilters ? `
+          <div class="filters">
+              <h3>Applied Filters</h3>
+              <p><strong>Store:</strong> ${stores.find(s => s.id?.toString() === filters.store_id)?.name || 'All Stores'}</p>
+              <p><strong>Low Stock Only:</strong> ${filters.low_stock_only ? 'Yes' : 'No'}</p>
+              <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
+          </div>
+          ` : ''}
+
+          <div class="report-title">Inventory Reports</div>
+
+          ${exportOptions.includeItems ? `
+          <div class="table-container">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>#</th>
+                          <th>Stock Item</th>
+                          <th>Code</th>
+                          <th>Store</th>
+                          <th>Qty on Hand</th>
+                          <th>Reorder Level</th>
+                          <th>Status</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      ${filteredReports.map((report, index) => `
+                          <tr>
+                              <td>${index + 1}</td>
+                              <td>${report.material?.name || '-'}</td>
+                              <td>${report.material?.code || '-'}</td>
+                              <td>${stores.find(s => s.id === report.store_id)?.name || '-'}</td>
+                              <td>${report.qty_on_hand} ${report.material?.unit?.symbol || ''}</td>
+                              <td>${report.reorder_level} ${report.material?.unit?.symbol || ''}</td>
+                              <td><span class="status-${getStockStatus(report).toLowerCase().replace(' ', '-')}">${getStockStatus(report)}</span></td>
+                          </tr>
+                      `).join('')}
+                  </tbody>
+              </table>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+              Generated by Catholic Diocese
+          </div>
+      </body>
+      </html>
+    `;
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `inventory-reports-${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(element).set(opt).save();
+  };
+
+  const handleExport = async () => {
+    if (filteredReports.length === 0) {
+      showOperationStatus("error", "No data to export");
+      return;
+    }
+
+    setExporting(true);
+    try {
+      exportToPDF();
+      showOperationStatus("success", "Report exported as PDF successfully");
+      setShowExportModal(false);
+    } catch (error) {
+      console.error("Export failed:", error);
+      showOperationStatus("error", "Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const filteredReports = useMemo(() => {
@@ -246,11 +752,7 @@ const InventoryReportsPage: React.FC = () => {
                 </td>
                 <td className="py-2 px-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(report)}`}>
-                    {report.qty_on_hand <= 0
-                      ? "Out of Stock"
-                      : report.qty_on_hand <= report.reorder_level
-                      ? "Low Stock"
-                      : "In Stock"}
+                    {getStockStatus(report)}
                   </span>
                 </td>
                 <td className="py-2 px-2">
@@ -294,11 +796,7 @@ const InventoryReportsPage: React.FC = () => {
                 Qty: {report.qty_on_hand} {report.material?.unit?.symbol || ""}
               </span>
               <span className={`px-2 py-1 rounded-full font-medium ${getStockStatusColor(report)}`}>
-                {report.qty_on_hand <= 0
-                  ? "Out of Stock"
-                  : report.qty_on_hand <= report.reorder_level
-                  ? "Low Stock"
-                  : "In Stock"}
+                {getStockStatus(report)}
               </span>
             </div>
             <div className="text-xs text-gray-600">
@@ -341,11 +839,7 @@ const InventoryReportsPage: React.FC = () => {
                 Reorder: {report.reorder_level} {report.material?.unit?.symbol || ""}
               </span>
               <span className={`px-2 py-1 rounded-full font-medium text-center ${getStockStatusColor(report)}`}>
-                {report.qty_on_hand <= 0
-                  ? "Out of Stock"
-                  : report.qty_on_hand <= report.reorder_level
-                  ? "Low Stock"
-                  : "In Stock"}
+                {getStockStatus(report)}
               </span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
@@ -435,6 +929,15 @@ const InventoryReportsPage: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
+                onClick={() => setShowExportModal(true)}
+                disabled={loading || filteredReports.length === 0}
+                className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export Reports"
+              >
+                <Download className="w-3 h-3" />
+                <span>Export</span>
+              </button>
+              <button
                 onClick={loadReports}
                 disabled={loading}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
@@ -490,7 +993,7 @@ const InventoryReportsPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-600">Total Stock Value</p>
-                <p className="text-lg font-semibold text-gray-900">${(summary.total_value || 0).toFixed(2)}</p>
+                <p className="text-lg font-semibold text-gray-900">RWF {(summary.total_value || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -569,7 +1072,7 @@ const InventoryReportsPage: React.FC = () => {
           </div>
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-2  mb-3 flex">
+              <div className="grid grid-cols-1 md:grid-cols-2 mb-3 flex">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
                   <select
@@ -642,144 +1145,230 @@ const InventoryReportsPage: React.FC = () => {
             {renderPagination()}
           </div>
         )}
-      </div>
 
-      {operationStatus && (
-        <div className="fixed top-4 right-4 z-50">
-          <div
-            className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
-              operationStatus.type === "success"
-                ? "bg-green-50 border border-green-200 text-green-800"
-                : operationStatus.type === "error"
-                ? "bg-red-50 border border-red-200 text-red-800"
-                : "bg-primary-50 border border-primary-200 text-primary-800"
-            }`}
-          >
-            {operationStatus.type === "success" && <CheckCircle className="w-4 h-4 text-green-600" />}
-            {operationStatus.type === "error" && <XCircle className="w-4 h-4 text-red-600" />}
-            {operationStatus.type === "info" && <AlertCircle className="w-4 h-4 text-primary-600" />}
-            <span className="font-medium">{operationStatus.message}</span>
-            <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      )}
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Export Reports</h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                  <div className="flex items-center p-3 border border-gray-200 rounded bg-gray-50">
+                    <FileImage className="w-5 h-5 text-gray-600 mr-3" />
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">PDF Report</div>
+                      <div className="text-xs text-gray-600">Comprehensive formatted report</div>
+                    </div>
+                  </div>
+                </div>
 
-      {showViewModal && selectedStock && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Stock Details</h3>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedStock(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Include in Export</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={exportOptions.includeFilters}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, includeFilters: e.target.checked }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Applied filters information</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={exportOptions.includeSummary}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Summary statistics</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={exportOptions.includeItems}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, includeItems: e.target.checked }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Stock item details</span>
+                    </label>
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Stock Information</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Stock ID</label>
-                    <p className="text-xs text-gray-900">#{selectedStock.id}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Stock Item</label>
-                    <p className="text-xs text-gray-900">{selectedStock.material?.name || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Stock Code</label>
-                    <p className="text-xs text-gray-900">{selectedStock.material?.code || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
-                    <p className="text-xs text-gray-900">
-                      {stores.find((store) => store.id === selectedStock.store_id)?.name || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                    <p className="text-xs text-gray-900">{selectedStock.material?.category?.name || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Quantity on Hand</label>
-                    <p className="text-xs text-gray-900">
-                      {selectedStock.qty_on_hand} {selectedStock.material?.unit?.symbol || ""}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Reorder Level</label>
-                    <p className="text-xs text-gray-900">
-                      {selectedStock.reorder_level} {selectedStock.material?.unit?.symbol || ""}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
-                    <p className="text-xs text-gray-900">
-                      {selectedStock.low_stock_threshold || 0} {selectedStock.material?.unit?.symbol || ""}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(selectedStock)}`}>
-                      {selectedStock.qty_on_hand <= 0
-                        ? "Out of Stock"
-                        : selectedStock.qty_on_hand <= selectedStock.reorder_level
-                        ? "Low Stock"
-                        : "In Stock"}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
-                    <p className="text-xs text-gray-900">
-                      ${selectedStock.material?.unit_price?.toFixed(2) || "0.00"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                    <p className="text-xs text-gray-900">
-                      {selectedStock.material?.description || "No description provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Specifications</label>
-                    <p className="text-xs text-gray-900">
-                      {selectedStock.material?.specifications || "No specifications provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
-                    <p className="text-xs text-gray-900">{formatDate(selectedStock.created_at)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>
-                    <p className="text-xs text-gray-900">{formatDate(selectedStock.updated_at)}</p>
+                <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-blue-700">
+                      <p className="font-medium mb-1">Export Information</p>
+                      <p>This will export {filteredReports.length} record{filteredReports.length !== 1 ? 's' : ''} based on your current filters and search criteria.</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end pt-4 border-t border-gray-200 mt-6">
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedStock(null);
-                }}
-                className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
-              >
-                Close
+              <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200 mt-6">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {exporting && <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>}
+                  <span>{exporting ? 'Exporting...' : 'Export'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {operationStatus && (
+          <div className="fixed top-4 right-4 z-50">
+            <div
+              className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
+                operationStatus.type === "success"
+                  ? "bg-green-50 border border-green-200 text-green-800"
+                  : operationStatus.type === "error"
+                  ? "bg-red-50 border border-red-200 text-red-800"
+                  : "bg-primary-50 border border-primary-200 text-primary-800"
+              }`}
+            >
+              {operationStatus.type === "success" && <CheckCircle className="w-4 h-4 text-green-600" />}
+              {operationStatus.type === "error" && <XCircle className="w-4 h-4 text-red-600" />}
+              {operationStatus.type === "info" && <AlertCircle className="w-4 h-4 text-primary-600" />}
+              <span className="font-medium">{operationStatus.message}</span>
+              <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
+                <X className="w-3 h-3" />
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {showViewModal && selectedStock && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Stock Details</h3>
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setSelectedStock(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Stock Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Stock ID</label>
+                      <p className="text-xs text-gray-900">#{selectedStock.id}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Stock Item</label>
+                      <p className="text-xs text-gray-900">{selectedStock.material?.name || "-"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Stock Code</label>
+                      <p className="text-xs text-gray-900">{selectedStock.material?.code || "-"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
+                      <p className="text-xs text-gray-900">
+                        {stores.find((store) => store.id === selectedStock.store_id)?.name || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                      <p className="text-xs text-gray-900">{selectedStock.material?.category?.name || "-"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Quantity on Hand</label>
+                      <p className="text-xs text-gray-900">
+                        {selectedStock.qty_on_hand} {selectedStock.material?.unit?.symbol || ""}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Reorder Level</label>
+                      <p className="text-xs text-gray-900">
+                        {selectedStock.reorder_level} {selectedStock.material?.unit?.symbol || ""}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                      <p className="text-xs text-gray-900">
+                        {selectedStock.low_stock_threshold || 0} {selectedStock.material?.unit?.symbol || ""}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(selectedStock)}`}>
+                        {getStockStatus(selectedStock)}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                      <p className="text-xs text-gray-900">
+                        ${selectedStock.material?.unit_price?.toFixed(2) || "0.00"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                      <p className="text-xs text-gray-900">
+                        {selectedStock.material?.description || "No description provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Specifications</label>
+                      <p className="text-xs text-gray-900">
+                        {selectedStock.material?.specifications || "No specifications provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
+                      <p className="text-xs text-gray-900">{formatDate(selectedStock.created_at)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>
+                      <p className="text-xs text-gray-900">{formatDate(selectedStock.updated_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-gray-200 mt-6">
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setSelectedStock(null);
+                  }}
+                  className="px-4 py-2 text-xs border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

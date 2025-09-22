@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
   ChevronDown,
-  Eye,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
@@ -19,11 +18,16 @@ import {
   Calendar,
   FileText,
   Clock,
+  Download,
+  FileImage,
 } from "lucide-react";
 import reportService, { type SitePerformanceReport, type ReportSummary } from "../../../services/reportService";
 import siteService, { type Site } from "../../../services/siteService";
+import Logo from '../../../assets/hello.jpg';
+import html2pdf from 'html2pdf.js';
 
 type ViewMode = 'table' | 'grid' | 'list';
+type ExportFormat = 'pdf';
 
 interface OperationStatus {
   type: "success" | "error" | "info";
@@ -34,6 +38,13 @@ interface ReportFilters {
   start_date: string;
   end_date: string;
   site_id: string;
+}
+
+interface ExportOptions {
+  format: ExportFormat;
+  includeFilters: boolean;
+  includeSummary: boolean;
+  includeItems: boolean;
 }
 
 interface SitePerformance {
@@ -62,11 +73,23 @@ const SitePerformanceReportsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [showFilters, setShowFilters] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>({
+    format: 'pdf',
+    includeFilters: true,
+    includeSummary: true,
+    includeItems: true,
+  });
   const [filters, setFilters] = useState<ReportFilters>({
     start_date: "",
     end_date: "",
     site_id: "",
   });
+
+  const exportFormatOptions = [
+    { value: 'pdf', label: 'PDF Report', icon: FileImage, description: 'Comprehensive formatted report' },
+  ];
 
   useEffect(() => {
     loadSites();
@@ -98,7 +121,6 @@ const SitePerformanceReportsPage: React.FC = () => {
       const response = await reportService.getSitePerformanceReports(params);
       
       if (response.success && response.data) {
-        // Transform the sitePerformance object into an array
         const performanceArray = Object.entries(response.data.sitePerformance || {}).map(([site_id, data]) => ({
           site_id,
           ...data,
@@ -107,6 +129,9 @@ const SitePerformanceReportsPage: React.FC = () => {
         setSummary({
           total_sites: response.data.total_sites || 0,
           total_requests: response.data.total_requests || 0,
+          approved_requests: response.data.approved_requests || 0,
+          pending_requests: response.data.pending_requests || 0,
+          rejected_requests: response.data.rejected_requests || 0,
         });
       }
       setError(null);
@@ -123,6 +148,460 @@ const SitePerformanceReportsPage: React.FC = () => {
   const showOperationStatus = (type: OperationStatus["type"], message: string, duration: number = 3000) => {
     setOperationStatus({ type, message });
     setTimeout(() => setOperationStatus(null), duration);
+  };
+
+  const exportToPDF = () => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Site Performance Reports</title>
+          <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+              
+              * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+              }
+              
+              body { 
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+                  background: #ffffff;
+                  margin: 0; 
+                  padding: 20px; 
+                  line-height: 1.5; 
+                  color: #333;
+              }
+              
+              .company-header { 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: space-between; 
+                  margin-bottom: 40px; 
+                  padding: 30px 0;
+                  border-bottom: 3px solid #ff6b35; 
+                  position: relative;
+              }
+              
+              .company-header::after {
+                  content: '';
+                  position: absolute;
+                  bottom: -3px;
+                  left: 0;
+                  width: 120px;
+                  height: 3px;
+                  background: #ff8c42;
+              }
+              
+              .company-left {
+                  display: flex;
+                  align-items: center;
+              }
+              
+              .company-logo { 
+                  width: 80px; 
+                  height: 80px; 
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px; 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  color: white; 
+                  font-weight: 700; 
+                  font-size: 24px;
+                  margin-right: 30px;
+                  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+              }
+              
+              .company-logo img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  border-radius: 8px;
+              }
+              
+              .company-info { 
+                  flex: 1; 
+              }
+              
+              .company-name { 
+                  font-size: 28px; 
+                  font-weight: 700; 
+                  color: #333; 
+                  margin-bottom: 8px;
+                  letter-spacing: -0.5px;
+              }
+              
+              .company-details { 
+                  font-size: 12px; 
+                  color: #666; 
+                  line-height: 1.4; 
+              }
+              
+              .company-details div {
+                  margin-bottom: 2px;
+              }
+              
+              .report-info { 
+                  text-align: right; 
+                  font-size: 12px; 
+                  color: #666;
+                  background: #fff;
+                  padding: 20px;
+                  border: 2px solid #ff6b35;
+                  border-radius: 8px;
+              }
+              
+              .report-info div {
+                  margin-bottom: 6px;
+              }
+              
+              .report-info strong {
+                  color: #ff6b35;
+              }
+              
+              .report-title { 
+                  font-size: 24px; 
+                  font-weight: 700; 
+                  color: #333; 
+                  text-align: center; 
+                  margin: 30px 0 40px 0; 
+                  padding: 20px; 
+                  background: #ffffff; 
+                  border-left: 6px solid #ff6b35;
+                  border-radius: 0 8px 8px 0;
+                  box-shadow: 0 2px 15px rgba(255, 107, 53, 0.1);
+                  position: relative;
+              }
+              
+              .summary { 
+                  display: grid; 
+                  grid-template-columns: repeat(4, 1fr); 
+                  gap: 20px; 
+                  margin-bottom: 40px; 
+              }
+              
+              .summary-card { 
+                  background: #ffffff;
+                  border: 1px solid #f0f0f0; 
+                  padding: 24px; 
+                  text-align: center; 
+                  border-radius: 12px;
+                  position: relative;
+                  transition: all 0.3s ease;
+                  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+              }
+              
+              .summary-card::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  height: 4px;
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px 12px 0 0;
+              }
+              
+              .summary-card:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.15);
+              }
+              
+              .summary-card h3 { 
+                  margin: 0 0 8px 0; 
+                  font-size: 32px; 
+                  color: #ff6b35;
+                  font-weight: 700;
+              }
+              
+              .summary-card p { 
+                  margin: 0; 
+                  font-size: 14px; 
+                  color: #666;
+                  font-weight: 500;
+              }
+              
+              .filters { 
+                  background: #fafafa; 
+                  padding: 24px; 
+                  margin-bottom: 30px; 
+                  border-radius: 12px; 
+                  border: 1px solid #f0f0f0;
+                  position: relative;
+              }
+              
+              .filters::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  height: 3px;
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  border-radius: 12px 12px 0 0;
+              }
+              
+              .filters h3 { 
+                  margin-top: 0; 
+                  margin-bottom: 16px;
+                  color: #333; 
+                  font-size: 18px;
+                  font-weight: 600;
+              }
+              
+              .filters p { 
+                  margin: 10px 0; 
+                  font-size: 13px;
+                  display: flex;
+                  align-items: center;
+              }
+              
+              .filters p strong {
+                  color: #ff6b35;
+                  min-width: 100px;
+                  font-weight: 600;
+              }
+              
+              .table-container {
+                  background: #ffffff;
+                  border-radius: 12px;
+                  overflow: hidden;
+                  box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                  border: 1px solid #f0f0f0;
+                  margin-bottom: 30px;
+              }
+              
+              table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+              }
+              
+              th, td { 
+                  padding: 16px 12px; 
+                  text-align: left; 
+                  font-size: 12px;
+                  border-bottom: 1px solid #f0f0f0;
+              }
+              
+              th { 
+                  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+                  color: white; 
+                  font-weight: 600; 
+                  font-size: 13px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+              }
+              
+              td {
+                  color: #555;
+              }
+              
+              tr:nth-child(even) { 
+                  background-color: #fafafa; 
+              }
+              
+              tr:hover {
+                  background-color: #fff5f2;
+              }
+              
+              .footer { 
+                  margin-top: 40px; 
+                  padding: 24px 0;
+                  border-top: 2px solid #ff6b35; 
+                  text-align: center; 
+                  font-size: 11px; 
+                  color: #666;
+                  position: relative;
+              }
+              
+              .footer::before {
+                  content: '';
+                  position: absolute;
+                  top: -2px;
+                  left: 0;
+                  width: 100px;
+                  height: 2px;
+                  background: #ff8c42;
+              }
+              
+              @media print {
+                  body {
+                      padding: 0;
+                  }
+                  
+                  .summary-card:hover,
+                  tr:hover {
+                      transform: none;
+                      background-color: transparent;
+                  }
+              }
+              
+              @media (max-width: 768px) {
+                  .company-header {
+                      flex-direction: column;
+                      text-align: center;
+                  }
+                  
+                  .company-left {
+                      margin-bottom: 20px;
+                  }
+                  
+                  .report-info {
+                      width: 100%;
+                  }
+                  
+                  .summary {
+                      grid-template-columns: repeat(2, 1fr);
+                  }
+              }
+              
+              @media (max-width: 480px) {
+                  .summary {
+                      grid-template-columns: 1fr;
+                  }
+                  
+                  table {
+                      font-size: 10px;
+                  }
+                  
+                  th, td {
+                      padding: 8px 6px;
+                  }
+              }
+          </style>
+      </head>
+      <body>
+          <div class="company-header">
+              <div class="company-left">
+                  <div class="company-logo">
+                      <img src="${Logo}" alt="logo">
+                  </div>
+                  <div class="company-info">
+                      <div class="company-name">Catholic Diocese</div>
+                      <div class="company-details">
+                          <div><strong>Address:</strong> Nyarugenge, Rwanda</div>
+                          <div><strong>Phone:</strong> 0791813289 | <strong>Email:</strong> contact@company.com</div>
+                      </div>
+                  </div>
+              </div>
+              <div class="report-info">
+                  <div><strong>Report Type:</strong> Site Performance Reports</div>
+                  <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                  })}</div>
+                  <div><strong>Total Records:</strong> ${filteredSitePerformance.length}</div>
+              </div>
+          </div>
+          
+          ${exportOptions.includeSummary ? `
+          <div class="summary">
+              <div class="summary-card">
+                  <h3>${summary.total_sites || 0}</h3>
+                  <p>Total Sites</p>
+              </div>
+              <div class="summary-card">
+                  <h3>${summary.total_requests || 0}</h3>
+                  <p>Total Requests</p>
+              </div>
+              <div class="summary-card">
+                  <h3>${summary.approved_requests || 0}</h3>
+                  <p>Approved</p>
+              </div>
+              <div class="summary-card">
+                  <h3>${summary.pending_requests || 0}</h3>
+                  <p>Pending</p>
+              </div>
+          </div>
+          ` : ''}
+
+          ${exportOptions.includeFilters ? `
+          <div class="filters">
+              <h3>Applied Filters</h3>
+              <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
+              <p><strong>Site:</strong> ${sites.find(s => s.id?.toString() === filters.site_id)?.name || 'All Sites'}</p>
+              <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
+          </div>
+          ` : ''}
+
+          <div class="report-title">Site Performance Reports</div>
+
+          ${exportOptions.includeItems ? `
+          <div class="table-container">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>#</th>
+                          <th>Site</th>
+                          <th>Total Requests</th>
+                          <th>Total Value</th>
+                          <th>Approved</th>
+                          <th>Rejected</th>
+                          <th>Pending</th>
+                          <th>Avg. Processing Time</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      ${filteredSitePerformance.map((site, index) => `
+                          <tr>
+                              <td>${index + 1}</td>
+                              <td>${site.site_name || '-'}</td>
+                              <td>${formatNumber(site.total_requests)}</td>
+                              <td>${formatCurrency(site.total_value)}</td>
+                              <td>${formatNumber(site.approved_requests)}</td>
+                              <td>${formatNumber(site.rejected_requests)}</td>
+                              <td>${formatNumber(site.pending_requests)}</td>
+                              <td>${formatTime(site.average_processing_time)}</td>
+                          </tr>
+                      `).join('')}
+                  </tbody>
+              </table>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+              Generated by Catholic Diocese
+          </div>
+      </body>
+      </html>
+    `;
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `site-performance-reports-${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(element).set(opt).save();
+  };
+
+  const handleExport = async () => {
+    if (filteredSitePerformance.length === 0) {
+      showOperationStatus("error", "No data to export");
+      return;
+    }
+
+    setExporting(true);
+    try {
+      exportToPDF();
+      showOperationStatus("success", "Report exported as PDF successfully");
+      setShowExportModal(false);
+    } catch (error) {
+      console.error("Export failed:", error);
+      showOperationStatus("error", "Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const filteredSitePerformance = useMemo(() => {
@@ -171,7 +650,7 @@ const SitePerformanceReportsPage: React.FC = () => {
   };
 
   const formatCurrency = (value: number | undefined): string => {
-    return value !== undefined ? `$${value.toFixed(2)}` : "-";
+    return value !== undefined ? `RWF ${value.toLocaleString()}` : "-";
   };
 
   const formatTime = (seconds: number | undefined): string => {
@@ -379,6 +858,15 @@ const SitePerformanceReportsPage: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowExportModal(true)}
+                disabled={loading || filteredSitePerformance.length === 0}
+                className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export Reports"
+              >
+                <Download className="w-3 h-3" />
+                <span>Export</span>
+              </button>
               <button
                 onClick={loadSitePerformanceReports}
                 disabled={loading}
@@ -595,6 +1083,96 @@ const SitePerformanceReportsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Export Reports</h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                <div className="flex items-center p-3 border border-gray-200 rounded bg-gray-50">
+                  <FileImage className="w-5 h-5 text-gray-600 mr-3" />
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">PDF Report</div>
+                    <div className="text-xs text-gray-600">Comprehensive formatted report</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Include in Export</label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={exportOptions.includeFilters}
+                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeFilters: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Applied filters information</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={exportOptions.includeSummary}
+                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Summary statistics</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={exportOptions.includeItems}
+                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeItems: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Site performance details</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-blue-700">
+                    <p className="font-medium mb-1">Export Information</p>
+                    <p>This will export {filteredSitePerformance.length} record{filteredSitePerformance.length !== 1 ? 's' : ''} based on your current filters and search criteria.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200 mt-6">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 text-sm border border-gray-200 rounded hover:bg-gray-50 text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {exporting && <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>}
+                <span>{exporting ? 'Exporting...' : 'Export'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {operationStatus && (
         <div className="fixed top-4 right-4 z-50">

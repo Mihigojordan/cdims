@@ -65,7 +65,7 @@ const getAllStock = async (req, res) => {
 
 const createStock = async (req, res) => {
   try {
-    const { material_id, store_id, qty_on_hand, reorder_level, low_stock_threshold } = req.body;
+    const { material_id, store_id, qty_on_hand, low_stock_threshold } = req.body;
 
     // Check if stock record already exists for this material and store
     const existingStock = await Stock.findOne({
@@ -89,7 +89,6 @@ const createStock = async (req, res) => {
       material_id,
       store_id,
       qty_on_hand,
-      reorder_level: reorder_level || 0,
       low_stock_threshold: low_stock_threshold || 0,
       low_stock_alert: shouldAlert
     });

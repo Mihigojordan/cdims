@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -76,7 +75,6 @@ const StockDashboard: React.FC = () => {
     material_id: 0,
     store_id: 0,
     qty_on_hand: 0,
-    reorder_level: 0,
     low_stock_threshold: 0,
   });
   const [thresholdFormData, setThresholdFormData] = useState<SetLowStockThresholdInput>({
@@ -206,7 +204,6 @@ const StockDashboard: React.FC = () => {
       material_id: 0,
       store_id: 0,
       qty_on_hand: 0,
-      reorder_level: 0,
       low_stock_threshold: 0,
     });
     setFormError('');
@@ -215,7 +212,7 @@ const StockDashboard: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'material_id' || name === 'store_id' || name === 'qty_on_hand' || name === 'reorder_level' || name === 'low_stock_threshold' ? parseInt(value): value });
+    setFormData({ ...formData, [name]: name === 'material_id' || name === 'store_id' || name === 'qty_on_hand' || name === 'low_stock_threshold' ? parseInt(value) || 0 : value });
   };
 
   const handleThresholdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +238,6 @@ const StockDashboard: React.FC = () => {
         material_id: 0,
         store_id: 0,
         qty_on_hand: 0,
-        reorder_level: 0,
         low_stock_threshold: 0,
       });
       loadData();
@@ -277,7 +273,6 @@ const StockDashboard: React.FC = () => {
         material_id: 0,
         store_id: 0,
         qty_on_hand: 0,
-        reorder_level: 0,
         low_stock_threshold: 0,
       });
       loadData();
@@ -348,7 +343,6 @@ const StockDashboard: React.FC = () => {
       material_id: stock.material_id || 0,
       store_id: stock.store_id || 0,
       qty_on_hand: stock.qty_on_hand || 0,
-      reorder_level: stock.reorder_level || 0,
       low_stock_threshold: stock.low_stock_threshold || 0,
     });
     setShowUpdateModal(true);
@@ -1162,17 +1156,6 @@ const StockDashboard: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Reorder Level</label>
-                <input
-                  type="number"
-                  name="reorder_level"
-                  value={formData.reorder_level}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter reorder level"
-                />
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
                 <input
                   type="number"
@@ -1192,7 +1175,6 @@ const StockDashboard: React.FC = () => {
                       material_id: 0,
                       store_id: 0,
                       qty_on_hand: 0,
-                      reorder_level: 0,
                       low_stock_threshold: 0,
                     });
                     setFormError('');
@@ -1267,17 +1249,6 @@ const StockDashboard: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Reorder Level</label>
-                <input
-                  type="number"
-                  name="reorder_level"
-                  value={formData.reorder_level}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter reorder level"
-                />
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
                 <input
                   type="number"
@@ -1298,7 +1269,6 @@ const StockDashboard: React.FC = () => {
                       material_id: 0,
                       store_id: 0,
                       qty_on_hand: 0,
-                      reorder_level: 0,
                       low_stock_threshold: 0,
                     });
                     setFormError('');
@@ -1392,10 +1362,6 @@ const StockDashboard: React.FC = () => {
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Quantity on Hand</label>
                 <p className="text-xs text-gray-900">{selectedStock.qty_on_hand || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Reorder Level</label>
-                <p className="text-xs text-gray-900">{selectedStock.reorder_level || '-'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
