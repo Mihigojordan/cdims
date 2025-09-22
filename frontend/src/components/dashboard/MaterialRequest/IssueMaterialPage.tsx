@@ -146,7 +146,7 @@ const IssueMaterialPage: React.FC = () => {
       ),
     });
     setShowConfirm(false);
-  }, 300);
+  }, 0);
 
   const handleQuantityChange = (requestItemId: number, qty: number) => {
     debouncedHandleQuantityChange(requestItemId, qty);

@@ -463,6 +463,10 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  */
 router.post('/issue-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.issueMaterials);
 
+
+
+
+
 /**
  * @swagger
  * /api/stock/alerts/low-stock:

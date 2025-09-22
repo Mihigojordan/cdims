@@ -959,6 +959,55 @@ const getAvailableSites = async (req, res) => {
   }
 };
 
+const closeRequisition = async (req, res) => {
+  try {
+    const { id:request_id } = req.params;
+
+    if (!request_id) {
+      return res.status(400).json({ success: false, message: 'Request ID is required' });
+    }
+
+    // Load request
+    const request = await Request.findByPk(request_id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    console.log(' **** ' + request.status);
+    
+
+    // Only allow closing if status is ISSUED
+    if (request.status !== 'ISSUED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Requisition must be in ISSUED status to be closed'
+      });
+    }
+
+    // Update status to CLOSED
+    await request.update({
+      status: 'CLOSED',
+      closed_by: req.user.id,
+      closed_at: new Date()
+    });
+
+    return res.json({
+      success: true,
+      message: 'Requisition has been closed successfully',
+      data: {
+        request_id: request.id,
+        status: request.status
+      }
+    });
+  } catch (err) {
+    console.error('Close requisition error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   getAllRequests,
   getMyRequests,
@@ -975,5 +1024,6 @@ module.exports = {
   addComment,
   getRequestAttachments,
   uploadAttachment,
-  getAvailableSites
+  getAvailableSites,
+    closeRequisition,
 };

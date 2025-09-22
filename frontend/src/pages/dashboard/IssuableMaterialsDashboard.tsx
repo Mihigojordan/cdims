@@ -20,6 +20,7 @@ import stockService, { type IssuedMaterial, type Request } from '../../services/
 import materialService, { type Material } from '../../services/materialsService';
 import storeService, { type Store } from '../../services/storeService';
 import html2pdf from 'html2pdf.js';
+import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'table' | 'grid' | 'list';
 
@@ -48,6 +49,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
   const [selectedMovementType, setSelectedMovementType] = useState<string>('');
   const [showIssueModal, setShowIssueModal] = useState<boolean>(false);
+  const navigate =  useNavigate()
 
   useEffect(() => {
     loadData();
@@ -439,7 +441,7 @@ const IssuableMaterialsDashboard: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowIssueModal(true)}
+                onClick={()=> navigate('/admin/dashboard/issuable-materials/create')}
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50"
                 title="Issue Materials"
                 aria-label="Issue materials"

@@ -554,6 +554,8 @@ const getProcurementRecommendations = async (req, res) => {
     });
   }
 };
+
+
 const issueMaterials = async (req, res) => {
   try {
     const { request_id, items } = req.body;
@@ -878,7 +880,8 @@ module.exports = {
   issueMaterials,
   getIssuableRequests,
   getStockByMaterialId,
-  getIssuedMaterials
+  getIssuedMaterials,
+
 };
 
 

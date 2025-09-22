@@ -306,6 +306,32 @@ rejectRequisition: async (
   }
 },
 
+// Close a requisition
+closeRequisition: async (id: string, comment?: string): Promise<MaterialRequisition> => {
+  if (!id) throw new Error('Requisition ID is required');
+
+  const token = localStorage.getItem('auth_token');
+  if (!token) throw new Error('Authentication token not found');
+
+  try {
+    const { data } = await api.post<{ success: boolean; data: MaterialRequisition }>(
+      `/requests/${id}/close`,
+      { comment },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!data?.success || !data?.data) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data.data;
+  } catch (error: any) {
+    console.error('Error closing requisition:', error);
+    throw new Error(error.response?.data?.message || 'Failed to close requisition');
+  }
+},
+
+
 
   // Delete a requisition
   deleteRequisition: async (id: string): Promise<void> => {
