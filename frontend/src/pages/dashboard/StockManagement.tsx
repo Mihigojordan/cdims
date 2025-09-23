@@ -407,7 +407,9 @@ const StockDashboard: React.FC = () => {
                 </div>
               </th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Store</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Quantity</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Qty on Hand</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">Unit Price</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">Total Price</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
               <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
             </tr>
@@ -419,6 +421,12 @@ const StockDashboard: React.FC = () => {
                 <td className="py-2 px-2 font-medium text-gray-900 text-xs">{stock.material?.name || 'N/A'}</td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{stock.store?.name || 'N/A'}</td>
                 <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{stock.qty_on_hand}</td>
+                <td className="py-2 px-2 text-gray-700">
+                  RWF {(stock.material?.unit_price || 0).toLocaleString()}
+                </td>
+                <td className="py-2 px-2 text-gray-700">
+                  RWF {((stock.material?.unit_price || 0) * (stock.qty_on_hand || 0)).toLocaleString()}
+                </td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(stock.created_at)}</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
@@ -689,6 +697,8 @@ const StockDashboard: React.FC = () => {
                         </th>
                         <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Store</th>
                         <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Qty on Hand</th>
+                        <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Unit Price</th>
+                        <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Total Price</th>
                         <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Threshold</th>
                         <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
                       </tr>
@@ -700,6 +710,12 @@ const StockDashboard: React.FC = () => {
                           <td className="py-2 px-2 font-medium text-gray-900 text-xs">{alert.material?.name || 'N/A'}</td>
                           <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{alert.store?.name || 'N/A'}</td>
                           <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{alert.qty_on_hand}</td>
+                          <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">
+                            RWF {(alert.material?.unit_price || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">
+                            RWF {((alert.material?.unit_price || 0) * (alert.qty_on_hand || 0)).toLocaleString()}
+                          </td>
                           <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{alert.low_stock_threshold}</td>
                           <td className="py-2 px-2">
                             <div className="flex items-center justify-end space-x-1">
@@ -712,20 +728,6 @@ const StockDashboard: React.FC = () => {
                                   <Check className="w-3 h-3" />
                                 </button>
                               )}
-                              <button
-                                onClick={() => handleSetThreshold(alert)}
-                                className="text-xs text-primary-600 hover:text-primary-800 px-2 py-1 border border-primary-200 rounded hover:bg-primary-50"
-                                title="Set Threshold"
-                              >
-                                <Settings className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => navigate(`/requests/create?material_id=${alert.material_id}&store_id=${alert.store_id}`)}
-                                className="text-xs text-primary-600 hover:text-primary-800 px-2 py-1 border border-primary-200 rounded hover:bg-primary-50"
-                                title="Create Request"
-                              >
-                                Request Stock
-                              </button>
                             </div>
                           </td>
                         </tr>

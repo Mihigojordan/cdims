@@ -171,7 +171,6 @@ const StockMovementsDashboard: React.FC = () => {
           <td style="font-size:10px;">${movement.store?.name || 'N/A'}</td>
           <td style="font-size:10px;">${movement.movement_type}</td>
           <td style="font-size:10px;">${movement.qty}</td>
-          <td style="font-size:10px;">${movement.reference_type || '-'}/${movement.reference_id || '-'}</td>
           <td style="font-size:10px;">${new Date(movement.created_at || '').toLocaleDateString('en-GB')}</td>
         </tr>
       `).join('');
@@ -199,7 +198,6 @@ const StockMovementsDashboard: React.FC = () => {
                 <th>Store</th>
                 <th>Type</th>
                 <th>Quantity</th>
-                <th>Reference</th>
                 <th>Date</th>
               </tr>
             </thead>
@@ -292,7 +290,6 @@ const StockMovementsDashboard: React.FC = () => {
                 </div>
               </th>
               <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Quantity</th>
-              <th scope="col" className="text-left py-2 px-2 text-gray-600 font-medium hidden xl:table-cell">Reference</th>
               <th
                 scope="col"
                 className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell cursor-pointer hover:bg-gray-100"
@@ -326,9 +323,6 @@ const StockMovementsDashboard: React.FC = () => {
                   </span>
                 </td>
                 <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{movement.qty}</td>
-                <td className="py-2 px-2 text-gray-700 hidden xl:table-cell">
-                  {movement.reference_type || '-'}/{movement.reference_id || '-'}
-                </td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(movement.created_at)}</td>
               </tr>
             ))}

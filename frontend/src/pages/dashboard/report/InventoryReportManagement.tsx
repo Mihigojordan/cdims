@@ -550,7 +550,8 @@ const InventoryReportsPage: React.FC = () => {
                           <th>Code</th>
                           <th>Store</th>
                           <th>Qty on Hand</th>
-                          <th>Reorder Level</th>
+                          <th>Unit Price</th>
+                          <th>Total Price</th>
                           <th>Status</th>
                       </tr>
                   </thead>
@@ -562,7 +563,8 @@ const InventoryReportsPage: React.FC = () => {
                               <td>${report.material?.code || '-'}</td>
                               <td>${stores.find(s => s.id === report.store_id)?.name || '-'}</td>
                               <td>${report.qty_on_hand} ${report.material?.unit?.symbol || ''}</td>
-                              <td>${report.reorder_level} ${report.material?.unit?.symbol || ''}</td>
+                              <td>RWF ${(report.material?.unit_price || 0).toLocaleString()}</td>
+                              <td>RWF ${((report.material?.unit_price || 0) * report.qty_on_hand).toLocaleString()}</td>
                               <td><span class="status-${getStockStatus(report).toLowerCase().replace(' ', '-')}">${getStockStatus(report)}</span></td>
                           </tr>
                       `).join('')}
@@ -723,19 +725,10 @@ const InventoryReportsPage: React.FC = () => {
                   />
                 </div>
               </th>
-              <th
-                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
-                onClick={() => setSortBy("reorder_level")}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Reorder Level</span>
-                  <ChevronDown
-                    className={`w-3 h-3 ${sortBy === "reorder_level" ? "text-primary-600" : "text-gray-400"}`}
-                  />
-                </div>
-              </th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">Unit Price</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">Total Price</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
-              <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
+              {/* <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th> */}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -748,14 +741,17 @@ const InventoryReportsPage: React.FC = () => {
                   {report.qty_on_hand} {report.material?.unit?.symbol || ""}
                 </td>
                 <td className="py-2 px-2 text-gray-700">
-                  {report.reorder_level} {report.material?.unit?.symbol || ""}
+                  RWF {(report.material?.unit_price || 0).toLocaleString()}
+                </td>
+                <td className="py-2 px-2 text-gray-700">
+                  RWF {((report.material?.unit_price || 0) * report.qty_on_hand).toLocaleString()}
                 </td>
                 <td className="py-2 px-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(report)}`}>
                     {getStockStatus(report)}
                   </span>
                 </td>
-                <td className="py-2 px-2">
+                {/* <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button
                       onClick={() => handleViewStock(report)}
@@ -765,7 +761,7 @@ const InventoryReportsPage: React.FC = () => {
                       <Eye className="w-3 h-3" />
                     </button>
                   </div>
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
@@ -1280,7 +1276,7 @@ const InventoryReportsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
                       <p className="text-xs text-gray-900">
-                        ${selectedStock.material?.unit_price?.toFixed(2) || "0.00"}
+                        ${selectedStock.material?.unit_price?.toLocaleString() || "0.00"}
                       </p>
                     </div>
                     <div>
