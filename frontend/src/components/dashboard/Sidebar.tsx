@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import {
   MapPin,
-  Plane,
   Users,
   TrendingUp,
   User,
@@ -11,7 +10,6 @@ import {
   Briefcase,
   User2,
   Store,
-  Hotel,
   Package,
   Layers,
   Ruler,
