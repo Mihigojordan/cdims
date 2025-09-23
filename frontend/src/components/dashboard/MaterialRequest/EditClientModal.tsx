@@ -163,8 +163,8 @@ const handleChange = (
           ...newItems[index],
           [field]:
             field === "qty_requested"
-              ? parseFloat(value) || 0
-              : parseInt(value, 10) || 0,
+              ? parseFloat(value) 
+              : parseInt(value, 10) ,
         };
         return { ...prev, items: newItems };
       });

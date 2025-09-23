@@ -10,6 +10,7 @@ import {
 } from 'libphonenumber-js';
 import userService, { type CreateUserInput } from '../../../services/userService';
 import roleService, { type Role } from '../../../services/roleService';
+import { formatRole } from '../../../utils/dateUtils';
 
 interface AddEmployeeModalProps {
     isOpen: boolean;
@@ -301,8 +302,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                 <div className="bg-primary-500 rounded-t-lg p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-semibold text-white">Add New Employee</h2>
-                            <p className="text-sm text-primary-100 mt-1">Create a new employee account</p>
+                            <h2 className="text-xl font-semibold text-white">Add New User</h2>
+                            <p className="text-sm text-primary-100 mt-1">Create a new User account</p>
                         </div>
                         <button
                             onClick={onClose}
@@ -401,7 +402,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                                 </option>
                                 {roles.map((role) => (
                                     <option key={role.id} value={role.id}>
-                                        {role.name}
+                                        {formatRole({role})}
                                     </option>
                                 ))}
                             </select>
@@ -444,7 +445,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                             ) : (
                                 <>
                                     <Plus className="w-4 h-4" />
-                                    <span>Add Employee</span>
+                                    <span>Add User</span>
                                 </>
                             )}
                         </button>

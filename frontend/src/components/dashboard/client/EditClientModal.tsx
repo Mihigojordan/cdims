@@ -3,6 +3,7 @@ import { X, User, Mail, Phone, Plus, RefreshCw, UserCheck } from 'lucide-react';
 import { parsePhoneNumberFromString, isValidPhoneNumber, AsYouType, getCountryCallingCode, type CountryCode } from 'libphonenumber-js';
 import userService, { type UpdateUserInput, type User as UserType } from '../../../services/userService';
 import roleService, { type Role } from '../../../services/roleService';
+import { formatRole } from '../../../utils/dateUtils';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -374,7 +375,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
                                 </option>
                                 {roles.map((role) => (
                                     <option key={role.id} value={role.id}>
-                                        {role.name}
+                                         {formatRole({role})}
                                     </option>
                                 ))}
                             </select>

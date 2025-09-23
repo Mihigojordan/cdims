@@ -80,3 +80,43 @@ export const isValidDate = (dateString: string): boolean => {
     return false;
   }
 };
+
+/**
+ * Checks if a date string is valid
+ * @param user Object
+ * @returns user role in suitable format
+ */
+
+export const formatRole = (user:any)=>{
+ return user.role.name?.split('_').join(' ')
+}
+
+
+
+/**
+ * Formats a numeric value into a currency string
+ * @param value Number or string that can be converted to a number
+ * @param currency Currency code (default: 'USD')
+ * @param locale Locale for formatting (default: 'en-US')
+ * @returns Formatted price string (e.g., "$1,234.56")
+ */
+export const formatPrice = (
+  value: number | string,
+  currency: string = 'RWF',
+  locale: string = 'rw-RW'
+): string => {
+  try {
+    const numberValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numberValue)) {
+      throw new Error('Invalid number');
+    }
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(numberValue);
+  } catch {
+    return 'Invalid Price';
+  }
+};

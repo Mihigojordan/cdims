@@ -1,4 +1,3 @@
-
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -30,7 +29,8 @@ import {
     Check,
     Upload,
     UserCheck,
-    Archive
+    Archive,
+    Calendar
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
@@ -68,6 +68,7 @@ interface MaterialRequisition {
     site?: { name: string };
     requestedBy?: { full_name: string };
     status: string;
+    created_at: string; // Added created_at to interface
     approvals?: {
         id: number;
         level: 'DSE' | 'MANAGER' | 'DIRECTOR' | 'PADIRI';
@@ -89,7 +90,7 @@ const RequisitionManagement = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [sortBy, setSortBy] = useState<keyof MaterialRequisition>('site_id');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [itemsPerPage] = useState(8); // Renamed from rowsPerPage
+    const [itemsPerPage] = useState(8);
     const [currentPage, setCurrentPage] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>('table');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -103,6 +104,9 @@ const RequisitionManagement = () => {
     const [operationLoading, setOperationLoading] = useState<boolean>(false);
     const [showFilters, setShowFilters] = useState<boolean>(false);
     const { user } = useAuth();
+
+    // Check if user is SITE_ENGINEER
+    const isSiteEngineer = user?.role.name === 'SITE_ENGINEER';
 
     useEffect(() => {
         const fetchRequisitions = async () => {
@@ -140,6 +144,17 @@ const RequisitionManagement = () => {
         setTimeout(() => setOperationStatus(null), duration);
     };
 
+    // Date formatter
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     const handleFilterAndSort = () => {
         let filtered = [...allRequisitions];
 
@@ -158,8 +173,8 @@ const RequisitionManagement = () => {
         }
 
         filtered.sort((a, b) => {
-            let aValue = a[sortBy] ?? '';
-            let bValue = b[sortBy] ?? '';
+            let aValue: any = a[sortBy] ?? '';
+            let bValue: any = b[sortBy] ?? '';
 
             if (sortBy === 'site_id') {
                 aValue = a.site?.name ?? '';
@@ -167,11 +182,15 @@ const RequisitionManagement = () => {
             } else if (sortBy === 'requestedBy') {
                 aValue = a.requestedBy?.full_name ?? '';
                 bValue = b.requestedBy?.full_name ?? '';
+            } else if (sortBy === 'created_at') {
+                aValue = new Date(a.created_at).getTime();
+                bValue = new Date(b.created_at).getTime();
+                return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
             }
 
             const strA = aValue?.toString()?.toLowerCase();
             const strB = bValue?.toString()?.toLowerCase();
-            return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strB);
+            return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
         });
 
         setRequisitions(filtered);
@@ -193,6 +212,7 @@ const RequisitionManagement = () => {
                         <td style="font-size:10px;">${requisition.site?.name || 'N/A'}</td>
                         <td style="font-size:10px;">${requisition.requestedBy?.full_name || 'N/A'}</td>
                         <td style="font-size:10px;">${totalQuantity}</td>
+                        ${!isSiteEngineer ? `<td style="font-size:10px;">${formatDate(requisition.created_at)}</td>` : ''}
                         <td style="font-size:10px; color: ${getStatusColor(requisition.status)};">
                             ${requisition.status}
                         </td>
@@ -223,6 +243,7 @@ const RequisitionManagement = () => {
                                 <th>Site</th>
                                 <th>Requested By</th>
                                 <th>Quantity</th>
+                                ${!isSiteEngineer ? '<th>Created At</th>' : ''}
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -282,42 +303,37 @@ const RequisitionManagement = () => {
         setIsDeleteModalOpen(true);
     };
 
-  const handleCloseRequisition = async (requisition: MaterialRequisition) => {
-    try {
-        setOperationLoading(true);
+    const handleCloseRequisition = async (requisition: MaterialRequisition) => {
+        try {
+            setOperationLoading(true);
 
-        if (!requisition?.id) {
-            throw new Error('Invalid requisition selected');
+            if (!requisition?.id) {
+                throw new Error('Invalid requisition selected');
+            }
+
+            const response = await requisitionService.closeRequisition(requisition.id.toString());
+
+            if (!response?.request_id) {
+                throw new Error(response?.message || 'Failed to close requisition');
+            }
+
+            const updatedRequisition: MaterialRequisition = {
+                ...requisition,
+                status: 'CLOSED',
+            };
+
+            setAllRequisitions((prev) =>
+                prev.map((r) => (r.id == updatedRequisition.id ? updatedRequisition : r))
+            );
+
+            showOperationStatus('success', `Requisition #${requisition.id} closed successfully`);
+        } catch (err: any) {
+            console.error('Error closing requisition:', err);
+            showOperationStatus('error', err.message || 'Failed to close requisition');
+        } finally {
+            setOperationLoading(false);
         }
-
-        // Call backend endpoint
-        const response = await requisitionService.closeRequisition(requisition.id.toString());
-        
-        
-
-        if (!response?.request_id) {
-            throw new Error(response?.message || 'Failed to close requisition');
-        }
-
-        // Update local state
-        const updatedRequisition: MaterialRequisition = {
-            ...requisition,
-            status: 'CLOSED',
-        };
-
-        setAllRequisitions((prev) =>
-            prev.map((r) => (r.id == updatedRequisition.id ? updatedRequisition : r))
-        );
-
-        showOperationStatus('success', `Requisition #${requisition.id} closed successfully`);
-    } catch (err: any) {
-        console.error('Error closing requisition:', err);
-        showOperationStatus('error', err.message || 'Failed to close requisition');
-    } finally {
-        setOperationLoading(false);
-    }
-};
-
+    };
 
     const handleSaveRequisition = async (data: CreateRequisitionInput | UpdateRequisitionInput) => {
         try {
@@ -387,34 +403,34 @@ const RequisitionManagement = () => {
     };
 
     const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'PENDING': return '#F59E0B'; // amber
-    case 'SUBMITTED': return '#3B82F6'; // blue
-    case 'DSE_REVIEW': return '#8B5CF6'; // purple
-    case 'WAITING_PADIRI_REVIEW': return '#06B6D4'; // cyan
-    case 'APPROVED': return '#10B981'; // green
-    case 'PARTIALLY_ISSUED': return '#EAB308'; // yellow
-    case 'ISSUED': return '#2563EB'; // darker blue
-    case 'REJECTED': return '#EF4444'; // red
-    case 'CLOSED': return '#6B7280'; // gray
-    default: return '#6B7280'; // fallback gray
-  }
-};
+        switch (status) {
+            case 'PENDING': return '#F59E0B'; // amber
+            case 'SUBMITTED': return '#3B82F6'; // blue
+            case 'DSE_REVIEW': return '#8B5CF6'; // purple
+            case 'WAITING_PADIRI_REVIEW': return '#06B6D4'; // cyan
+            case 'APPROVED': return '#10B981'; // green
+            case 'PARTIALLY_ISSUED': return '#EAB308'; // yellow
+            case 'ISSUED': return '#2563EB'; // darker blue
+            case 'REJECTED': return '#EF4444'; // red
+            case 'CLOSED': return '#6B7280'; // gray
+            default: return '#6B7280'; // fallback gray
+        }
+    };
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'PENDING': return <Clock className="w-3 h-3" />;
-    case 'SUBMITTED': return <Upload className="w-3 h-3" />;
-    case 'DSE_REVIEW': return <Search className="w-3 h-3" />;
-    case 'WAITING_PADIRI_REVIEW': return <UserCheck className="w-3 h-3" />;
-    case 'APPROVED': return <CheckCircle className="w-3 h-3" />;
-    case 'PARTIALLY_ISSUED': return <AlertTriangle className="w-3 h-3" />;
-    case 'ISSUED': return <Truck className="w-3 h-3" />;
-    case 'REJECTED': return <XCircle className="w-3 h-3" />;
-    case 'CLOSED': return <Archive className="w-3 h-3" />;
-    default: return <Package className="w-3 h-3" />;
-  }
-};
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'PENDING': return <Clock className="w-3 h-3" />;
+            case 'SUBMITTED': return <Upload className="w-3 h-3" />;
+            case 'DSE_REVIEW': return <Search className="w-3 h-3" />;
+            case 'WAITING_PADIRI_REVIEW': return <UserCheck className="w-3 h-3" />;
+            case 'APPROVED': return <CheckCircle className="w-3 h-3" />;
+            case 'PARTIALLY_ISSUED': return <AlertTriangle className="w-3 h-3" />;
+            case 'ISSUED': return <Truck className="w-3 h-3" />;
+            case 'REJECTED': return <XCircle className="w-3 h-3" />;
+            case 'CLOSED': return <Archive className="w-3 h-3" />;
+            default: return <Package className="w-3 h-3" />;
+        }
+    };
 
     const totalPages = Math.ceil(requisitions.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -426,117 +442,107 @@ const getStatusIcon = (status: string) => {
     const pendingRequisitions = allRequisitions.filter((r) => r.status === 'PENDING').length;
     const approvedRequisitions = allRequisitions.filter((r) => r.status === 'APPROVED').length;
 
+    const renderActionButtonBasedOnUser = (user: any, requisition: any) => {
+        const status = requisition?.status;
 
+        if (['APPROVED', 'REJECTED', 'CLOSED'].includes(status)) {
+            return null;
+        }
 
-   const renderActionButtonBasedOnUser = (user: any, requisition: any) => {
-  const status = requisition?.status;
+        const alreadyApprovedByDiocesan = requisition?.approvals?.some(
+            (approval: any) =>
+                approval?.reviewer?.role?.name === 'DIOCESAN_SITE_ENGINEER' &&
+                approval?.action === 'APPROVED'
+        );
 
-  // 🔒 Rule 0: Hide if requisition is finalized (cannot change anymore)
-  if (['APPROVED', 'REJECTED', 'CLOSED'].includes(status)) {
-    return null;
-  }
+        const alreadyApprovedByPadiri = requisition?.approvals?.some(
+            (approval: any) =>
+                approval?.reviewer?.role?.name === 'PADIRI' &&
+                approval?.action === 'APPROVED'
+        );
 
-  // Check approvals
-  const alreadyApprovedByDiocesan = requisition?.approvals?.some(
-    (approval: any) =>
-      approval?.reviewer?.role?.name === 'DIOCESAN_SITE_ENGINEER' &&
-      approval?.action === 'APPROVED'
-  );
+        if (user?.role.name === 'SITE_ENGINEER' && ['PENDING', 'SUBMITTED'].includes(status)) {
+            return (
+                <button
+                    onClick={() => handleEditRequisition(requisition)}
+                    disabled={operationLoading}
+                    className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                    title="Edit Requisition"
+                >
+                    <Pencil className="w-4 h-4" />
+                </button>
+            );
+        }
 
-  const alreadyApprovedByPadiri = requisition?.approvals?.some(
-    (approval: any) =>
-      approval?.reviewer?.role?.name === 'PADIRI' &&
-      approval?.action === 'APPROVED'
-  );
+        if (user?.role.name === 'SITE_ENGINEER' && status === 'ISSUED') {
+            return (
+                <button
+                    onClick={() => handleCloseRequisition(requisition)}
+                    disabled={operationLoading}
+                    className="text-gray-400 hover:text-green-600 p-1.5 rounded-full hover:bg-green-50 transition-colors disabled:opacity-50"
+                    title="Confirm Received & Close Requisition"
+                >
+                    <CheckCircle className="w-4 h-4" />
+                </button>
+            );
+        }
 
-  // 🛠 Rule 1: SITE_ENGINEER → can edit if still draft/pending/submitted
-  if (user?.role.name === 'SITE_ENGINEER' && ['PENDING', 'SUBMITTED'].includes(status)) {
-    return (
-      <button
-        onClick={() => handleEditRequisition(requisition)}
-        disabled={operationLoading}
-        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-        title="Edit Requisition"
-      >
-        <Pencil className="w-4 h-4" />
-      </button>
-    );
-  }
+        if (alreadyApprovedByPadiri) {
+            return null;
+        }
 
-  // 🆕 Rule 1b: SITE_ENGINEER → after materials are issued, confirm receipt
-  if (user?.role.name === 'SITE_ENGINEER' && status === 'ISSUED') {
-    return (
-      <button
-        onClick={() => handleCloseRequisition(requisition)}
-        disabled={operationLoading}
-        className="text-gray-400 hover:text-green-600 p-1.5 rounded-full hover:bg-green-50 transition-colors disabled:opacity-50"
-        title="Confirm Received & Close Requisition"
-      >
-        <CheckCircle className="w-4 h-4" />
-      </button>
-    );
-  }
+        if (user?.role.name === 'DIOCESAN_SITE_ENGINEER' && alreadyApprovedByDiocesan) {
+            return null;
+        }
 
-  // 🚫 Rule 2: If PADIRI already approved → hide actions for everyone else
-  if (alreadyApprovedByPadiri) {
-    return null;
-  }
+        if (user?.role.name === 'DIOCESAN_SITE_ENGINEER') {
+            return (
+                <div className="flex items-center space-x-1">
+                    <button
+                        onClick={() => handleApproveRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                        title="Approve Requisition"
+                    >
+                        <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => handleRejectRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+                        title="Reject Requisition"
+                    >
+                        <XCircle className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        }
 
-  // 🚫 Rule 3: If DIOCESAN user and a DIOCESAN already approved → hide
-  if (user?.role.name === 'DIOCESAN_SITE_ENGINEER' && alreadyApprovedByDiocesan) {
-    return null;
-  }
+        if (user?.role.name === 'PADIRI' && status === 'WAITING_PADIRI_REVIEW') {
+            return (
+                <div className="flex items-center space-x-1">
+                    <button
+                        onClick={() => handleApproveRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                        title="Approve Requisition"
+                    >
+                        <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => handleRejectRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+                        title="Reject Requisition"
+                    >
+                        <XCircle className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        }
 
-  // ✅ Rule 4: DIOCESAN_SITE_ENGINEER can act during DSE_REVIEW stage
-  if (user?.role.name === 'DIOCESAN_SITE_ENGINEER' ) {
-    return (
-      <div className="flex items-center space-x-1">
-        <button
-          onClick={() => handleApproveRequisition(requisition)}
-          disabled={operationLoading}
-          className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-          title="Approve Requisition"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => handleRejectRequisition(requisition)}
-          disabled={operationLoading}
-          className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-          title="Reject Requisition"
-        >
-          <XCircle className="w-4 h-4" />
-        </button>
-      </div>
-    );
-  }
-
-  // ✅ Rule 5: PADIRI can act during WAITING_PADIRI_REVIEW stage
-  if (user?.role.name === 'PADIRI' && status === 'WAITING_PADIRI_REVIEW') {
-    return (
-      <div className="flex items-center space-x-1">
-        <button
-          onClick={() => handleApproveRequisition(requisition)}
-          disabled={operationLoading}
-          className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-          title="Approve Requisition"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => handleRejectRequisition(requisition)}
-          disabled={operationLoading}
-          className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-          title="Reject Requisition"
-        >
-          <XCircle className="w-4 h-4" />
-        </button>
-      </div>
-    );
-  }
-
-  return null; // 🚷 default: hide actions for all other roles/states
-};
+        return null;
+    };
 
     const renderTableView = () => (
         <div className="bg-white rounded border border-gray-200">
@@ -545,7 +551,6 @@ const getStatusIcon = (status: string) => {
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
-                            <th className="text-left py-2 px-2 text-gray-600 font-medium">Req ID</th>
                             <th
                                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
                                 onClick={() => {
@@ -559,7 +564,20 @@ const getStatusIcon = (status: string) => {
                                 </div>
                             </th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium">Requested By</th>
+                            <th className="text-left py-2 px-2 text-gray-600 font-medium">Items</th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
+                            <th
+                                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
+                                onClick={() => {
+                                    setSortBy('created_at');
+                                    setSortOrder(sortBy === 'created_at' && sortOrder === 'asc' ? 'desc' : 'asc');
+                                }}
+                            >
+                                <div className="flex items-center space-x-1">
+                                    <span>Created At</span>
+                                    <ChevronDown className={`w-3 h-3 ${sortBy === 'created_at' ? 'text-primary-600' : 'text-gray-400'}`} />
+                                </div>
+                            </th>
                             <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -570,9 +588,9 @@ const getStatusIcon = (status: string) => {
                                 className={`hover:bg-gray-25 ${index % 2 === 0 ? 'bg-gray-50' : ''}`}
                             >
                                 <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
-                                <td className="py-2 px-2 text-gray-700">#{requisition.id}</td>
                                 <td className="py-2 px-2 text-gray-700">{requisition.site?.name || 'N/A'}</td>
                                 <td className="py-2 px-2 text-gray-700">{requisition.requestedBy?.full_name || 'N/A'}</td>
+                                <td className="py-2 px-2 text-gray-700">{`${requisition.items.length} items` || 'N/A'}</td>
                                 <td className="py-2 px-2">
                                     <span
                                         className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full"
@@ -585,6 +603,7 @@ const getStatusIcon = (status: string) => {
                                         <span className="ml-1">{requisition?.status?.split('_')?.join(' ')}</span>
                                     </span>
                                 </td>
+                                <td className="py-2 px-2 text-gray-700">{formatDate(requisition.created_at)}</td>
                                 <td className="py-2 px-2">
                                     <div className="flex items-center justify-end space-x-1">
                                         <Link
@@ -637,6 +656,9 @@ const getStatusIcon = (status: string) => {
                         <div className="text-xs text-gray-600">
                             Qty: {requisition.items?.reduce((sum, item) => sum + item.qty_requested, 0) || 0}
                         </div>
+                        <div className="text-xs text-gray-600">
+                            Created: {formatDate(requisition.created_at)}
+                        </div>
                     </div>
                     <div className="flex items-center justify-end space-x-1">
                         <button
@@ -673,6 +695,9 @@ const getStatusIcon = (status: string) => {
                                 <div className="text-gray-500 text-xs truncate">
                                     Requested by: {requisition.requestedBy?.full_name || 'N/A'}
                                 </div>
+                                <div className="text-gray-500 text-xs truncate">
+                                    Created: {formatDate(requisition.created_at)}
+                                </div>
                             </div>
                         </div>
                         <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
@@ -684,7 +709,7 @@ const getStatusIcon = (status: string) => {
                                 }}
                             >
                                 {getStatusIcon(requisition.status)}
-                                <span className="ml-1">{requisition.status?.replace('_', ' ')}</span>
+                                <span className="ml-1">{requisition.status?.split('_').join(' ')}</span>
                             </span>
                             <button
                                 onClick={() => IssueMaterialPage(requisition)}
@@ -960,6 +985,8 @@ const getStatusIcon = (status: string) => {
                                 <option value="site_id-desc">Site: Z-A</option>
                                 <option value="status-asc">Status: A-Z</option>
                                 <option value="status-desc">Status: Z-A</option>
+                                <option value="created_at-asc">Created At: Oldest First</option>
+                                <option value="created_at-desc">Created At: Newest First</option>
                             </select>
                             <button
                                 onClick={() => {

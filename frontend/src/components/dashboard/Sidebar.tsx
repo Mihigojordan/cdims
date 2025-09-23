@@ -24,6 +24,7 @@ import {
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import useAdminAuth from "../../context/AuthContext";
 import Logo from '../../assets/hello.jpg';
+import { formatRole } from "../../utils/dateUtils";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -413,7 +414,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
             </div>
             <div>
               <h2 className="font-bold text-lg text-primary-800">CIDMS</h2>
-              <p className="text-xs text-primary-500">Admin Portal</p>
+              <p className="text-xs capitalize text-primary-500">{formatRole(user)?.toLowerCase() ?? 'dashboard'}</p>
               {/* <p className="text-xs text-primary-500">{user?.role?.name} Portal</p> */}
             </div>
           </div>
