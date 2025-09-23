@@ -60,10 +60,14 @@ const userService = {
   createUser: async (data: CreateUserInput): Promise<User> => {
     try {
       const token = localStorage.getItem('auth_token');
-      const { data: newUser } = await api.post<User>('/users', data, {
+      const { data: newUser } = await api.post<{
+        data:{
+          user:User
+        }
+      }>('/users', data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return newUser;
+      return newUser.data.user;
     } catch (error: any) {
       console.error('Error creating user:', error);
       throw new Error(error.response?.data?.message || 'Failed to create user');
