@@ -537,6 +537,9 @@ router.put('/:id/modify', authenticate, authorize('DIOCESAN_SITE_ENGINEER'), req
  */
 router.post('/:id/approve', authenticate, authorize('DIOCESAN_SITE_ENGINEER', 'PADIRI'), requestController.approveRequest);
 
+router.post('/:id/close',authenticate,authorize('SITE_ENGINEER'),requestController.closeRequisition);
+
+
 /**
  * @swagger
  * /api/requests/{id}/approve-storekeeper:

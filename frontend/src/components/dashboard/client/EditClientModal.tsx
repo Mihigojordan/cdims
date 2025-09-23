@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Plus, RefreshCw, UserCheck } from 'lucide-react';
+import { parsePhoneNumberFromString, isValidPhoneNumber, AsYouType, getCountryCallingCode, type CountryCode } from 'libphonenumber-js';
 import userService, { type UpdateUserInput, type User as UserType } from '../../../services/userService';
 import roleService, { type Role } from '../../../services/roleService';
 
@@ -19,6 +20,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
         role_id: user?.role_id || 0,
         active: user?.active !== undefined ? user.active : true
     });
+    const [selectedCountry, setSelectedCountry] = useState<CountryCode>('RW');
+    const [phoneInput, setPhoneInput] = useState('');
+    const [formattedPhone, setFormattedPhone] = useState('');
     const [roles, setRoles] = useState<Role[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,19 +35,27 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
         }
     }, [isOpen]);
 
-    console.log(user)
-
-    // Update form data when user changes
+    // Update form data and phone input when user changes
     useEffect(() => {
         if (user) {
             setFormData({
                 full_name: user.full_name || '',
                 email: user.email || '',
                 phone: user.phone || '',
-                password: '', // Always start with empty password for security
+                password: '',
                 role_id: user.role_id || 0,
                 active: user.active !== undefined ? user.active : true
             });
+            if (user.phone) {
+                const phoneNumber = parsePhoneNumberFromString(user.phone);
+                setPhoneInput(user.phone);
+                setFormattedPhone(phoneNumber ? new AsYouType().input(user.phone) : user.phone);
+                setSelectedCountry(phoneNumber?.country || 'RW');
+            } else {
+                setPhoneInput('');
+                setFormattedPhone('');
+                setSelectedCountry('RW');
+            }
             setErrors([]);
         }
     }, [user]);
@@ -59,16 +71,38 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
                 role_id: 0,
                 active: true
             });
+            setPhoneInput('');
+            setFormattedPhone('');
+            setSelectedCountry('RW');
             setErrors([]);
         }
     }, [isOpen]);
 
+    // Format phone number as user types
+    useEffect(() => {
+        if (phoneInput) {
+            let inputToFormat = phoneInput;
+            const countryCallingCode = getCountryCallingCode(selectedCountry);
+            if (!phoneInput.startsWith('+')) {
+                inputToFormat = `+${countryCallingCode}${phoneInput}`;
+            }
+            const asYouType = new AsYouType();
+            const formatted = asYouType.input(inputToFormat);
+            setFormattedPhone(formatted);
+            const phoneNumber = parsePhoneNumberFromString(inputToFormat);
+            if (phoneNumber && phoneNumber.isValid()) {
+                setFormData(prev => ({ ...prev, phone: phoneNumber.number }));
+            }
+        } else {
+            setFormattedPhone('');
+            setFormData(prev => ({ ...prev, phone: '' }));
+        }
+    }, [phoneInput, selectedCountry]);
+
     const loadRoles = async () => {
-        console.log('Fetching roles...');
         setIsLoadingRoles(true);
         try {
             const response = await roleService.getAllRoles();
-            console.log('Roles raw response:', response);
             const rolesData = Array.isArray(response.data?.roles) ? response.data.roles : [];
             setRoles(rolesData);
         } catch (error: any) {
@@ -84,18 +118,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
             const length = 12;
             const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
             let password = "";
-            
             if (!charset || charset.length === 0) {
                 throw new Error('Charset is empty');
             }
-            
             for (let i = 0; i < length; i++) {
                 const randomIndex = Math.floor(Math.random() * charset.length);
                 if (randomIndex < charset.length) {
                     password += charset.charAt(randomIndex);
                 }
             }
-            
             if (password && password.length > 0) {
                 setFormData((prev) => ({ ...prev, password }));
                 if (errors.length > 0) {
@@ -112,19 +143,34 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
         try {
             const { name, value, type } = e.target;
             let processedValue: any = value;
-            
             if (type === 'checkbox') {
                 processedValue = (e.target as HTMLInputElement).checked;
             } else if (name === 'role_id') {
                 processedValue = value ? parseInt(value, 10) : 0;
             }
-            
             setFormData((prev) => ({ ...prev, [name]: processedValue }));
             if (errors.length > 0) {
                 setErrors([]);
             }
         } catch (error) {
             console.error('Error handling form change:', error);
+        }
+    };
+
+    const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        if (value && !value.startsWith('+') && !phoneInput.startsWith('+')) {
+            const rwandaCode = getCountryCallingCode('RW');
+            if (!value.startsWith(rwandaCode.toString())) {
+                setPhoneInput(value);
+            } else {
+                setPhoneInput(value);
+            }
+        } else {
+            setPhoneInput(value);
+        }
+        if (errors.length > 0) {
+            setErrors([]);
         }
     };
 
@@ -135,13 +181,20 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
             validationErrors.push('Full name is required');
         }
 
-        // Email validation removed since it's read-only
-
-        if (!formData.phone || !formData.phone.trim()) {
+        if (!phoneInput.trim()) {
             validationErrors.push('Phone number is required');
+        } else {
+            let phoneNumber = parsePhoneNumberFromString(phoneInput);
+            if (!phoneNumber) {
+                const rwandaCode = getCountryCallingCode('RW');
+                const phoneWithCountryCode = phoneInput.startsWith('+') ? phoneInput : `+${rwandaCode}${phoneInput}`;
+                phoneNumber = parsePhoneNumberFromString(phoneWithCountryCode);
+            }
+            if (!phoneNumber || !phoneNumber.isValid()) {
+                validationErrors.push('Please enter a valid phone number');
+            }
         }
 
-        // Password is optional for updates - only validate if provided
         if (formData.password && formData.password.trim().length > 0 && formData.password.trim().length < 6) {
             validationErrors.push('Password must be at least 6 characters long if provided');
         }
@@ -168,15 +221,20 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
         }
 
         try {
-            // Create update payload - exclude email since it's read-only
+            let phoneNumber = parsePhoneNumberFromString(phoneInput);
+            if (!phoneNumber) {
+                const rwandaCode = getCountryCallingCode('RW');
+                const phoneWithCountryCode = phoneInput.startsWith('+') ? phoneInput : `+${rwandaCode}${phoneInput}`;
+                phoneNumber = parsePhoneNumberFromString(phoneWithCountryCode);
+            }
+
             const updateData: UpdateUserInput = {
                 full_name: formData.full_name,
-                phone: formData.phone,
+                phone: phoneNumber?.number || formData.phone,
                 role_id: formData.role_id,
                 active: formData.active
             };
 
-            // Only include password if it's been set
             if (formData.password && formData.password.trim().length > 0) {
                 updateData.password = formData.password.trim();
             }
@@ -191,6 +249,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
                 role_id: 0,
                 active: true
             });
+            setPhoneInput('');
+            setFormattedPhone('');
+            setSelectedCountry('RW');
             onClose();
         } catch (error: any) {
             const errorMessage = error.message || 'Failed to update employee';
@@ -264,11 +325,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
                             </label>
                             <input
                                 type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
+                                value={formattedPhone || phoneInput}
+                                onChange={handlePhoneInputChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter phone number"
+                                placeholder="+250 788 123 456"
                             />
                         </div>
 

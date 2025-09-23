@@ -272,7 +272,7 @@ const createRequest = async (req, res) => {
       site_id,
       requested_by,
       notes,
-      status: 'DRAFT'
+      status: 'PENDING'
     });
 
     // Create request items
@@ -424,6 +424,20 @@ const updateRequest = async (req, res) => {
             as: 'role'
           }]
         },
+                        {
+model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ]
+        },
         {
           model: RequestItem,
           as: 'items',
@@ -467,10 +481,10 @@ const submitRequest = async (req, res) => {
       });
     }
 
-    if (request.status !== 'DRAFT') {
+    if (request.status !== 'PENDING') {
       return res.status(400).json({
         success: false,
-        message: 'Only draft requests can be submitted'
+        message: 'Only PENDING requests can be submitted'
       });
     }
 
@@ -529,6 +543,16 @@ const approveRequest = async (req, res) => {
       }
     } 
 
+    else if(level === 'PADIRI' && request.items){
+      for(const modification of request.items){
+         await RequestItem.update(
+          { qty_approved: modification.qty_approved ?? modification.qty_requested  },
+          
+          { where: { id: modification.id } }
+        );
+      }
+    }
+
     // Prevent duplicate approvals by same user & level
     const existingApproval = await Approval.findOne({
       where: { request_id: id, level, reviewer_id }
@@ -546,7 +570,7 @@ const approveRequest = async (req, res) => {
 
     // Update request status
     if (level === 'DSE') {
-      request.status = 'PADIRI_REVIEW';
+      request.status = 'WAITING_PADIRI_REVIEW';
     } else if (level === 'PADIRI') {
       request.status = 'APPROVED';
     }
@@ -784,10 +808,10 @@ const approveForStorekeeper = async (req, res) => {
       });
     }
 
-    if (request.status !== 'PADIRI_REVIEW') {
+    if (request.status !== 'WAITING_PADIRI_REVIEW') {
       return res.status(400).json({
         success: false,
-        message: 'Only requests in PADIRI_REVIEW status can be approved for storekeeper'
+        message: 'Only requests in WAITING_PADIRI_REVIEW status can be approved for storekeeper'
       });
     }
 
@@ -935,6 +959,55 @@ const getAvailableSites = async (req, res) => {
   }
 };
 
+const closeRequisition = async (req, res) => {
+  try {
+    const { id:request_id } = req.params;
+
+    if (!request_id) {
+      return res.status(400).json({ success: false, message: 'Request ID is required' });
+    }
+
+    // Load request
+    const request = await Request.findByPk(request_id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    console.log(' **** ' + request.status);
+    
+
+    // Only allow closing if status is ISSUED
+    if (request.status !== 'ISSUED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Requisition must be in ISSUED status to be closed'
+      });
+    }
+
+    // Update status to CLOSED
+    await request.update({
+      status: 'CLOSED',
+      closed_by: req.user.id,
+      closed_at: new Date()
+    });
+
+    return res.json({
+      success: true,
+      message: 'Requisition has been closed successfully',
+      data: {
+        request_id: request.id,
+        status: request.status
+      }
+    });
+  } catch (err) {
+    console.error('Close requisition error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   getAllRequests,
   getMyRequests,
@@ -951,5 +1024,6 @@ module.exports = {
   addComment,
   getRequestAttachments,
   uploadAttachment,
-  getAvailableSites
+  getAvailableSites,
+    closeRequisition,
 };

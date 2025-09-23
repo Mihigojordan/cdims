@@ -29,6 +29,11 @@ import MaterialManagement from '../pages/dashboard/MaterialManagement';
 import CategoryDashboard from '../pages/dashboard/CategoryManagement';
 import UnitDashboard from '../pages/dashboard/UnitManagement';
 import RoleManagement from '../pages/dashboard/RoleManagement';
+import RequestsReportManagement from '../pages/dashboard/report/RequestsReportManagement'
+import UserReportManagement from '../pages/dashboard/report/UserReportManagement'
+import StockReportManagement from '../pages/dashboard/report/StockReportManagement'
+import InventoryReportManagement from '../pages/dashboard/report/InventoryReportManagement'
+import SiteReportManagement from '../pages/dashboard/report/SiteReportManagement'
 
 import MaterialRequisition from '../pages/dashboard/MaterialRequisition';
 
@@ -37,12 +42,14 @@ import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDet
 import StockMovementsDashboard from '../pages/dashboard/StockMovement';
 import IssuableRequestsDashboard from '../pages/dashboard/IssuableRequestsDashboard';
 import IssuableMaterialsDashboard from '../pages/dashboard/IssuableMaterialsDashboard';
+import IssueMaterialPage from '../components/dashboard/MaterialRequest/IssueMaterialPage';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
 const ContactPage = lazy(() => import('../pages/landing/ContactUs'));
 const AboutPage = lazy(() => import('../pages/landing/AboutPage'));
 const StockManagement = lazy(() => import('../pages/dashboard/StockManagement'));
+
 
 /**
  * Loading spinner component for Suspense fallback
@@ -74,98 +81,8 @@ const routes = createBrowserRouter([
     element: <Outlet />,
     children: [
       {
-        path: '',
-        element: <MainLayout />,
-        children: [
-          {
-            index: true,
-            element: (
-              <SuspenseWrapper>
-                <Home />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'about',
-            element: (
-              <SuspenseWrapper>
-                <AboutPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'features',
-            element: (
-              <SuspenseWrapper>
-                <ProductPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'solutions',
-            element: (
-              <SuspenseWrapper>
-                <ServicesPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'jobs',
-            element: (
-              <SuspenseWrapper>
-                <JobBoard />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'jobs',
-            element: (
-              <SuspenseWrapper>
-                <JobBoard />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'jobs/:id',
-            element: (
-              <SuspenseWrapper>
-                <JobPostView />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/jobs/apply-job/:id',
-            element: (
-              <SuspenseWrapper>
-                <JobApplicationForm />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'contact',
-            element: (
-              <SuspenseWrapper>
-                <ContactPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'blogs',
-            element: (
-              <SuspenseWrapper>
-                <BlogsPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'blogs/:id',
-            element: (
-              <SuspenseWrapper>
-                <BlogViewPage />
-              </SuspenseWrapper>
-            ),
-          },
-        ],
+        index:true,
+        element: <Navigate to={'/admin/dashboard'} />
       },
       {
         path: 'admin',
@@ -330,6 +247,46 @@ const routes = createBrowserRouter([
                 ),
               },
               {
+                path: 'request-report',
+                element: (
+                  <SuspenseWrapper>
+                    <RequestsReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'site-report',
+                element: (
+                  <SuspenseWrapper>
+                    <SiteReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'inventory-report',
+                element: (
+                  <SuspenseWrapper>
+                    <InventoryReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'user-report',
+                element: (
+                  <SuspenseWrapper>
+                    <UserReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'stock-report',
+                element: (
+                  <SuspenseWrapper>
+                    <StockReportManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
                 path: 'role-management',
                 element: (
                   <SuspenseWrapper>
@@ -374,6 +331,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                      <IssuableMaterialsDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'issuable-materials/create',
+                element: (
+                  <SuspenseWrapper>
+                     <IssueMaterialPage />
                   </SuspenseWrapper>
                 ),
               },

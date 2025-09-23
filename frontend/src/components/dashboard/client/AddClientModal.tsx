@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, User, Mail, Phone, Plus, RefreshCw, UserCheck } from 'lucide-react';
+import { 
+    parsePhoneNumberFromString, 
+    isValidPhoneNumber, 
+    getCountries, 
+    getCountryCallingCode,
+    AsYouType,
+    type CountryCode
+} from 'libphonenumber-js';
 import userService, { type CreateUserInput } from '../../../services/userService';
 import roleService, { type Role } from '../../../services/roleService';
 
@@ -8,6 +16,40 @@ interface AddEmployeeModalProps {
     onClose: () => void;
     onSave: (data: CreateUserInput) => Promise<void>;
 }
+
+// Get country data from libphonenumber-js
+const getCountryData = () => {
+    const countries = getCountries();
+    return countries.map(countryCode => {
+        const callingCode = getCountryCallingCode(countryCode);
+        // You might want to add a country name mapping here
+        const countryNames: Record<string, string> = {
+            'US': 'United States',
+            'GB': 'United Kingdom', 
+            'CA': 'Canada',
+            'AU': 'Australia',
+            'DE': 'Germany',
+            'FR': 'France',
+            'IN': 'India',
+            'CN': 'China',
+            'JP': 'Japan',
+            'BR': 'Brazil',
+            'MX': 'Mexico',
+            'IT': 'Italy',
+            'ES': 'Spain',
+            'RU': 'Russia',
+            'KR': 'South Korea',
+            // Add more as needed
+        };
+        
+        return {
+            code: countryCode,
+            callingCode: `+${callingCode}`,
+            name: countryNames[countryCode] || countryCode,
+            displayName: `${countryNames[countryCode] || countryCode} (+${callingCode})`
+        };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+};
 
 const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) => {
     const [formData, setFormData] = useState<CreateUserInput>({
@@ -18,10 +60,19 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
         role_id: 0,
         active: true
     });
+    
+    const [selectedCountry, setSelectedCountry] = useState<CountryCode>('RW');
+    const [phoneInput, setPhoneInput] = useState('');
+    const [formattedPhone, setFormattedPhone] = useState('');
+    
     const [roles, setRoles] = useState<Role[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+
+    // Get country data using libphonenumber-js (removed as not needed for single input)
+    
+    // Get current country info (removed as not needed for single input)
 
     // Load roles when modal opens
     useEffect(() => {
@@ -30,12 +81,55 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
         }
     }, [isOpen]);
 
+    // Reset form when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setFormData({
+                full_name: '',
+                email: '',
+                phone: '',
+                password: '',
+                role_id: 0,
+                active: true
+            });
+            setSelectedCountry('RW');
+            setPhoneInput('');
+            setFormattedPhone('');
+            setErrors([]);
+        }
+    }, [isOpen]);
+
+    // Format phone number as user types
+    useEffect(() => {
+        if (phoneInput) {
+            // Check if input already starts with country code
+            let inputToFormat = phoneInput;
+            const countryCallingCode = getCountryCallingCode(selectedCountry);
+            
+            // If input doesn't start with +, add the country code
+            if (!phoneInput.startsWith('+')) {
+                inputToFormat = `+${countryCallingCode}${phoneInput}`;
+            }
+            
+            const asYouType = new AsYouType();
+            const formatted = asYouType.input(inputToFormat);
+            setFormattedPhone(formatted);
+            
+            // Update form data with the full international number
+            const phoneNumber = parsePhoneNumberFromString(inputToFormat);
+            if (phoneNumber && phoneNumber.isValid()) {
+                setFormData(prev => ({ ...prev, phone: phoneNumber.number }));
+            }
+        } else {
+            setFormattedPhone('');
+            setFormData(prev => ({ ...prev, phone: '' }));
+        }
+    }, [phoneInput, selectedCountry]);
+
     const loadRoles = async () => {
-        console.log('Fetching roles...');
         setIsLoadingRoles(true);
         try {
             const response = await roleService.getAllRoles();
-            console.log('Roles raw response:', response);
             const rolesData = Array.isArray(response.data?.roles) ? response.data.roles : [];
             setRoles(rolesData);
         } catch (error: any) {
@@ -46,46 +140,34 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
         }
     };
 
- const generateRandomPassword = () => {
-    try {
-        const length = 12;
-        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-        let password = "";
-        
-        if (!charset || charset.length === 0) {
-            throw new Error('Charset is empty');
-        }
-        
-        for (let i = 0; i < length; i++) {
-            const randomIndex = Math.floor(Math.random() * charset.length);
-            if (randomIndex < charset.length) {
+    const generateRandomPassword = () => {
+        try {
+            const length = 12;
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            let password = "";
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * charset.length);
                 password += charset.charAt(randomIndex);
             }
-        }
-        
-        if (password && password.length > 0) {
             setFormData((prev) => ({ ...prev, password }));
             if (errors.length > 0) {
                 setErrors([]);
             }
+        } catch (error) {
+            console.error('Error generating password:', error);
+            setErrors(['Failed to generate password']);
         }
-    } catch (error) {
-        console.error('Error generating password:', error);
-        setErrors(['Failed to generate password']);
-    }
-};
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         try {
             const { name, value, type } = e.target;
             let processedValue: any = value;
-            
             if (type === 'checkbox') {
                 processedValue = (e.target as HTMLInputElement).checked;
             } else if (name === 'role_id') {
                 processedValue = value ? parseInt(value, 10) : 0;
             }
-            
             setFormData((prev) => ({ ...prev, [name]: processedValue }));
             if (errors.length > 0) {
                 setErrors([]);
@@ -94,6 +176,29 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
             console.error('Error handling form change:', error);
         }
     };
+
+    const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        
+        // If user starts typing without +, automatically add Rwanda country code
+        if (value && !value.startsWith('+') && !phoneInput.startsWith('+')) {
+            const rwandaCode = getCountryCallingCode('RW');
+            // Only add the country code if the input doesn't already start with the country code digits
+            if (!value.startsWith(rwandaCode.toString())) {
+                setPhoneInput(value);
+            } else {
+                setPhoneInput(value);
+            }
+        } else {
+            setPhoneInput(value);
+        }
+        
+        if (errors.length > 0) {
+            setErrors([]);
+        }
+    };
+
+
 
     const validateForm = (): { isValid: boolean; errors: string[] } => {
         const validationErrors: string[] = [];
@@ -108,8 +213,20 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
             validationErrors.push('Please enter a valid email address');
         }
 
-        if (!formData.phone || !formData.phone.trim()) {
+        if (!phoneInput.trim()) {
             validationErrors.push('Phone number is required');
+        } else {
+            // Try to parse with country code first, then fallback to Rwanda
+            let phoneNumber = parsePhoneNumberFromString(phoneInput);
+            if (!phoneNumber) {
+                const rwandaCode = getCountryCallingCode('RW');
+                const phoneWithCountryCode = phoneInput.startsWith('+') ? phoneInput : `+${rwandaCode}${phoneInput}`;
+                phoneNumber = parsePhoneNumberFromString(phoneWithCountryCode);
+            }
+            
+            if (!phoneNumber || !phoneNumber.isValid()) {
+                validationErrors.push('Please enter a valid phone number');
+            }
         }
 
         if (!formData.password || !formData.password.trim()) {
@@ -128,33 +245,32 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
         };
     };
 
-    useEffect(() => {
-        if (!isOpen) {
-            setFormData({
-                full_name: '',
-                email: '',
-                phone: '',
-                password: '',
-                role_id: 0,
-                active: true
-            });
-            setErrors([]);
-        }
-    }, [isOpen]);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
+
         const validation = validateForm();
         if (!validation.isValid) {
             setErrors(validation.errors);
             setIsSubmitting(false);
             return;
         }
-        
+
         try {
-            await onSave(formData);
+            // Parse phone number and ensure it's in international format
+            let phoneNumber = parsePhoneNumberFromString(phoneInput);
+            if (!phoneNumber) {
+                const rwandaCode = getCountryCallingCode('RW');
+                const phoneWithCountryCode = phoneInput.startsWith('+') ? phoneInput : `+${rwandaCode}${phoneInput}`;
+                phoneNumber = parsePhoneNumberFromString(phoneWithCountryCode);
+            }
+            
+            const saveData: CreateUserInput = {
+                ...formData,
+                phone: phoneNumber?.number || formData.phone
+            };
+            
+            await onSave(saveData);
             setErrors([]);
             setFormData({
                 full_name: '',
@@ -164,6 +280,9 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                 role_id: 0,
                 active: true
             });
+            setSelectedCountry('RW');
+            setPhoneInput('');
+            setFormattedPhone('');
             onClose();
         } catch (error: any) {
             const errorMessage = error.message || 'Failed to add employee';
@@ -185,8 +304,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                             <h2 className="text-xl font-semibold text-white">Add New Employee</h2>
                             <p className="text-sm text-primary-100 mt-1">Create a new employee account</p>
                         </div>
-                        <button 
-                            onClick={onClose} 
+                        <button
+                            onClick={onClose}
                             className="p-1 text-primary-100 hover:text-white rounded"
                             aria-label="Close modal"
                         >
@@ -234,11 +353,10 @@ const AddEmployeeModal = ({ isOpen, onClose, onSave }: AddEmployeeModalProps) =>
                             </label>
                             <input
                                 type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
+                                value={formattedPhone || phoneInput}
+                                onChange={handlePhoneInputChange}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                placeholder="Enter phone number"
+                                placeholder="+250 788 123 456"
                             />
                         </div>
 

@@ -6,7 +6,7 @@ export interface MaterialRequisition {
   site_id: number;
   requested_by: number;
   notes: string;
-  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'PARTIALLY_APPROVED';
+  status:  'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITING_PADIRI_REVEIW';
   site: {
     id: number;
     code: string;
@@ -256,7 +256,7 @@ approveRequisition: async (
       const { data: updatedRequisition } = await api.put<MaterialRequisition>(`/requests/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return updatedRequisition;
+      return updatedRequisition.data.request;
     } catch (error: any) {
       console.error('Error updating requisition:', error);
       throw new Error(error.response?.data?.message || 'Failed to update requisition');
@@ -305,6 +305,32 @@ rejectRequisition: async (
     throw new Error(error.response?.data?.message || 'Failed to reject requisition');
   }
 },
+
+// Close a requisition
+closeRequisition: async (id: string, comment?: string): Promise<MaterialRequisition> => {
+  if (!id) throw new Error('Requisition ID is required');
+
+  const token = localStorage.getItem('auth_token');
+  if (!token) throw new Error('Authentication token not found');
+
+  try {
+    const { data } = await api.post<{ success: boolean; data: MaterialRequisition }>(
+      `/requests/${id}/close`,
+      { comment },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!data?.success || !data?.data) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data.data;
+  } catch (error: any) {
+    console.error('Error closing requisition:', error);
+    throw new Error(error.response?.data?.message || 'Failed to close requisition');
+  }
+},
+
 
 
   // Delete a requisition

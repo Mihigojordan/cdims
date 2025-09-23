@@ -30,7 +30,7 @@ const Stock = sequelize.define('Stock', {
   },
   reorder_level: {
     type: DataTypes.DECIMAL(12, 3),
-    defaultValue: 0
+    defaultValue: 0,
   },
   low_stock_threshold: {
     type: DataTypes.DECIMAL(12, 3),

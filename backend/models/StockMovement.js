@@ -33,7 +33,13 @@ const StockMovement = sequelize.define('StockMovement', {
   },
   source_id: {
     type: DataTypes.BIGINT,
-    allowNull: false
+    allowNull: false,
+    references: {
+      model: 'requests',   // ✅ foreign key to requests table
+      key: 'id'
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE'
   },
   qty: {
     type: DataTypes.DECIMAL(12, 3),
@@ -53,7 +59,9 @@ const StockMovement = sequelize.define('StockMovement', {
     references: {
       model: 'users',
       key: 'id'
-    }
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL'
   },
   created_at: {
     type: DataTypes.DATE,

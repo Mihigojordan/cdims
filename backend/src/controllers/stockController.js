@@ -1,4 +1,4 @@
-const { Stock, Store, Material, Unit, Category, StockMovement, Request, RequestItem, User, Site } = require('../../models');
+const { Stock, Store, Material, Unit, Category, StockMovement, Request, RequestItem, User, Site, Role } = require('../../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../src/config/database');
 const { asyncHandler, NotFoundError, ValidationError } = require('../middleware/errorHandler');
@@ -65,7 +65,7 @@ const getAllStock = async (req, res) => {
 
 const createStock = async (req, res) => {
   try {
-    const { material_id, store_id, qty_on_hand, reorder_level, low_stock_threshold } = req.body;
+    const { material_id, store_id, qty_on_hand, low_stock_threshold } = req.body;
 
     // Check if stock record already exists for this material and store
     const existingStock = await Stock.findOne({
@@ -89,7 +89,6 @@ const createStock = async (req, res) => {
       material_id,
       store_id,
       qty_on_hand,
-      reorder_level: reorder_level || 0,
       low_stock_threshold: low_stock_threshold || 0,
       low_stock_alert: shouldAlert
     });
@@ -178,6 +177,54 @@ const getStockById = async (req, res) => {
     });
   }
 };
+const getStockByMaterialId = async (req, res) => {
+  try {
+    const { id: material_id } = req.params;
+
+    const stock = await Stock.findOne({
+      where: { material_id },
+      include: [
+        {
+          model: Store,
+          as: 'store'
+        },
+        {
+          model: Material,
+          as: 'material',
+          include: [
+            {
+              model: Category,
+              as: 'category'
+            },
+            {
+              model: Unit,
+              as: 'unit'
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!stock) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stock record not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: stock
+    });
+  } catch (error) {
+    console.error('Get stock by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 
 const updateStock = async (req, res) => {
   try {
@@ -356,6 +403,18 @@ const getStockMovements = async (req, res) => {
           as: 'store'
         },
         {
+           model: Request,
+          as: 'source'
+        },
+         {
+                  model: User,
+                  as: 'createdBy',
+                  include: [{
+                    model: Role,
+                    as: 'role'
+                  }]
+                },
+        {
           model: Material,
           as: 'material',
           include: [
@@ -404,7 +463,7 @@ const getProcurementRecommendations = async (req, res) => {
         { qty_on_hand: 0 }
       ]
     };
-    
+
     if (store_id) whereClause.store_id = store_id;
 
     const { count, rows: recommendations } = await Stock.findAndCountAll({
@@ -443,7 +502,7 @@ const getProcurementRecommendations = async (req, res) => {
       const currentStock = parseFloat(stock.qty_on_hand);
       const reorderLevel = parseFloat(stock.reorder_level) || 0;
       const lowStockThreshold = parseFloat(stock.low_stock_threshold) || 0;
-      
+
       let priority = 'LOW';
       let suggestedQty = 0;
       let reason = '';
@@ -496,10 +555,12 @@ const getProcurementRecommendations = async (req, res) => {
   }
 };
 
+
 const issueMaterials = async (req, res) => {
   try {
     const { request_id, items } = req.body;
 
+    // 1. Validate input
     if (!request_id || !items || !Array.isArray(items)) {
       return res.status(400).json({
         success: false,
@@ -507,44 +568,28 @@ const issueMaterials = async (req, res) => {
       });
     }
 
-    // Find the request
+    // 2. Load request with details
     const request = await Request.findByPk(request_id, {
       include: [
         {
           model: RequestItem,
           as: 'items',
-          include: [
-            {
-              model: Material,
-              as: 'material'
-            }
-          ]
+          include: [{ model: Material, as: 'material' }]
         },
-        {
-          model: User,
-          as: 'requestedBy'
-        },
-        {
-          model: Site,
-          as: 'site'
-        }
+        { model: User, as: 'requestedBy' },
+        { model: Site, as: 'site' }
       ]
     });
 
     if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: 'Request not found'
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
     if (request.status !== 'APPROVED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Request must be approved before issuing materials'
-      });
+      return res.status(400).json({ success: false, message: 'Request must be approved before issuing materials' });
     }
 
+    // 3. Start transaction
     const transaction = await sequelize.transaction();
 
     try {
@@ -554,23 +599,27 @@ const issueMaterials = async (req, res) => {
       for (const item of items) {
         const { request_item_id, qty_issued, store_id, notes } = item;
 
-        // Find the request item
+        // Find matching request item
         const requestItem = request.items.find(ri => ri.id === request_item_id);
         if (!requestItem) {
           throw new Error(`Request item ${request_item_id} not found`);
         }
 
-        // Check if already issued
+        // Prevent double issuing
         if (requestItem.qty_issued > 0) {
           throw new Error(`Item ${requestItem.material.name} has already been issued`);
         }
 
-        // Find stock record
+        // Ensure not issuing more than requested
+        if (qty_issued > requestItem.qty_requested) {
+          throw new Error(`Cannot issue more than requested for ${requestItem.material.name}`);
+        }
+
+        // Fetch stock with row-level lock (for concurrency safety)
         const stock = await Stock.findOne({
-          where: {
-            material_id: requestItem.material_id,
-            store_id: store_id
-          }
+          where: { material_id: requestItem.material_id, store_id },
+          transaction,
+          lock: transaction.LOCK.UPDATE
         });
 
         if (!stock) {
@@ -582,32 +631,37 @@ const issueMaterials = async (req, res) => {
         }
 
         // Update request item
-        await requestItem.update({
-          qty_issued: qty_issued,
-          issued_at: new Date(),
-          issued_by: req.user.id
-        }, { transaction });
+        await requestItem.update(
+          {
+            qty_issued,
+            issued_at: new Date(),
+            issued_by: req.user.id
+          },
+          { transaction }
+        );
 
         // Update stock
         const newQtyOnHand = stock.qty_on_hand - qty_issued;
         const shouldAlert = newQtyOnHand <= stock.low_stock_threshold;
 
-        await stock.update({
-          qty_on_hand: newQtyOnHand,
-          low_stock_alert: shouldAlert
-        }, { transaction });
+        await stock.update(
+          { qty_on_hand: newQtyOnHand, low_stock_alert: shouldAlert },
+          { transaction }
+        );
 
         // Create stock movement record
         const stockMovement = await StockMovement.create({
           material_id: requestItem.material_id,
           store_id: store_id,
-          type: 'OUT',
-          quantity: qty_issued,
-          reference_type: 'REQUEST',
-          reference_id: request_id,
+          movement_type: 'OUT',         // ✅ matches model
+          source_type: 'ISSUE',         // ✅ matches model ENUM
+          source_id: request_id,        // ✅ matches model
+          qty: qty_issued,              // ✅ matches model
+          unit_price: null,             // optional
           notes: notes || `Issued to ${request.requestedBy.full_name} for ${request.site.name}`,
           created_by: req.user.id
         }, { transaction });
+
 
         issuedItems.push({
           request_item_id,
@@ -619,19 +673,19 @@ const issueMaterials = async (req, res) => {
         stockMovements.push(stockMovement);
       }
 
-      // Check if all items are issued
+      // 4. Update overall request status
       const allItemsIssued = request.items.every(item => item.qty_issued > 0);
       if (allItemsIssued) {
-        await request.update({
-          status: 'ISSUED',
-          issued_at: new Date(),
-          issued_by: req.user.id
-        }, { transaction });
+        await request.update(
+          { status: 'ISSUED', issued_at: new Date(), issued_by: req.user.id },
+          { transaction }
+        );
       }
 
+      // 5. Commit transaction
       await transaction.commit();
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Materials issued successfully',
         data: {
@@ -641,15 +695,13 @@ const issueMaterials = async (req, res) => {
           request_status: allItemsIssued ? 'ISSUED' : 'PARTIALLY_ISSUED'
         }
       });
-
-    } catch (error) {
+    } catch (err) {
       await transaction.rollback();
-      throw error;
+      throw err;
     }
-
   } catch (error) {
     console.error('Issue materials error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || 'Internal server error'
     });
@@ -781,7 +833,7 @@ const getIssuedMaterials = asyncHandler(async (req, res) => {
   // If site_id is provided, filter by site through the request
   let filteredMovements = movements;
   let filteredCount = count;
-  
+
   if (site_id) {
     const requestIds = movements.map(m => m.source_id).filter(id => id);
     if (requestIds.length > 0) {
@@ -827,5 +879,10 @@ module.exports = {
   getProcurementRecommendations,
   issueMaterials,
   getIssuableRequests,
-  getIssuedMaterials
+  getStockByMaterialId,
+  getIssuedMaterials,
+
 };
+
+
+
