@@ -187,54 +187,7 @@ const Header: React.FC<HeaderProps> = ({ onToggle }) => {
               )}
             </div>
 
-            {/* Dashboard Apps */}
-            <div className="relative" ref={dashboardRef}>
-              <button
-                onClick={() => setIsDashboardOpen(!isDashboardOpen)}
-                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
-
-              {isDashboardOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-                  <div className="p-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Apps</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {dashboardApps.map((app) => (
-                        <button
-                          key={app.name}
-                          onClick={() => handleAppClick(app.path)}
-                          className="flex flex-col items-center p-3 hover:bg-gray-50 rounded-lg transition-colors group"
-                        >
-                          <div className={`w-10 h-10 ${app.color} rounded-lg flex items-center justify-center mb-2 group-hover:scale-105 transition-transform`}>
-                            <app.icon className="w-5 h-5 text-white" />
-                          </div>
-                          <span className="text-xs text-gray-700 text-center">{app.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Email */}
-            <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative">
-              <Mail className="w-4 h-4" />
-            </button>
-
-            {/* Messages */}
-            <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative">
-              <MessageSquare className="w-4 h-4" />
-            </button>
-
-            {/* Notifications with Animation */}
-            <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative group">
-              <Bell className="w-4 h-4 animate-pulse group-hover:animate-bounce" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-500 rounded-full animate-ping"></span>
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-600 rounded-full text-xs text-white flex items-center justify-center"></span>
-            </button>
+          
 
             {/* Fullscreen Toggle */}
             <button

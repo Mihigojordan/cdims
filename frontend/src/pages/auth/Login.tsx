@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import  useAuth from "../../context/AuthContext";
+import Logo from '../../assets/hello.jpg'
 
 // Define interfaces
 interface FormData {
@@ -198,18 +199,19 @@ const AdminLogin: React.FC = () => {
           backgroundImage: `url("https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80")`,
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-600/75 to-orange-500/85"></div>
-        <div className="max-w-lg text-white relative z-10">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-            <h1 className="text-4xl font-bold mb-6 text-white">
-              Empowering people through seamless HR management.
-            </h1>
-            <p className="text-orange-100 text-lg leading-relaxed">
-              Efficiently manage your workforce, streamline operations effortlessly.
-            </p>
-          </div>
-        </div>
-      </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-600/75 to-orange-500/85"></div>
+<div className="max-w-lg text-white relative z-10">
+  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+    <h1 className="text-4xl font-bold mb-6 text-white">
+      Building with purpose through CDIMS.
+    </h1>
+    <p className="text-orange-100 text-lg leading-relaxed">
+      Streamline construction projects, manage departments, and empower teams 
+      with the Catholique Construction Department Management System.
+    </p>
+  </div>
+</div>
+</div>
 
       {/* Right side - Login form */}
       <div className="w-7/12 bg-white flex flex-col justify-center p-8 relative z-10">
@@ -217,10 +219,10 @@ const AdminLogin: React.FC = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3">
-                <Building2 className="w-6 h-6 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3">
+          <img src={Logo} alt="" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">ABY HR</h2>
+              <h2 className="text-2xl font-bold text-gray-900">CDIMS </h2>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign In</h3>
             <p className="text-gray-600 text-sm">Please enter your details to sign in</p>
@@ -336,7 +338,7 @@ const AdminLogin: React.FC = () => {
           {/* Footer */}
           <div className="text-center mt-8">
             <p className="text-xs text-gray-500">
-              Copyright © 2024 - ABY HR
+              Copyright © 2024 - CDIMS 
             </p>
           </div>
         </div>
