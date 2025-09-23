@@ -961,53 +961,6 @@ const StockMovementReportsPage: React.FC = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Movements</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_movements || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total In</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_in || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Out</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_out || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Package className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Net Movement</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.net_movement || 0}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-white rounded border border-gray-200 p-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 gap-3">
             <div className="flex items-center space-x-2">

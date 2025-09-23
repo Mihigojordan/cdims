@@ -952,53 +952,6 @@ const InventoryReportsPage: React.FC = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Stock Items</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_items || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-yellow-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Low Stock Items</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.low_stock_items || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Out of Stock Items</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.out_of_stock_items || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Stock Value</p>
-                <p className="text-lg font-semibold text-gray-900">RWF {(summary.total_value || 0).toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-white rounded border border-gray-200 p-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 gap-3">
             <div className="flex items-center space-x-2">
