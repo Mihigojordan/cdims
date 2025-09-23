@@ -90,7 +90,9 @@ const loadData = async () => {
     }
 
     if (userRes.status === "fulfilled") {
-      setUsers(userRes.value?.data?.users || []);
+      if(!userRes.value?.data?.users && !Array.isArray(userRes.value?.data?.users)) return
+      const users = userRes.value?.data?.users.filter(u=> u?.role?.name == 'SITE_ENGINEER')
+      setUsers( users || []);
     } else {
       console.error("Users fetch failed:", userRes.reason);
       setUsers([]);

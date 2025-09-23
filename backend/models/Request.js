@@ -29,10 +29,10 @@ const Request = sequelize.define('Request', {
   },
   status: {
     type: DataTypes.ENUM(
-      'DRAFT',
+      'PENDING',
       'SUBMITTED',
       'DSE_REVIEW',
-      'PADIRI_REVIEW',
+      'WAITING_PADIRI_REVIEW',
       'APPROVED',
       'PARTIALLY_ISSUED',
       'ISSUED',
@@ -40,20 +40,19 @@ const Request = sequelize.define('Request', {
       'CLOSED'
     ),
     allowNull: false,
-    defaultValue: 'DRAFT'
+    defaultValue: 'PENDING'
   },
   notes: {
     type: DataTypes.TEXT
   }
 }, {
   tableName: 'requests',
+  timestamps: true,              // ✅ adds createdAt and updatedAt automatically
+  createdAt: 'created_at',       // ✅ rename field to created_at
+  updatedAt: 'updated_at',       // ✅ rename field to updated_at
   indexes: [
-    {
-      fields: ['status']
-    },
-    {
-      fields: ['site_id']
-    }
+    { fields: ['status'] },
+    { fields: ['site_id'] }
   ],
   hooks: {
     beforeCreate: async (request) => {

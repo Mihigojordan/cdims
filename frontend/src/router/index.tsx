@@ -42,6 +42,7 @@ import MaterialRequisitionDetail from '../pages/dashboard/MaterialRequisitionDet
 import StockMovementsDashboard from '../pages/dashboard/StockMovement';
 import IssuableRequestsDashboard from '../pages/dashboard/IssuableRequestsDashboard';
 import IssuableMaterialsDashboard from '../pages/dashboard/IssuableMaterialsDashboard';
+import IssueMaterialPage from '../components/dashboard/MaterialRequest/IssueMaterialPage';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -330,6 +331,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                      <IssuableMaterialsDashboard />
+                  </SuspenseWrapper>
+                ),
+              },
+                 {
+                path: 'issuable-materials/create',
+                element: (
+                  <SuspenseWrapper>
+                     <IssueMaterialPage />
                   </SuspenseWrapper>
                 ),
               },
