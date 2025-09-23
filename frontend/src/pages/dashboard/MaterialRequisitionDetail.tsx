@@ -13,18 +13,24 @@ import {
   AlertCircle,
   Building,
   Hash,
-  DollarSign,
   Users,
   MessageSquare,
-  Shield
+  Shield,
+  DollarSign
 } from 'lucide-react';
 import requisitionService, { type MaterialRequisition } from '../../services/requestService'; // Adjust path as needed
+import { formatPrice, formatRole } from '../../utils/dateUtils';
+import useAuth from '../../context/AuthContext';
 
 const RequestDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>(); // Get the requisition ID from URL params
   const [request, setRequest] = useState<MaterialRequisition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const {user} = useAuth()
+
+  // Check if the user is a SITE_ENGINEER
+  const isSiteEngineer = user?.role.name === 'SITE_ENGINEER';
 
   // Fetch requisition data when component mounts
   useEffect(() => {
@@ -37,8 +43,6 @@ const RequestDetailView: React.FC = () => {
 
       try {
         const data = await requisitionService.getRequisitionById(id);
-
-        
         setRequest(data.data.request);
         setLoading(false);
       } catch (err: any) {
@@ -91,8 +95,9 @@ const RequestDetailView: React.FC = () => {
     });
   };
 
-  // Calculate total value of approved items
+  // Calculate total value of approved items (only for non-SITE_ENGINEER users)
   const calculateTotalValue = (items: MaterialRequisition['items']) => {
+    if (isSiteEngineer) return 0; // Return 0 for SITE_ENGINEER to avoid showing any value
     return items.reduce((total, item) => {
       return total + (item.qty_approved * item.material.unit_price);
     }, 0);
@@ -153,13 +158,15 @@ const RequestDetailView: React.FC = () => {
                 <p className="text-sm text-gray-600">{formatDate(request.updated_at)}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <DollarSign className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Total Value</p>
-                <p className="text-sm text-gray-600">${calculateTotalValue(request.items)?.toFixed(2)}</p>
+            {!isSiteEngineer && (
+              <div className="flex items-center space-x-3">
+                <DollarSign className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Total Value</p>
+                  <p className="text-sm text-gray-600">{formatPrice(calculateTotalValue(request.items)?.toFixed(2))}</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -210,13 +217,15 @@ const RequestDetailView: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
-
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    {!isSiteEngineer && (
+                      <>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-
                   {request.items.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
@@ -241,13 +250,16 @@ const RequestDetailView: React.FC = () => {
                           {item.qty_approved ?? '0'} {item.material.unit?.symbol || ''}
                         </span>
                       </td>
-                      
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        ${item.material?.unit_price}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        ${(item.qty_approved * item.material?.unit_price)}
-                      </td>
+                      {!isSiteEngineer && (
+                        <>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {formatPrice(item.material?.unit_price)}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {formatPrice((item.qty_approved * item.material?.unit_price))}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -285,7 +297,7 @@ const RequestDetailView: React.FC = () => {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{request.requestedBy.full_name}</p>
-                  <p className="text-sm text-gray-600">{request.requestedBy.role.name}</p>
+                  <p className="text-sm text-gray-600">{formatRole(request.requestedBy)}</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600 flex items-center">
@@ -310,7 +322,6 @@ const RequestDetailView: React.FC = () => {
             </div>
           </div>
 
-
           {/* Approvals */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -330,7 +341,7 @@ const RequestDetailView: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-900 mb-2">{approval.reviewer.full_name}</p>
-                    <p className="text-sm text-gray-600 mb-2">{approval.reviewer.role.name}</p>
+                    <p className="text-sm text-gray-600 mb-2">{formatRole(approval.reviewer)}</p>
                     {approval.comment && (
                       <p className="text-sm text-gray-700 italic mb-2">"{approval.comment}"</p>
                     )}
@@ -354,13 +365,15 @@ const RequestDetailView: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Total Quantity:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {request.items.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0)?.toFixed(3)} units
+                  {request.items.reduce((sum, item) => sum + (Number(item.qty_approved) || 0), 0)?.toFixed(3)} 
                 </span>
               </div>
-              <div className="flex justify-between pt-2 border-t">
-                <span className="text-sm font-medium text-gray-900">Total Value:</span>
-                <span className="text-sm font-bold text-gray-900">${calculateTotalValue(request.items)?.toFixed(2)}</span>
-              </div>
+              {!isSiteEngineer && (
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="text-sm font-medium text-gray-900">Total Value:</span>
+                  <span className="text-sm font-bold text-gray-900">{formatPrice(calculateTotalValue(request.items)?.toFixed(2))}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -28,13 +28,15 @@ import {
     RefreshCw,
     Eye,
     Calendar,
-    ChevronDown
+    ChevronDown,
+    UserSquare
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import userService, { type CreateUserInput, type UpdateUserInput } from '../../services/userService';
 import AddUserModal from '../../components/dashboard/client/AddClientModal';
 import EditUserModal from '../../components/dashboard/client/EditClientModal';
 import DeleteUserModal from '../../components/dashboard/client/DeleteClientModal';
+import { formatRole } from '../../utils/dateUtils';
 
 interface User {
     role_name: any;
@@ -272,6 +274,8 @@ const UserManagement = () => {
             setOperationLoading(true);
             if (isAddModalOpen) {
                 const newUser = await userService.createUser(data as CreateUserInput);
+               
+                
                 if (!newUser) {
                     throw new Error('No user data returned from createUser');
                 }
@@ -424,6 +428,10 @@ const UserManagement = () => {
                         <span>{user.phone || 'N/A'}</span>
                     </div>
                     <div className="flex items-center space-x-1 text-xs text-gray-600">
+                        <UserSquare className="w-3 h-3" />
+                        <span>{formatRole(user) || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center space-x-1 text-xs text-gray-600">
                         <Calendar className="w-3 h-3" />
                         <span>{formatDate(user.createdAt)}</span>
                     </div>
@@ -471,6 +479,7 @@ const UserManagement = () => {
                             </th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Email</th>
                             <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Phone</th>
+                            <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Role</th>
                          <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
                             <th
                                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100 hidden lg:table-cell"
@@ -503,6 +512,7 @@ const UserManagement = () => {
                                 </td>
                                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{user.email}</td>
                                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{user.phone || 'N/A'}</td>
+                                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatRole(user) || 'N/A'}</td>
                          <td className="py-2 px-2">
                                     <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                                         user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -569,6 +579,10 @@ const UserManagement = () => {
                                 </div>
                                 <div className="text-gray-500 text-xs truncate">{user.email}</div>
                             </div>
+                        </div>
+                        <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
+                            <span className="">{formatRole(user) || 'N/A'}</span>
+                           
                         </div>
                         <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
                             <span className="truncate">{user.phone || 'N/A'}</span>

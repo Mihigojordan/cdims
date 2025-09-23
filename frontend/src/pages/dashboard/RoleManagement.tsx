@@ -30,6 +30,7 @@ import roleService, { type CreateRoleInput, type UpdateRoleInput } from '../../s
 import AddRoleModal from '../../components/dashboard/Role/AddRoleModal';
 import EditRoleModal from '../../components/dashboard/Role/EditClientModal';
 import DeleteRoleModal from '../../components/dashboard/Role/DeleteClientModal';
+import { formatRole } from '../../utils/dateUtils';
 
 interface Role {
     id: number;
@@ -124,7 +125,8 @@ const RoleManagement = () => {
             filtered = filtered.filter(
                 (role) =>
                     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    role.description?.toLowerCase().includes(searchTerm.toLowerCase())
+                    role.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    formatRole({role})?.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
 
@@ -159,7 +161,7 @@ const RoleManagement = () => {
                         <td style="font-size:10px;">
                             ${getInitials(role.name)}
                         </td>
-                        <td style="font-size:10px;">${role.name}</td>
+                        <td style="font-size:10px;">${formatRole({role})}</td>
                         <td style="font-size:10px;">${role.description || 'N/A'}</td>
                         <td style="font-size:10px;">${role.user_count || 0}</td>
                     </tr>
@@ -281,7 +283,7 @@ const RoleManagement = () => {
             setOperationLoading(true);
             await roleService.deleteRole(role.id);
             setAllRoles((prevRoles) => prevRoles.filter((r) => r.id !== role.id));
-            showOperationStatus('success', `Role "${role.name}" deleted successfully`);
+            showOperationStatus('success', `Role "${formatRole({role})}" deleted successfully`);
         } catch (err: any) {
             console.error('Error deleting role:', err);
             showOperationStatus('error', err.message || 'Failed to delete role');
@@ -350,7 +352,7 @@ const RoleManagement = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900 text-xs truncate">
-                            {role.name}
+                            {formatRole({role})}
                         </div>
                         <div className="text-gray-500 text-xs truncate">{role.description || 'No description'}</div>
                     </div>
@@ -394,7 +396,7 @@ const RoleManagement = () => {
                                             {getInitials(role.name)}
                                         </div>
                                         <span className="font-medium text-gray-900 text-xs">
-                                            {role.name}
+                                            {formatRole({role})}
                                         </span>
                                     </div>
                                 </td>
@@ -427,7 +429,7 @@ const RoleManagement = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-900 text-sm truncate">
-                                    {role.name}
+                                    {formatRole({role})}
                                 </div>
                                 <div className="text-gray-500 text-xs truncate">{role.description || 'No description'}</div>
                             </div>
