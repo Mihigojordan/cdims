@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Role } = require('../../models');
+const AuditService = require('../services/auditService');
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -28,6 +29,9 @@ const login = async (req, res) => {
     });
 
     if (!user || !user.active) {
+      // Log failed login attempt
+      await AuditService.logLogin(null, req, 'FAILED', 'User not found or inactive');
+      
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -37,19 +41,29 @@ const login = async (req, res) => {
     // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
+      // Log failed login attempt
+      await AuditService.logLogin(user.id, req, 'FAILED', 'Invalid password');
+      
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    // Log successful login
+    await AuditService.logLogin(user.id, req, 'SUCCESS');
+
     // Generate token
     const token = generateToken(user.id);
+    
+    // Generate session ID for session reset
+    const sessionId = require('crypto').randomUUID();
 
     res.json({
       success: true,
       data: {
         token,
+        session_id: sessionId,
         user: {
           id: user.id,
           full_name: user.full_name,
@@ -61,7 +75,8 @@ const login = async (req, res) => {
           }
         }
       },
-      message: 'Login successful'
+      message: 'Login successful',
+      session_reset: true
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -207,9 +222,13 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Update password
+    // Update password and set first_login to false
     user.password_hash = new_password;
+    user.first_login = false;
     await user.save();
+
+    // Log password change
+    await AuditService.logPasswordChange(userId, req);
 
     res.json({
       success: true,

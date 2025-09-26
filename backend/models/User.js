@@ -38,6 +38,12 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true
+  },
+  first_login: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Flag to track if user needs to change password on first login'
   }
 }, {
   tableName: 'users',

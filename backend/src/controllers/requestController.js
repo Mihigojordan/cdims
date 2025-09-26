@@ -1,14 +1,40 @@
 const { Request, RequestItem, Material, Unit, Site, User, Role, SiteAssignment, Approval } = require('../../models');
+const { Op } = require('sequelize');
+const { sequelize } = require('../../src/config/database');
 
 const getAllRequests = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status, site_id, requested_by } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      site_id, 
+      requested_by,
+      date_from,
+      date_to,
+      material_id,
+      store_id,
+      ref_no,
+      search
+    } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
     if (status) whereClause.status = status;
     if (site_id) whereClause.site_id = site_id;
     if (requested_by) whereClause.requested_by = requested_by;
+    if (ref_no) whereClause.ref_no = { [Op.like]: `%${ref_no}%` };
+    
+    // Date range filtering
+    if (date_from || date_to) {
+      whereClause.created_at = {};
+      if (date_from) {
+        whereClause.created_at[Op.gte] = new Date(date_from);
+      }
+      if (date_to) {
+        whereClause.created_at[Op.lte] = new Date(date_to);
+      }
+    }
 
     const { count, rows: requests } = await Request.findAndCountAll({
       where: whereClause,
@@ -45,13 +71,23 @@ model: Approval,
           include: [
             {
               model: Material,
-              as: 'material'
+              as: 'material',
+              include: [
+                {
+                  model: Unit,
+                  as: 'unit'
+                }
+              ]
             },
             {
               model: Unit,
               as: 'unit'
             }
-          ]
+          ],
+          // Filter by material if specified
+          ...(material_id && {
+            where: { material_id: material_id }
+          })
         }
       ],
       limit: parseInt(limit),
@@ -82,12 +118,34 @@ model: Approval,
 
 const getMyRequests = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      site_id,
+      date_from,
+      date_to,
+      material_id,
+      ref_no
+    } = req.query;
     const offset = (page - 1) * limit;
     const userId = req.user.id;
 
     const whereClause = { requested_by: userId };
     if (status) whereClause.status = status;
+    if (site_id) whereClause.site_id = site_id;
+    if (ref_no) whereClause.ref_no = { [Op.like]: `%${ref_no}%` };
+    
+    // Date range filtering
+    if (date_from || date_to) {
+      whereClause.created_at = {};
+      if (date_from) {
+        whereClause.created_at[Op.gte] = new Date(date_from);
+      }
+      if (date_to) {
+        whereClause.created_at[Op.lte] = new Date(date_to);
+      }
+    }
 
     const { count, rows: requests } = await Request.findAndCountAll({
       where: whereClause,
@@ -152,6 +210,207 @@ const getMyRequests = async (req, res) => {
     });
   } catch (error) {
     console.error('Get my requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Enhanced function for Site Engineers with comprehensive filtering
+const getSiteEngineerRequests = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      site_id, 
+      date_from,
+      date_to,
+      material_id,
+      ref_no,
+      search
+    } = req.query;
+    const offset = (page - 1) * limit;
+    const userId = req.user.id;
+    const userRole = req.user.role.name;
+
+    // Build where clause based on user role
+    let whereClause = {};
+    
+    if (userRole === 'SITE_ENGINEER') {
+      // Site Engineers can only see their assigned sites
+      const assignments = await SiteAssignment.findAll({
+        where: { user_id: userId, status: 'ACTIVE' },
+        attributes: ['site_id']
+      });
+      const assignedSiteIds = assignments.map(a => a.site_id);
+      
+      if (assignedSiteIds.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            requests: [],
+            pagination: {
+              current_page: parseInt(page),
+              total_pages: 0,
+              total_items: 0,
+              items_per_page: parseInt(limit)
+            }
+          }
+        });
+      }
+      
+      whereClause.site_id = { [Op.in]: assignedSiteIds };
+    } else {
+      // Admin, Padiri, DSE can see all requests
+      if (site_id) whereClause.site_id = site_id;
+    }
+
+    // Apply additional filters
+    if (status) whereClause.status = status;
+    if (ref_no) whereClause.ref_no = { [Op.like]: `%${ref_no}%` };
+    
+    // Date range filtering
+    if (date_from || date_to) {
+      whereClause.created_at = {};
+      if (date_from) {
+        whereClause.created_at[Op.gte] = new Date(date_from);
+      }
+      if (date_to) {
+        whereClause.created_at[Op.lte] = new Date(date_to);
+      }
+    }
+
+    const { count, rows: requests } = await Request.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Site,
+          as: 'site'
+        },
+        {
+          model: User,
+          as: 'requestedBy',
+          include: [{
+            model: Role,
+            as: 'role'
+          }]
+        },
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            {
+              model: Material,
+              as: 'material',
+              include: [
+                {
+                  model: Unit,
+                  as: 'unit'
+                }
+              ]
+            },
+            {
+              model: Unit,
+              as: 'unit'
+            }
+          ],
+          // Filter by material if specified
+          ...(material_id && {
+            where: { material_id: material_id }
+          })
+        },
+        {
+          model: Approval,
+          as: 'approvals',
+          include: [
+            {
+              model: User,
+              as: 'reviewer',
+              include: [{
+                model: Role,
+                as: 'role'
+              }]
+            }
+          ],
+          order: [['created_at', 'DESC']]
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['created_at', 'DESC']]
+    });
+
+    // Enhanced response with detailed item information
+    const enhancedRequests = requests.map(request => {
+      const enhancedItems = request.items.map(item => ({
+        id: item.id,
+        material: {
+          id: item.material.id,
+          name: item.material.name,
+          code: item.material.code,
+          specification: item.material.specification,
+          unit: item.material.unit
+        },
+        unit: item.unit,
+        qty_requested: parseFloat(item.qty_requested),
+        qty_approved: parseFloat(item.qty_approved || 0),
+        qty_issued: parseFloat(item.qty_issued || 0),
+        qty_received: parseFloat(item.qty_received || 0),
+        // Calculate remaining quantities
+        qty_remaining_to_issue: Math.max(0, parseFloat(item.qty_approved || 0) - parseFloat(item.qty_issued || 0)),
+        qty_remaining_to_receive: Math.max(0, parseFloat(item.qty_issued || 0) - parseFloat(item.qty_received || 0)),
+        // Status indicators
+        is_fully_issued: parseFloat(item.qty_issued || 0) >= parseFloat(item.qty_approved || 0),
+        is_fully_received: parseFloat(item.qty_received || 0) >= parseFloat(item.qty_issued || 0),
+        // Timestamps
+        issued_at: item.issued_at,
+        issued_by: item.issued_by,
+        received_at: item.received_at,
+        received_by: item.received_by
+      }));
+
+      return {
+        ...request.toJSON(),
+        items: enhancedItems,
+        // Summary statistics
+        summary: {
+          total_items: enhancedItems.length,
+          total_qty_requested: enhancedItems.reduce((sum, item) => sum + item.qty_requested, 0),
+          total_qty_approved: enhancedItems.reduce((sum, item) => sum + item.qty_approved, 0),
+          total_qty_issued: enhancedItems.reduce((sum, item) => sum + item.qty_issued, 0),
+          total_qty_received: enhancedItems.reduce((sum, item) => sum + item.qty_received, 0),
+          fully_issued_items: enhancedItems.filter(item => item.is_fully_issued).length,
+          fully_received_items: enhancedItems.filter(item => item.is_fully_received).length,
+          completion_percentage: enhancedItems.length > 0 ? 
+            Math.round((enhancedItems.filter(item => item.is_fully_received).length / enhancedItems.length) * 100) : 0
+        }
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        requests: enhancedRequests,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(count / limit),
+          total_items: count,
+          items_per_page: parseInt(limit)
+        },
+        filters_applied: {
+          status,
+          site_id,
+          date_from,
+          date_to,
+          material_id,
+          ref_no
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get site engineer requests error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -277,14 +536,21 @@ const createRequest = async (req, res) => {
 
     // Create request items
     const requestItems = await Promise.all(
-      items.map(item => 
-        RequestItem.create({
+      items.map(async item => {
+        // Get material to get default unit_id if not provided
+        const material = await Material.findByPk(item.material_id);
+        if (!material) {
+          throw new Error(`Material with ID ${item.material_id} not found`);
+        }
+        
+        return RequestItem.create({
           request_id: request.id,
           material_id: item.material_id,
-          unit_id: item.unit_id,
-          qty_requested: item.qty_requested
-        })
-      )
+          unit_id: item.unit_id || material.unit_id,
+          qty_requested: item.qty_requested,
+          notes: item.notes || null
+        });
+      })
     );
 
     // Fetch complete request with items
@@ -506,12 +772,15 @@ const submitRequest = async (req, res) => {
 const approveRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { level, comment, item_modifications } = req.body;
+    const { 
+      level, 
+      comment, 
+      item_modifications, 
+      items_to_add, 
+      items_to_remove, 
+      modification_reason 
+    } = req.body;
     const reviewer_id = req.user.id;
-    console.log(
-    'items :', item_modifications
-    );
-    
 
     const request = await Request.findByPk(id, {
       include: [
@@ -533,23 +802,75 @@ const approveRequest = async (req, res) => {
       });
     }
 
-    // Update item quantities
-    if (level === 'DSE' && item_modifications) {
-      for (const modification of item_modifications) {
-        await RequestItem.update(
-          { qty_approved: modification.qty_approved },
-          { where: { id: modification.request_item_id } }
-        );
-      }
-    } 
+    // Check if user has permission to modify items
+    const canModifyItems = ['ADMIN', 'PADIRI', 'DIOCESAN_SITE_ENGINEER'].includes(req.user.role.name);
+    
+    if (canModifyItems && (item_modifications || items_to_add || items_to_remove)) {
+      // Start transaction for item modifications
+      const transaction = await sequelize.transaction();
+      
+      try {
+        // Remove items if specified
+        if (items_to_remove && items_to_remove.length > 0) {
+          await RequestItem.destroy({
+            where: { id: items_to_remove },
+            transaction
+          });
+        }
 
-    else if(level === 'PADIRI' && request.items){
-      for(const modification of request.items){
-         await RequestItem.update(
-          { qty_approved: modification.qty_approved ?? modification.qty_requested  },
-          
-          { where: { id: modification.id } }
-        );
+        // Add new items if specified
+        if (items_to_add && items_to_add.length > 0) {
+          for (const item of items_to_add) {
+            await RequestItem.create({
+              request_id: id,
+              material_id: item.material_id,
+              qty_requested: item.qty_requested,
+              qty_approved: item.qty_approved || item.qty_requested,
+              notes: item.notes,
+              unit_id: item.unit_id
+            }, { transaction });
+          }
+        }
+
+        // Modify existing items if specified
+        if (item_modifications && item_modifications.length > 0) {
+          for (const modification of item_modifications) {
+            const updateData = {};
+            
+            if (modification.qty_approved !== undefined) {
+              updateData.qty_approved = modification.qty_approved;
+            }
+            if (modification.material_id !== undefined) {
+              updateData.material_id = modification.material_id;
+            }
+            if (modification.notes !== undefined) {
+              updateData.notes = modification.notes;
+            }
+            if (modification.unit_id !== undefined) {
+              updateData.unit_id = modification.unit_id;
+            }
+
+            await RequestItem.update(updateData, {
+              where: { id: modification.request_item_id },
+              transaction
+            });
+          }
+        }
+
+        await transaction.commit();
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    } else if (level === 'PADIRI' && request.items) {
+      // Default behavior: set qty_approved to qty_requested if not already set
+      for (const item of request.items) {
+        if (item.qty_approved === null || item.qty_approved === undefined) {
+          await RequestItem.update(
+            { qty_approved: item.qty_requested },
+            { where: { id: item.id } }
+          );
+        }
       }
     }
 
@@ -570,9 +891,9 @@ const approveRequest = async (req, res) => {
 
     // Update request status
     if (level === 'DSE') {
-      request.status = 'WAITING_PADIRI_REVIEW';
+      request.status = 'VERIFIED'; // DSE changes APPROVED → VERIFIED
     } else if (level === 'PADIRI') {
-      request.status = 'APPROVED';
+      request.status = 'APPROVED'; // PADIRI approves VERIFIED → APPROVED
     }
 
     await request.save();
@@ -734,10 +1055,29 @@ const uploadAttachment = async (req, res) => {
 const modifyRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { notes, item_modifications } = req.body;
+    const { 
+      notes, 
+      item_modifications, 
+      items_to_add, 
+      items_to_remove,
+      modification_reason 
+    } = req.body;
     const modifier_id = req.user.id;
+    const userRole = req.user.role.name;
 
-    const request = await Request.findByPk(id);
+    const request = await Request.findByPk(id, {
+      include: [
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            { model: Material, as: 'material' },
+            { model: Unit, as: 'unit' }
+          ]
+        }
+      ]
+    });
+
     if (!request) {
       return res.status(404).json({
         success: false,
@@ -745,53 +1085,191 @@ const modifyRequest = async (req, res) => {
       });
     }
 
-    if (request.status !== 'DSE_REVIEW') {
-      return res.status(400).json({
+    // Check if user can modify this request based on status and role
+    const canModify = checkModificationPermissions(request.status, userRole);
+    if (!canModify.allowed) {
+      return res.status(403).json({
         success: false,
-        message: 'Only requests in DSE_REVIEW status can be modified'
+        message: canModify.reason
       });
     }
 
-    // Update request notes if provided
-    if (notes !== undefined) {
-      request.notes = notes;
-    }
+    // Start transaction for data consistency
+    const transaction = await sequelize.transaction();
 
-    // Update item quantities if modifications provided
-    if (item_modifications) {
-      for (const modification of item_modifications) {
-        await RequestItem.update(
-          { 
-            qty_requested: modification.qty_requested,
-            qty_approved: modification.qty_approved || modification.qty_requested
-          },
-          { where: { id: modification.request_item_id } }
-        );
+    try {
+      // Update request notes if provided
+      if (notes !== undefined) {
+        request.notes = notes;
       }
+
+      // 1. Modify existing items (quantities, materials)
+      if (item_modifications && item_modifications.length > 0) {
+        for (const modification of item_modifications) {
+          const updateData = {};
+          
+          if (modification.qty_requested !== undefined) {
+            updateData.qty_requested = modification.qty_requested;
+          }
+          
+          if (modification.qty_approved !== undefined) {
+            updateData.qty_approved = modification.qty_approved;
+          }
+          
+          if (modification.material_id !== undefined) {
+            updateData.material_id = modification.material_id;
+          }
+          
+          if (modification.unit_id !== undefined) {
+            updateData.unit_id = modification.unit_id;
+          }
+
+          await RequestItem.update(updateData, {
+            where: { id: modification.request_item_id },
+            transaction
+          });
+        }
+      }
+
+      // 2. Add new items
+      if (items_to_add && items_to_add.length > 0) {
+        for (const newItem of items_to_add) {
+          await RequestItem.create({
+            request_id: id,
+            material_id: newItem.material_id,
+            unit_id: newItem.unit_id,
+            qty_requested: newItem.qty_requested,
+            qty_approved: newItem.qty_approved || newItem.qty_requested,
+            qty_issued: 0,
+            qty_received: 0
+          }, { transaction });
+        }
+      }
+
+      // 3. Remove items
+      if (items_to_remove && items_to_remove.length > 0) {
+        await RequestItem.destroy({
+          where: {
+            id: { [Op.in]: items_to_remove },
+            request_id: id
+          },
+          transaction
+        });
+      }
+
+      // 4. Update request status based on who modified it
+      let newStatus = request.status;
+      let level = 'DSE';
+      
+      if (userRole === 'ADMIN' || userRole === 'PADIRI') {
+        // Admin/Padiri can modify at any stage and reset to appropriate status
+        if (request.status === 'VERIFIED' || request.status === 'APPROVED') {
+          newStatus = 'VERIFIED'; // Reset to DSE review
+        }
+        level = userRole;
+      } else if (userRole === 'DIOCESAN_SITE_ENGINEER') {
+        // DSE can modify during review
+        newStatus = 'DSE_REVIEW';
+        level = 'DSE';
+      }
+
+      request.status = newStatus;
+      await request.save({ transaction });
+
+      // 5. Create modification record
+      await Approval.create({
+        request_id: id,
+        level: level,
+        reviewer_id: modifier_id,
+        action: 'MODIFIED',
+        comment: modification_reason || `Request modified by ${userRole}`
+      }, { transaction });
+
+      await transaction.commit();
+
+      // Fetch updated request with all details
+      const updatedRequest = await Request.findByPk(id, {
+        include: [
+          { model: Site, as: 'site' },
+          {
+            model: User,
+            as: 'requestedBy',
+            include: [{ model: Role, as: 'role' }]
+          },
+          {
+            model: RequestItem,
+            as: 'items',
+            include: [
+              { model: Material, as: 'material' },
+              { model: Unit, as: 'unit' }
+            ]
+          },
+          {
+            model: Approval,
+            as: 'approvals',
+            include: [
+              {
+                model: User,
+                as: 'reviewer',
+                include: [{ model: Role, as: 'role' }]
+              }
+            ],
+            order: [['created_at', 'DESC']]
+          }
+        ]
+      });
+
+      res.json({
+        success: true,
+        message: 'Request modified successfully',
+        data: {
+          request: updatedRequest,
+          modifications: {
+            items_modified: item_modifications?.length || 0,
+            items_added: items_to_add?.length || 0,
+            items_removed: items_to_remove?.length || 0,
+            new_status: newStatus
+          }
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
 
-    await request.save();
-
-    // Create modification record
-    await Approval.create({
-      request_id: id,
-      level: 'DSE',
-      reviewer_id: modifier_id,
-      action: 'NEEDS_CHANGES',
-      comment: 'Request modified by Diocesan Site Engineer'
-    });
-
-    res.json({
-      success: true,
-      message: 'Request modified successfully'
-    });
   } catch (error) {
     console.error('Modify request error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: error.message || 'Internal server error'
     });
   }
+};
+
+// Helper function to check modification permissions
+const checkModificationPermissions = (requestStatus, userRole) => {
+  // Admin and Padiri can modify at any stage
+  if (userRole === 'ADMIN' || userRole === 'PADIRI') {
+    return { allowed: true };
+  }
+  
+  // DSE can modify during review stages
+  if (userRole === 'DIOCESAN_SITE_ENGINEER') {
+    const allowedStatuses = ['DSE_REVIEW', 'VERIFIED', 'WAITING_PADIRI_REVIEW','PENDING'];
+    if (allowedStatuses.includes(requestStatus)) {
+      return { allowed: true };
+    }
+    return { 
+      allowed: false, 
+      reason: 'DSE can only modify requests during review stages' 
+    };
+  }
+  
+  return { 
+    allowed: false, 
+    reason: 'Insufficient permissions to modify this request' 
+  };
 };
 
 const approveForStorekeeper = async (req, res) => {
@@ -1008,9 +1486,153 @@ const closeRequisition = async (req, res) => {
   }
 };
 
+// Site Engineer receive materials endpoint
+const receiveMaterials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body;
+    const received_by = req.user.id;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Items array is required'
+      });
+    }
+
+    // Load request with details
+    const request = await Request.findByPk(id, {
+      include: [
+        {
+          model: RequestItem,
+          as: 'items',
+          include: [
+            { model: Material, as: 'material' },
+            { model: Unit, as: 'unit' }
+          ]
+        },
+        { model: User, as: 'requestedBy' },
+        { model: Site, as: 'site' }
+      ]
+    });
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Check if request is in ISSUED status
+    if (request.status !== 'ISSUED' && request.status !== 'PARTIALLY_ISSUED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Request must be issued before materials can be received'
+      });
+    }
+
+    // Start transaction
+    const transaction = await sequelize.transaction();
+
+    try {
+      const receivedItems = [];
+
+      for (const item of items) {
+        const { request_item_id, qty_received } = item;
+
+        // Find matching request item
+        const requestItem = request.items.find(ri => ri.id === request_item_id);
+        if (!requestItem) {
+          throw new Error(`Request item ${request_item_id} not found`);
+        }
+
+        // Validate quantity
+        if (qty_received > requestItem.qty_issued) {
+          throw new Error(`Cannot receive more than issued for ${requestItem.material.name}. Issued: ${requestItem.qty_issued}, Received: ${qty_received}`);
+        }
+
+        if (qty_received <= 0) {
+          throw new Error(`Received quantity must be greater than 0 for ${requestItem.material.name}`);
+        }
+
+        // Update request item with received quantity
+        const newQtyReceived = (requestItem.qty_received || 0) + qty_received;
+        
+        await requestItem.update(
+          {
+            qty_received: newQtyReceived,
+            received_at: new Date(),
+            received_by: received_by
+          },
+          { transaction }
+        );
+
+        receivedItems.push({
+          request_item_id,
+          material_name: requestItem.material.name,
+          qty_received,
+          total_received: newQtyReceived
+        });
+      }
+
+      // Check if all items are fully received
+      const allItemsReceived = request.items.every(item => 
+        (item.qty_received || 0) >= item.qty_issued
+      );
+
+      // Update request status
+      if (allItemsReceived) {
+        await request.update(
+          { 
+            status: 'CLOSED', // Auto-close when all items received
+            received_at: new Date(),
+            received_by: received_by,
+            closed_at: new Date(),
+            closed_by: received_by
+          },
+          { transaction }
+        );
+      } else {
+        await request.update(
+          { 
+            status: 'RECEIVED', // Partially received
+            received_at: new Date(),
+            received_by: received_by
+          },
+          { transaction }
+        );
+      }
+
+      // Commit transaction
+      await transaction.commit();
+
+      return res.json({
+        success: true,
+        message: 'Materials received successfully',
+        data: {
+          request_id: id,
+          received_items: receivedItems,
+          request_status: allItemsReceived ? 'RECEIVED' : 'PARTIALLY_RECEIVED',
+          all_items_received: allItemsReceived
+        }
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (error) {
+    console.error('Receive materials error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   getAllRequests,
   getMyRequests,
+  getSiteEngineerRequests,
   getRequestById,
   createRequest,
   updateRequest,
@@ -1025,5 +1647,6 @@ module.exports = {
   getRequestAttachments,
   uploadAttachment,
   getAvailableSites,
-    closeRequisition,
+  closeRequisition,
+  receiveMaterials
 };

@@ -35,8 +35,45 @@ const { authenticate, authorize } = require('../middleware/auth');
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, DSE_REVIEW, PADIRI_REVIEW, APPROVED, REJECTED, ISSUED]
- *         description: Filter by status
+ *           enum: [PENDING, SUBMITTED, DSE_REVIEW, VERIFIED, WAITING_PADIRI_REVIEW, APPROVED, PARTIALLY_ISSUED, ISSUED, RECEIVED, REJECTED, CLOSED]
+ *         description: Filter by request status
+ *       - in: query
+ *         name: site_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by site ID
+ *       - in: query
+ *         name: requested_by
+ *         schema:
+ *           type: integer
+ *         description: Filter by user ID who created the request
+ *       - in: query
+ *         name: date_from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: date_to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: material_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by material ID
+ *       - in: query
+ *         name: ref_no
+ *         schema:
+ *           type: string
+ *         description: Filter by reference number (partial match)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in request notes and reference number
  *     responses:
  *       200:
  *         description: Requests retrieved successfully
@@ -92,7 +129,7 @@ router.get('/', authenticate, requestController.getAllRequests);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, DSE_REVIEW, PADIRI_REVIEW, APPROVED, REJECTED, ISSUED]
+ *           enum: [PENDING, SUBMITTED, DSE_REVIEW, WAITING_PADIRI_REVIEW, APPROVED, VERIFIED, ISSUED_FROM_APPROVED, PARTIALLY_ISSUED, ISSUED, RECEIVED, REJECTED, CLOSED]
  *     responses:
  *       200:
  *         description: My requests retrieved successfully
@@ -113,6 +150,212 @@ router.get('/', authenticate, requestController.getAllRequests);
  *                         $ref: '#/components/schemas/Request'
  */
 router.get('/my-requests', authenticate, authorize('SITE_ENGINEER'), requestController.getMyRequests);
+
+/**
+ * @swagger
+ * /api/requests/site-engineer:
+ *   get:
+ *     summary: Get requests with enhanced filtering for Site Engineers
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, SUBMITTED, DSE_REVIEW, VERIFIED, WAITING_PADIRI_REVIEW, APPROVED, PARTIALLY_ISSUED, ISSUED, RECEIVED, REJECTED, CLOSED]
+ *         description: Filter by request status
+ *       - in: query
+ *         name: site_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by site ID
+ *       - in: query
+ *         name: date_from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: date_to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: material_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by material ID
+ *       - in: query
+ *         name: ref_no
+ *         schema:
+ *           type: string
+ *         description: Filter by reference number (partial match)
+ *     responses:
+ *       200:
+ *         description: Enhanced requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           ref_no:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           site:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                               name:
+ *                                 type: string
+ *                           requestedBy:
+ *                             type: object
+ *                             properties:
+ *                               full_name:
+ *                                 type: string
+ *                               role:
+ *                                 type: object
+ *                                 properties:
+ *                                   name:
+ *                                     type: string
+ *                           items:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: integer
+ *                                 material:
+ *                                   type: object
+ *                                   properties:
+ *                                     id:
+ *                                       type: integer
+ *                                     name:
+ *                                       type: string
+ *                                     code:
+ *                                       type: string
+ *                                     specification:
+ *                                       type: string
+ *                                     unit:
+ *                                       type: object
+ *                                       properties:
+ *                                         name:
+ *                                           type: string
+ *                                 unit:
+ *                                   type: object
+ *                                   properties:
+ *                                     name:
+ *                                       type: string
+ *                                 qty_requested:
+ *                                   type: number
+ *                                 qty_approved:
+ *                                   type: number
+ *                                 qty_issued:
+ *                                   type: number
+ *                                 qty_received:
+ *                                   type: number
+ *                                 qty_remaining_to_issue:
+ *                                   type: number
+ *                                 qty_remaining_to_receive:
+ *                                   type: number
+ *                                 is_fully_issued:
+ *                                   type: boolean
+ *                                 is_fully_received:
+ *                                   type: boolean
+ *                                 issued_at:
+ *                                   type: string
+ *                                   format: date-time
+ *                                 received_at:
+ *                                   type: string
+ *                                   format: date-time
+ *                           summary:
+ *                             type: object
+ *                             properties:
+ *                               total_items:
+ *                                 type: integer
+ *                               total_qty_requested:
+ *                                 type: number
+ *                               total_qty_approved:
+ *                                 type: number
+ *                               total_qty_issued:
+ *                                 type: number
+ *                               total_qty_received:
+ *                                 type: number
+ *                               fully_issued_items:
+ *                                 type: integer
+ *                               fully_received_items:
+ *                                 type: integer
+ *                               completion_percentage:
+ *                                 type: integer
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *                           updated_at:
+ *                             type: string
+ *                             format: date-time
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         current_page:
+ *                           type: integer
+ *                         total_pages:
+ *                           type: integer
+ *                         total_items:
+ *                           type: integer
+ *                         items_per_page:
+ *                           type: integer
+ *                     filters_applied:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                         site_id:
+ *                           type: integer
+ *                         date_from:
+ *                           type: string
+ *                         date_to:
+ *                           type: string
+ *                         material_id:
+ *                           type: integer
+ *                         ref_no:
+ *                           type: string
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/site-engineer', authenticate, requestController.getSiteEngineerRequests);
 
 /**
  * @swagger
@@ -169,7 +412,7 @@ router.get('/available-sites', authenticate, requestController.getAvailableSites
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, DSE_REVIEW, PADIRI_REVIEW, APPROVED, REJECTED, ISSUED]
+ *           enum: [PENDING, SUBMITTED, DSE_REVIEW, WAITING_PADIRI_REVIEW, APPROVED, VERIFIED, ISSUED_FROM_APPROVED, PARTIALLY_ISSUED, ISSUED, RECEIVED, REJECTED, CLOSED]
  *     responses:
  *       200:
  *         description: Site requests retrieved successfully
@@ -392,90 +635,11 @@ router.post('/', authenticate, authorize('SITE_ENGINEER', 'ADMIN'), requestContr
 router.put('/:id', authenticate, authorize('SITE_ENGINEER'), requestController.updateRequest);
 
 
-// /**
-//  * @swagger
-//  * /api/requests/{id}/modify:
-//  *   put:
-//  *     summary: Modify request (DIOCESAN_SITE_ENGINEER only)
-//  *     tags: [Requests]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: integer
-//  *         description: Request ID
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             properties:
-//  *               notes:
-//  *                 type: string
-//  *                 description: Modification notes
-//  *               items:
-//  *                 type: array
-//  *                 items:
-//  *                   type: object
-//  *                   properties:
-//  *                     id:
-//  *                       type: integer
-//  *                       description: Request item ID (for updates)
-//  *                     material_id:
-//  *                       type: integer
-//  *                     unit_id:
-//  *                       type: integer
-//  *                     qty_requested:
-//  *                       type: number
-//  *     responses:
-//  *       200:
-//  *         description: Request modified successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 success:
-//  *                   type: boolean
-//  *                   example: true
-//  *                 message:
-//  *                   type: string
-//  *                   example: Request modified successfully
-//  *                 data:
-//  *                   type: object
-//  *                   properties:
-//  *                     request:
-//  *                       $ref: '#/components/schemas/Request'
-//  *       400:
-//  *         description: Bad request
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  *       403:
-//  *         description: Forbidden - Not authorized
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  *       404:
-//  *         description: Request not found
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               $ref: '#/components/schemas/Error'
-//  */
-router.put('/:id/modify', authenticate, authorize('DIOCESAN_SITE_ENGINEER'), requestController.modifyRequest);
-
 /**
  * @swagger
- * /api/requests/{id}/approve:
- *   post:
- *     summary: Approve request (DIOCESAN_SITE_ENGINEER or PADIRI)
+ * /api/requests/{id}/modify:
+ *   put:
+ *     summary: Modify request items and quantities (ADMIN, PADIRI, DIOCESAN_SITE_ENGINEER)
  *     tags: [Requests]
  *     security:
  *       - bearerAuth: []
@@ -493,10 +657,206 @@ router.put('/:id/modify', authenticate, authorize('DIOCESAN_SITE_ENGINEER'), req
  *           schema:
  *             type: object
  *             properties:
- *               comments:
+ *               notes:
+ *                 type: string
+ *                 description: Modification notes
+ *               modification_reason:
+ *                 type: string
+ *                 description: Reason for modification
+ *               item_modifications:
+ *                 type: array
+ *                 description: Modify existing items (quantities, materials, units)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     request_item_id:
+ *                       type: integer
+ *                       description: Request item ID to modify
+ *                     material_id:
+ *                       type: integer
+ *                       description: New material ID (optional)
+ *                     unit_id:
+ *                       type: integer
+ *                       description: New unit ID (optional)
+ *                     qty_requested:
+ *                       type: number
+ *                       description: New requested quantity (optional)
+ *                     qty_approved:
+ *                       type: number
+ *                       description: New approved quantity (optional)
+ *               items_to_add:
+ *                 type: array
+ *                 description: Add new items to the request
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - material_id
+ *                     - unit_id
+ *                     - qty_requested
+ *                   properties:
+ *                     material_id:
+ *                       type: integer
+ *                       description: Material ID
+ *                     unit_id:
+ *                       type: integer
+ *                       description: Unit ID
+ *                     qty_requested:
+ *                       type: number
+ *                       description: Requested quantity
+ *                     qty_approved:
+ *                       type: number
+ *                       description: Approved quantity (defaults to qty_requested)
+ *               items_to_remove:
+ *                 type: array
+ *                 description: Remove items from the request
+ *                 items:
+ *                   type: integer
+ *                   description: Request item IDs to remove
+ *     responses:
+ *       200:
+ *         description: Request modified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request modified successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     request:
+ *                       $ref: '#/components/schemas/Request'
+ *                     modifications:
+ *                       type: object
+ *                       properties:
+ *                         items_modified:
+ *                           type: integer
+ *                           description: Number of items modified
+ *                         items_added:
+ *                           type: integer
+ *                           description: Number of items added
+ *                         items_removed:
+ *                           type: integer
+ *                           description: Number of items removed
+ *                         new_status:
+ *                           type: string
+ *                           description: New request status after modification
+ *       400:
+ *         description: Bad request - Invalid modification data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Not authorized or cannot modify at current status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.put('/:id/modify', authenticate, authorize('ADMIN', 'PADIRI', 'DIOCESAN_SITE_ENGINEER'), requestController.modifyRequest);
+
+/**
+ * @swagger
+ * /api/requests/{id}/approve:
+ *   post:
+ *     summary: Approve request with optional item modifications (DIOCESAN_SITE_ENGINEER or PADIRI)
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Request ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - level
+ *             properties:
+ *               level:
+ *                 type: string
+ *                 enum: [DSE, PADIRI]
+ *                 description: Approval level
+ *               comment:
  *                 type: string
  *                 description: Approval comments
  *                 example: Request approved for processing
+ *               item_modifications:
+ *                 type: array
+ *                 description: Modify existing items (optional)
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - request_item_id
+ *                   properties:
+ *                     request_item_id:
+ *                       type: integer
+ *                       description: ID of the request item to modify
+ *                     qty_approved:
+ *                       type: number
+ *                       description: New approved quantity
+ *                     material_id:
+ *                       type: integer
+ *                       description: Replace with different material
+ *                     unit_id:
+ *                       type: integer
+ *                       description: Change unit of measurement
+ *                     notes:
+ *                       type: string
+ *                       description: Updated notes for the item
+ *               items_to_add:
+ *                 type: array
+ *                 description: Add new items to the request (optional)
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - material_id
+ *                     - unit_id
+ *                     - qty_requested
+ *                   properties:
+ *                     material_id:
+ *                       type: integer
+ *                       description: Material ID to add
+ *                     unit_id:
+ *                       type: integer
+ *                       description: Unit of measurement
+ *                     qty_requested:
+ *                       type: number
+ *                       description: Quantity requested
+ *                     qty_approved:
+ *                       type: number
+ *                       description: Approved quantity (defaults to qty_requested)
+ *                     notes:
+ *                       type: string
+ *                       description: Notes for the new item
+ *               items_to_remove:
+ *                 type: array
+ *                 description: Remove items from the request (optional)
+ *                 items:
+ *                   type: integer
+ *                   description: Request item IDs to remove
+ *               modification_reason:
+ *                 type: string
+ *                 description: Reason for item modifications (optional)
+ *                 example: Updated quantities based on site requirements
  *     responses:
  *       200:
  *         description: Request approved successfully
@@ -535,7 +895,7 @@ router.put('/:id/modify', authenticate, authorize('DIOCESAN_SITE_ENGINEER'), req
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/:id/approve', authenticate, authorize('DIOCESAN_SITE_ENGINEER', 'PADIRI'), requestController.approveRequest);
+router.post('/:id/approve', authenticate, authorize('ADMIN', 'DIOCESAN_SITE_ENGINEER', 'PADIRI'), requestController.approveRequest);
 
 router.post('/:id/close',authenticate,authorize('SITE_ENGINEER'),requestController.closeRequisition);
 
@@ -930,5 +1290,101 @@ router.post('/:id/comments', authenticate, requestController.addComment);
  */
 router.get('/:id/attachments', authenticate, requestController.getRequestAttachments);
 router.post('/:id/attachments', authenticate, requestController.uploadAttachment);
+
+/**
+ * @swagger
+ * /api/requests/{id}/receive:
+ *   post:
+ *     summary: Receive materials (Site Engineer)
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Request ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - items
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - request_item_id
+ *                     - qty_received
+ *                   properties:
+ *                     request_item_id:
+ *                       type: integer
+ *                       description: Request item ID
+ *                     qty_received:
+ *                       type: number
+ *                       description: Quantity received
+ *     responses:
+ *       200:
+ *         description: Materials received successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Materials received successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     request_id:
+ *                       type: integer
+ *                     received_items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           request_item_id:
+ *                             type: integer
+ *                           material_name:
+ *                             type: string
+ *                           qty_received:
+ *                             type: number
+ *                           total_received:
+ *                             type: number
+ *                     request_status:
+ *                       type: string
+ *                       enum: [RECEIVED, PARTIALLY_RECEIVED]
+ *                     all_items_received:
+ *                       type: boolean
+ *       400:
+ *         description: Bad request - Invalid data or request not in correct status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/:id/receive', authenticate, authorize('SITE_ENGINEER'), requestController.receiveMaterials);
 
 module.exports = router;

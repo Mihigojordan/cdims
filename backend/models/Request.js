@@ -44,6 +44,48 @@ const Request = sequelize.define('Request', {
   },
   notes: {
     type: DataTypes.TEXT
+  },
+  received_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when materials were received by Site Engineer'
+  },
+  received_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'User who received the materials'
+  },
+  closed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when request was closed'
+  },
+  closed_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'User who closed the request'
+  },
+  issued_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when materials were issued by Storekeeper'
+  },
+  issued_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'User who issued the materials'
   }
 }, {
   tableName: 'requests',

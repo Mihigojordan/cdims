@@ -186,7 +186,7 @@ router.post('/suppliers', authenticate, authorize('PROCUREMENT'), procurementCon
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, SENT, RECEIVED, CANCELLED]
+ *           enum: [DRAFT, SENT, PARTIALLY_RECEIVED, RECEIVED, CANCELLED]
  *         description: Filter by status
  *     responses:
  *       200:

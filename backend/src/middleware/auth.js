@@ -27,6 +27,15 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Check if user needs to change password on first login
+    if (user.first_login && req.path !== '/api/auth/change-password' && req.method !== 'PUT') {
+      return res.status(403).json({
+        success: false,
+        message: 'Password change required on first login.',
+        requires_password_change: true
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -46,6 +55,12 @@ const authorize = (...roles) => {
       });
     }
 
+    // Admin and Padiri have full access to everything
+    if (['ADMIN', 'PADIRI'].includes(req.user.role.name)) {
+      req.fullAccess = true;
+      return next();
+    }
+
     if (!roles.includes(req.user.role.name)) {
       return res.status(403).json({
         success: false,
@@ -55,6 +70,53 @@ const authorize = (...roles) => {
 
     next();
   };
+};
+
+// Enhanced role-based middleware for specific permissions
+const requireRole = (role) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. Please authenticate first.'
+      });
+    }
+
+    // Admin and Padiri have full access
+    if (['ADMIN', 'PADIRI'].includes(req.user.role.name)) {
+      req.fullAccess = true;
+      return next();
+    }
+
+    if (req.user.role.name !== role) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. ${role} role required.`
+      });
+    }
+
+    next();
+  };
+};
+
+// Middleware for admin/padiri only
+const requireAdminOrPadiri = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied. Please authenticate first.'
+    });
+  }
+
+  if (!['ADMIN', 'PADIRI'].includes(req.user.role.name)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin or Padiri role required.'
+    });
+  }
+
+  req.fullAccess = true;
+  next();
 };
 
 const optionalAuth = async (req, res, next) => {
@@ -85,5 +147,7 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   authenticate,
   authorize,
+  requireRole,
+  requireAdminOrPadiri,
   optionalAuth
 };

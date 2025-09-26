@@ -1,0 +1,294 @@
+{
+  "timestamp": "2025-09-26T19:08:36.068Z",
+  "database": "cdims",
+  "tables": {
+    "users": [
+      {
+        "id": 1,
+        "role_id": 1,
+        "full_name": "System Administrator",
+        "email": "admin@cdims.rw",
+        "phone": "+250123456789",
+        "password_hash": "$2a$12$uDeW9Ga1kQz42se7H7LMCuiftFmcA3EgRONeScv2cKFQ000rzdBxa",
+        "active": 1,
+        "created_at": null,
+        "updated_at": "2025-09-26T15:53:55.000Z",
+        "first_login": 0
+      }
+    ],
+    "sites": [
+      {
+        "id": 1,
+        "code": "SITE-001",
+        "name": "Cathedral Construction",
+        "location": "Cyangugu Center",
+        "created_at": null,
+        "updated_at": null
+      },
+      {
+        "id": 2,
+        "code": "SITE-002",
+        "name": "School Building",
+        "location": "Gihundwe",
+        "created_at": null,
+        "updated_at": null
+      },
+      {
+        "id": 3,
+        "code": "SITE-003",
+        "name": "Health Center",
+        "location": "Kamembe",
+        "created_at": null,
+        "updated_at": null
+      },
+      {
+        "id": 4,
+        "code": "SITE-004",
+        "name": "Parish Hall",
+        "location": "Nyamasheke",
+        "created_at": null,
+        "updated_at": null
+      }
+    ],
+    "materials": [
+      {
+        "id": 1,
+        "code": "CEM-001",
+        "name": "Portland Cement 50kg",
+        "specification": "Portland cement, 50kg bag",
+        "category_id": 2,
+        "unit_id": 7,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "8500.00"
+      },
+      {
+        "id": 2,
+        "code": "STE-001",
+        "name": "Reinforcement Steel 12mm",
+        "specification": "Reinforcement steel bar, 12mm diameter",
+        "category_id": 3,
+        "unit_id": 2,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "12000.00"
+      },
+      {
+        "id": 3,
+        "code": "STE-002",
+        "name": "Reinforcement Steel 16mm",
+        "specification": "Reinforcement steel bar, 16mm diameter",
+        "category_id": 3,
+        "unit_id": 2,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "15000.00"
+      },
+      {
+        "id": 4,
+        "code": "AGG-001",
+        "name": "Coarse Aggregate",
+        "specification": "Crushed stone aggregate, 20mm",
+        "category_id": 2,
+        "unit_id": 4,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "25000.00"
+      },
+      {
+        "id": 5,
+        "code": "SAND-001",
+        "name": "Fine Sand",
+        "specification": "River sand for construction",
+        "category_id": 2,
+        "unit_id": 4,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "20000.00"
+      },
+      {
+        "id": 6,
+        "code": "WIR-001",
+        "name": "Electrical Wire 2.5mm",
+        "specification": "Copper electrical wire, 2.5mm²",
+        "category_id": 5,
+        "unit_id": 2,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "800.00"
+      },
+      {
+        "id": 7,
+        "code": "PIP-001",
+        "name": "PVC Pipe 50mm",
+        "specification": "PVC water pipe, 50mm diameter",
+        "category_id": 6,
+        "unit_id": 2,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "1500.00"
+      },
+      {
+        "id": 8,
+        "code": "TOOL-001",
+        "name": "Hammer",
+        "specification": "Construction hammer, 1kg",
+        "category_id": 7,
+        "unit_id": 1,
+        "active": 1,
+        "created_at": null,
+        "updated_at": null,
+        "unit_price": "5000.00"
+      }
+    ],
+    "requests": [
+      {
+        "id": 1,
+        "ref_no": "REQ-2025-0001",
+        "site_id": 1,
+        "requested_by": 1,
+        "status": "PENDING",
+        "notes": "Testing item removal",
+        "created_at": "2025-09-26T16:36:56.000Z",
+        "updated_at": "2025-09-26T16:37:19.000Z",
+        "received_at": null,
+        "received_by": null,
+        "closed_at": null,
+        "closed_by": null,
+        "issued_at": null,
+        "issued_by": null
+      }
+    ],
+    "request_items": [
+      {
+        "id": 1,
+        "request_id": 1,
+        "material_id": 1,
+        "unit_id": 1,
+        "qty_requested": "150.000",
+        "qty_approved": "150.000",
+        "qty_issued": "0.000",
+        "created_at": "2025-09-26T16:36:56.000Z",
+        "updated_at": "2025-09-26T16:37:07.000Z",
+        "qty_received": "0.000",
+        "received_at": null,
+        "received_by": null,
+        "issued_at": null,
+        "issued_by": null
+      },
+      {
+        "id": 3,
+        "request_id": 1,
+        "material_id": 3,
+        "unit_id": 3,
+        "qty_requested": "25.000",
+        "qty_approved": "25.000",
+        "qty_issued": "0.000",
+        "created_at": "2025-09-26T16:37:07.000Z",
+        "updated_at": "2025-09-26T16:37:07.000Z",
+        "qty_received": "0.000",
+        "received_at": null,
+        "received_by": null,
+        "issued_at": null,
+        "issued_by": null
+      }
+    ],
+    "stock": [
+      {
+        "id": 1,
+        "store_id": 1,
+        "material_id": 1,
+        "qty_on_hand": "150.000",
+        "reorder_level": "20.000",
+        "created_at": null,
+        "updated_at": "2025-09-26T16:17:32.000Z",
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 2,
+        "store_id": 1,
+        "material_id": 2,
+        "qty_on_hand": "50.000",
+        "reorder_level": "10.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 3,
+        "store_id": 1,
+        "material_id": 3,
+        "qty_on_hand": "30.000",
+        "reorder_level": "5.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 4,
+        "store_id": 1,
+        "material_id": 4,
+        "qty_on_hand": "200.000",
+        "reorder_level": "50.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 5,
+        "store_id": 1,
+        "material_id": 5,
+        "qty_on_hand": "150.000",
+        "reorder_level": "30.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 6,
+        "store_id": 2,
+        "material_id": 1,
+        "qty_on_hand": "50.000",
+        "reorder_level": "10.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 7,
+        "store_id": 2,
+        "material_id": 2,
+        "qty_on_hand": "25.000",
+        "reorder_level": "5.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      },
+      {
+        "id": 8,
+        "store_id": 3,
+        "material_id": 8,
+        "qty_on_hand": "10.000",
+        "reorder_level": "2.000",
+        "created_at": null,
+        "updated_at": null,
+        "low_stock_threshold": null,
+        "low_stock_alert": 0
+      }
+    ]
+  }
+}

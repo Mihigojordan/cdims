@@ -11,6 +11,7 @@ const Material = require('./Material');
 const Store = require('./Store');
 const Stock = require('./Stock');
 const StockMovement = require('./StockMovement');
+const StockHistory = require('./StockHistory');
 const Request = require('./Request');
 const RequestItem = require('./RequestItem');
 const Approval = require('./Approval');
@@ -23,7 +24,8 @@ const GoodsReceipt = require('./GoodsReceipt');
 const GoodsReceiptItem = require('./GoodsReceiptItem');
 const Issue = require('./Issue');
 const IssueItem = require('./IssueItem');
-const AuditLog = require('./AuditLog');
+const AuditLog = require('./AuditLog')(sequelize);
+const SystemConfig = require('./SystemConfig')(sequelize);
 const SiteAssignment = require('./SiteAssignment');
 
 // Define associations
@@ -152,6 +154,25 @@ StockMovement.belongsTo(Request, { foreignKey: 'source_id', as: 'source' }); // 
   SiteAssignment.belongsTo(User, { foreignKey: 'assigned_by', as: 'assignedBy' });
   User.hasMany(SiteAssignment, { foreignKey: 'user_id', as: 'siteAssignments' });
   User.belongsToMany(Site, { through: SiteAssignment, foreignKey: 'user_id', otherKey: 'site_id', as: 'assignedSites' });
+
+  // StockHistory associations
+  StockHistory.belongsTo(Stock, { foreignKey: 'stock_id', as: 'stock' });
+  StockHistory.belongsTo(Material, { foreignKey: 'material_id', as: 'material' });
+  StockHistory.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+  StockHistory.belongsTo(User, { foreignKey: 'created_by', as: 'createdBy' });
+  Stock.hasMany(StockHistory, { foreignKey: 'stock_id', as: 'history' });
+  Material.hasMany(StockHistory, { foreignKey: 'material_id', as: 'stockHistory' });
+  Store.hasMany(StockHistory, { foreignKey: 'store_id', as: 'stockHistory' });
+
+  // AuditLog associations
+  AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'auditUser' });
+  User.hasMany(AuditLog, { foreignKey: 'user_id', as: 'auditLogs' });
+
+  // SystemConfig associations
+  SystemConfig.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+  SystemConfig.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+  User.hasMany(SystemConfig, { foreignKey: 'created_by', as: 'createdConfigs' });
+  User.hasMany(SystemConfig, { foreignKey: 'updated_by', as: 'updatedConfigs' });
 };
 
 // Initialize associations
@@ -169,6 +190,7 @@ module.exports = {
   Store,
   Stock,
   StockMovement,
+  StockHistory,
   Request,
   RequestItem,
   Approval,
@@ -182,5 +204,6 @@ module.exports = {
   Issue,
   IssueItem,
   AuditLog,
+  SystemConfig,
   SiteAssignment
 };

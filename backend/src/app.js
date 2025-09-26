@@ -19,6 +19,7 @@ const reportRoutes = require('./routes/reports');
 const siteAssignmentRoutes = require('./routes/siteAssignments');
 const siteRoutes = require('./routes/sites');
 const storeRoutes = require('./routes/stores');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -119,6 +120,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/site-assignments', siteAssignmentRoutes);
 app.use('/api/sites', siteRoutes);
 app.use('/api/stores', storeRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use(notFound);

@@ -155,6 +155,150 @@ router.get('/movements', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockC
 
 /**
  * @swagger
+ * /api/stock/history:
+ *   get:
+ *     summary: Get stock history with date range filtering
+ *     tags: [Stock]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: stock_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by stock ID
+ *       - in: query
+ *         name: material_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by material ID
+ *       - in: query
+ *         name: store_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by store ID
+ *       - in: query
+ *         name: movement_type
+ *         schema:
+ *           type: string
+ *           enum: [IN, OUT, ADJUSTMENT]
+ *         description: Filter by movement type
+ *       - in: query
+ *         name: date_from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering
+ *       - in: query
+ *         name: date_to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering
+ *     responses:
+ *       200:
+ *         description: Stock history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           stock_id:
+ *                             type: integer
+ *                           material_id:
+ *                             type: integer
+ *                           store_id:
+ *                             type: integer
+ *                           movement_type:
+ *                             type: string
+ *                             enum: [IN, OUT, ADJUSTMENT]
+ *                           source_type:
+ *                             type: string
+ *                             enum: [GRN, ISSUE, ADJUSTMENT, RECEIPT]
+ *                           qty_before:
+ *                             type: number
+ *                           qty_change:
+ *                             type: number
+ *                           qty_after:
+ *                             type: number
+ *                           notes:
+ *                             type: string
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *                           material:
+ *                             type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
+ *                               code:
+ *                                 type: string
+ *                               unit:
+ *                                 type: object
+ *                                 properties:
+ *                                   name:
+ *                                     type: string
+ *                           store:
+ *                             type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
+ *                               code:
+ *                                 type: string
+ *                           createdBy:
+ *                             type: object
+ *                             properties:
+ *                               full_name:
+ *                                 type: string
+ *                               email:
+ *                                 type: string
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         current_page:
+ *                           type: integer
+ *                         total_pages:
+ *                           type: integer
+ *                         total_items:
+ *                           type: integer
+ *                         items_per_page:
+ *                           type: integer
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/history', authenticate, authorize('STOREKEEPER', 'ADMIN', 'PADIRI'), stockController.getStockHistory);
+
+/**
+ * @swagger
  * /api/stock/procurement-recommendations:
  *   get:
  *     summary: Get procurement recommendations
@@ -354,7 +498,7 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  * @swagger
  * /api/stock/issue-materials:
  *   post:
- *     summary: Issue materials to site engineers
+ *     summary: Issue materials to site engineers with automatic remaining quantity updates
  *     tags: [Stock]
  *     security:
  *       - bearerAuth: []
@@ -387,7 +531,7 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *                       example: 1
  *                     qty_issued:
  *                       type: number
- *                       description: Quantity to issue
+ *                       description: Quantity to issue (supports partial issues)
  *                       example: 10
  *                     store_id:
  *                       type: integer
@@ -399,7 +543,7 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *                       example: Issued for urgent construction work
  *     responses:
  *       200:
- *         description: Materials issued successfully
+ *         description: Materials issued successfully with automatic quantity updates
  *         content:
  *           application/json:
  *             schema:
@@ -436,6 +580,7 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *                     request_status:
  *                       type: string
  *                       enum: [ISSUED, PARTIALLY_ISSUED]
+ *                       description: PARTIALLY_ISSUED when some items issued, ISSUED when all items issued
  *       400:
  *         description: Bad request - Invalid data or insufficient stock
  *         content:
@@ -827,5 +972,103 @@ router.put('/:id/threshold', authenticate, authorize('STOREKEEPER', 'ADMIN'), st
  */
 router.put('/:id/acknowledge-alert', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.acknowledgeLowStockAlert);
 
+/**
+ * @swagger
+ * /api/stock/{id}/add-quantity:
+ *   post:
+ *     summary: Add quantity to stock (Storekeeper)
+ *     tags: [Stock]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Stock ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - qty_to_add
+ *             properties:
+ *               qty_to_add:
+ *                 type: number
+ *                 description: Quantity to add to existing stock
+ *                 example: 50
+ *               notes:
+ *                 type: string
+ *                 description: Notes about the stock addition
+ *                 example: Received new shipment from supplier
+ *     responses:
+ *       200:
+ *         description: Stock quantity added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Stock quantity added successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     stock:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         material_id:
+ *                           type: integer
+ *                         store_id:
+ *                           type: integer
+ *                         previous_qty:
+ *                           type: number
+ *                         added_qty:
+ *                           type: number
+ *                         new_qty:
+ *                           type: number
+ *                         low_stock_alert:
+ *                           type: boolean
+ *                     stock_movement:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         movement_type:
+ *                           type: string
+ *                           enum: [IN]
+ *                         qty:
+ *                           type: number
+ *                         notes:
+ *                           type: string
+ *       400:
+ *         description: Bad request - Invalid quantity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Stock not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/:id/add-quantity', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.addStockQuantity);
 
 module.exports = router;

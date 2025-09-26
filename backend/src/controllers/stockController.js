@@ -1,4 +1,4 @@
-const { Stock, Store, Material, Unit, Category, StockMovement, Request, RequestItem, User, Site, Role } = require('../../models');
+const { Stock, Store, Material, Unit, Category, StockMovement, StockHistory, Request, RequestItem, User, Site, Role } = require('../../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../src/config/database');
 const { asyncHandler, NotFoundError, ValidationError } = require('../middleware/errorHandler');
@@ -630,13 +630,25 @@ const issueMaterials = async (req, res) => {
           throw new Error(`Insufficient stock for ${requestItem.material.name}. Available: ${stock.qty_on_hand}, Requested: ${qty_issued}`);
         }
 
-        // Update request item
+        // Update request item with issued quantity (fix decimal precision)
+        const currentQtyIssued = parseFloat(requestItem.qty_issued || 0);
+        const addedQty = parseFloat(qty_issued);
+        const newQtyIssued = currentQtyIssued + addedQty;
+        
         await requestItem.update(
           {
-            qty_issued,
+            qty_issued: newQtyIssued,
             issued_at: new Date(),
             issued_by: req.user.id
           },
+          { transaction }
+        );
+
+        // Update remaining approved quantity (fix decimal precision)
+        const qtyApproved = parseFloat(requestItem.qty_approved || requestItem.qty_requested);
+        const remainingApproved = qtyApproved - newQtyIssued;
+        await requestItem.update(
+          { qty_approved: remainingApproved },
           { transaction }
         );
 
@@ -673,14 +685,35 @@ const issueMaterials = async (req, res) => {
         stockMovements.push(stockMovement);
       }
 
-      // 4. Update overall request status
-      const allItemsIssued = request.items.every(item => item.qty_issued > 0);
-      if (allItemsIssued) {
-        await request.update(
-          { status: 'ISSUED', issued_at: new Date(), issued_by: req.user.id },
-          { transaction }
-        );
-      }
+    // 4. Update overall request status
+    // Reload request items to get updated quantities
+    const updatedRequest = await Request.findByPk(request_id, {
+      include: [
+        {
+          model: RequestItem,
+          as: 'items'
+        }
+      ],
+      transaction
+    });
+
+    const allItemsIssued = updatedRequest.items.every(item => 
+      item.qty_issued >= (item.qty_approved || item.qty_requested) || 
+      (item.qty_approved || item.qty_requested) <= 0
+    );
+    const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
+    
+    if (allItemsIssued) {
+      await request.update(
+        { status: 'ISSUED', issued_at: new Date(), issued_by: req.user.id },
+        { transaction }
+      );
+    } else if (someItemsIssued) {
+      await request.update(
+        { status: 'PARTIALLY_ISSUED', issued_at: new Date(), issued_by: req.user.id },
+        { transaction }
+      );
+    }
 
       // 5. Commit transaction
       await transaction.commit();
@@ -867,6 +900,169 @@ const getIssuedMaterials = asyncHandler(async (req, res) => {
   });
 });
 
+// Additive stock update endpoint for storekeeper
+const addStockQuantity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { qty_to_add, notes } = req.body;
+
+    if (!qty_to_add || qty_to_add <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity to add must be greater than 0'
+      });
+    }
+
+    const stock = await Stock.findByPk(id);
+    if (!stock) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stock record not found'
+      });
+    }
+
+    // Additive update: new_qty = old_qty + qty_to_add
+    const currentQty = parseFloat(stock.qty_on_hand);
+    const addedQty = parseFloat(qty_to_add);
+    const newQty = currentQty + addedQty;
+    const shouldAlert = newQty <= (stock.low_stock_threshold || 0);
+
+    await stock.update({
+      qty_on_hand: newQty,
+      low_stock_alert: shouldAlert
+    });
+
+    // Create stock history record for the addition
+    const stockHistory = await StockHistory.create({
+      stock_id: stock.id,
+      material_id: stock.material_id,
+      store_id: stock.store_id,
+      movement_type: 'IN',
+      source_type: 'ADJUSTMENT',
+      source_id: id, // Using stock ID as source
+      qty_before: currentQty,
+      qty_change: addedQty,
+      qty_after: newQty,
+      unit_price: null,
+      notes: notes || `Stock added by storekeeper`,
+      created_by: req.user.id
+    });
+
+    // Also create stock movement record for backward compatibility
+    const stockMovement = await StockMovement.create({
+      material_id: stock.material_id,
+      store_id: stock.store_id,
+      movement_type: 'IN',
+      source_type: 'ADJUSTMENT',
+      source_id: id, // Using stock ID as source
+      qty: addedQty,
+      unit_price: null,
+      notes: notes || `Stock added by storekeeper`,
+      created_by: req.user.id
+    });
+
+    res.json({
+      success: true,
+      message: 'Stock quantity added successfully',
+      data: {
+        stock: {
+          id: stock.id,
+          material_id: stock.material_id,
+          store_id: stock.store_id,
+          previous_qty: currentQty,
+          added_qty: qty_to_add,
+          new_qty: newQty,
+          low_stock_alert: shouldAlert
+        },
+        stock_movement: stockMovement
+      }
+    });
+  } catch (error) {
+    console.error('Add stock quantity error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get stock history with date range filtering
+const getStockHistory = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      stock_id, 
+      material_id, 
+      store_id, 
+      movement_type,
+      date_from, 
+      date_to 
+    } = req.query;
+    
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    if (stock_id) whereClause.stock_id = stock_id;
+    if (material_id) whereClause.material_id = material_id;
+    if (store_id) whereClause.store_id = store_id;
+    if (movement_type) whereClause.movement_type = movement_type;
+    
+    if (date_from || date_to) {
+      whereClause.created_at = {};
+      if (date_from) whereClause.created_at[Op.gte] = new Date(date_from);
+      if (date_to) whereClause.created_at[Op.lte] = new Date(date_to);
+    }
+
+    const { count, rows: history } = await StockHistory.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Material,
+          as: 'material',
+          include: [
+            {
+              model: Unit,
+              as: 'unit'
+            }
+          ]
+        },
+        {
+          model: Store,
+          as: 'store'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'full_name', 'email']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: {
+        history,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(count / limit),
+          total_items: count,
+          items_per_page: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get stock history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   getAllStock,
   createStock,
@@ -881,7 +1077,8 @@ module.exports = {
   getIssuableRequests,
   getStockByMaterialId,
   getIssuedMaterials,
-
+  addStockQuantity,
+  getStockHistory
 };
 
 

@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "export_date": "2025-09-26T18:55:55.844Z",
+    "total_records": 8,
+    "type": "materials",
+    "filters": {
+      "format": "json"
+    }
+  },
+  "data": [
+    {
+      "ID": 4,
+      "Name": "Coarse Aggregate",
+      "Description": "",
+      "Category": "Cement & Concrete",
+      "Unit": "Cubic Meters",
+      "Unit Price": "25000.00"
+    },
+    {
+      "ID": 6,
+      "Name": "Electrical Wire 2.5mm",
+      "Description": "",
+      "Category": "Electrical",
+      "Unit": "Meters",
+      "Unit Price": "800.00"
+    },
+    {
+      "ID": 5,
+      "Name": "Fine Sand",
+      "Description": "",
+      "Category": "Cement & Concrete",
+      "Unit": "Cubic Meters",
+      "Unit Price": "20000.00"
+    },
+    {
+      "ID": 8,
+      "Name": "Hammer",
+      "Description": "",
+      "Category": "Tools & Equipment",
+      "Unit": "Pieces",
+      "Unit Price": "5000.00"
+    },
+    {
+      "ID": 1,
+      "Name": "Portland Cement 50kg",
+      "Description": "",
+      "Category": "Cement & Concrete",
+      "Unit": "Bags",
+      "Unit Price": "8500.00"
+    },
+    {
+      "ID": 7,
+      "Name": "PVC Pipe 50mm",
+      "Description": "",
+      "Category": "Plumbing",
+      "Unit": "Meters",
+      "Unit Price": "1500.00"
+    },
+    {
+      "ID": 2,
+      "Name": "Reinforcement Steel 12mm",
+      "Description": "",
+      "Category": "Steel & Metal",
+      "Unit": "Meters",
+      "Unit Price": "12000.00"
+    },
+    {
+      "ID": 3,
+      "Name": "Reinforcement Steel 16mm",
+      "Description": "",
+      "Category": "Steel & Metal",
+      "Unit": "Meters",
+      "Unit Price": "15000.00"
+    }
+  ]
+}

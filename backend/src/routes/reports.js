@@ -20,28 +20,35 @@ const { authenticate, authorize } = require('../middleware/auth');
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: start_date
+ *         name: date_from
  *         schema:
  *           type: string
  *           format: date
- *         description: Start date for report
+ *         description: Start date for report (YYYY-MM-DD)
  *       - in: query
- *         name: end_date
+ *         name: date_to
  *         schema:
  *           type: string
  *           format: date
- *         description: End date for report
+ *         description: End date for report (YYYY-MM-DD)
  *       - in: query
  *         name: site_id
  *         schema:
  *           type: integer
- *         description: Filter by site
+ *         description: Filter by site ID
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, DSE_REVIEW, PADIRI_REVIEW, APPROVED, REJECTED, ISSUED]
- *         description: Filter by status
+ *           enum: [PENDING, SUBMITTED, DSE_REVIEW, WAITING_PADIRI_REVIEW, APPROVED, VERIFIED, ISSUED_FROM_APPROVED, PARTIALLY_ISSUED, ISSUED, RECEIVED, REJECTED, CLOSED]
+ *         description: Filter by request status
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [json, csv]
+ *           default: json
+ *         description: Response format
  *     responses:
  *       200:
  *         description: Request reports retrieved successfully
@@ -148,17 +155,17 @@ router.get('/inventory', authenticate, authorize('ADMIN', 'PADIRI', 'DIOCESAN_SI
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: start_date
+ *         name: date_from
  *         schema:
  *           type: string
  *           format: date
- *         description: Start date for report
+ *         description: Start date for report (YYYY-MM-DD)
  *       - in: query
- *         name: end_date
+ *         name: date_to
  *         schema:
  *           type: string
  *           format: date
- *         description: End date for report
+ *         description: End date for report (YYYY-MM-DD)
  *       - in: query
  *         name: material_id
  *         schema:
@@ -254,7 +261,7 @@ router.get('/stock-movements', authenticate, authorize('ADMIN', 'PADIRI', 'DIOCE
  *         name: status
  *         schema:
  *           type: string
- *           enum: [DRAFT, SENT, RECEIVED, CANCELLED]
+ *           enum: [DRAFT, SENT, PARTIALLY_RECEIVED, RECEIVED, CANCELLED]
  *         description: Filter by status
  *     responses:
  *       200:

@@ -42,6 +42,40 @@ const RequestItem = sequelize.define('RequestItem', {
   qty_issued: {
     type: DataTypes.DECIMAL(12, 3),
     defaultValue: 0
+  },
+  qty_received: {
+    type: DataTypes.DECIMAL(12, 3),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Quantity received by Site Engineer'
+  },
+  received_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when materials were received'
+  },
+  received_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'User who received the materials'
+  },
+  issued_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when materials were issued'
+  },
+  issued_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'User who issued the materials'
   }
 }, {
   tableName: 'request_items',
