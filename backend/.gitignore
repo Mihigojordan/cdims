@@ -222,7 +222,6 @@ docs/
 # Specific documentation files to ignore
 APPROVAL_WORKFLOW_IMPLEMENTATION.md
 SYSTEM_REQUIREMENTS.md
-API_DOCUMENTATION.md
 DATABASE_SCHEMA.md
 
 # Backup files
