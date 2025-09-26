@@ -218,6 +218,7 @@ __tests__/
 docs/
 *.md
 !README.md
+!API_DOCUMENTATION.md
 
 # Specific documentation files to ignore
 APPROVAL_WORKFLOW_IMPLEMENTATION.md
