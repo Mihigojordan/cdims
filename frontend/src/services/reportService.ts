@@ -94,9 +94,7 @@ export interface StockMovementReport {
   store_id?: number;
   material_id: number;
   movement_type: string;
-  quantity: number;
-  reference_type?: string;
-  reference_id?: number;
+  qty: number;
   created_at: Date;
   material?: Material;
 }

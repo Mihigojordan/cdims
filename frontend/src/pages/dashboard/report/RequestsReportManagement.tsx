@@ -23,13 +23,16 @@ import {
   Download,
   FileImage,
 } from "lucide-react";
-import reportService, { type RequestReport, type ReportSummary } from "../../../services/reportService";
+import reportService, {
+  type RequestReport,
+  type ReportSummary,
+} from "../../../services/reportService";
 import siteService, { type Site } from "../../../services/siteService";
-import Logo from '../../../assets/hello.jpg';
-import html2pdf from 'html2pdf.js';
+import Logo from "../../../assets/hello.jpg";
+import html2pdf from "html2pdf.js";
 
-type ViewMode = 'table' | 'grid' | 'list';
-type ExportFormat = 'pdf';
+type ViewMode = "table" | "grid" | "list";
+type ExportFormat = "pdf";
 
 interface OperationStatus {
   type: "success" | "error" | "info";
@@ -62,15 +65,18 @@ const RequestReportsPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
-  const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [operationStatus, setOperationStatus] =
+    useState<OperationStatus | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [showFilters, setShowFilters] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<RequestReport | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<RequestReport | null>(
+    null
+  );
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
-    format: 'pdf',
+    format: "pdf",
     includeFilters: true,
     includeSummary: true,
     includeItems: true,
@@ -95,7 +101,12 @@ const RequestReportsPage: React.FC = () => {
   ];
 
   const exportFormatOptions = [
-    { value: 'pdf', label: 'PDF Report', icon: FileImage, description: 'Comprehensive formatted report' },
+    {
+      value: "pdf",
+      label: "PDF Report",
+      icon: FileImage,
+      description: "Comprehensive formatted report",
+    },
   ];
 
   useEffect(() => {
@@ -121,7 +132,7 @@ const RequestReportsPage: React.FC = () => {
     try {
       setLoading(true);
       const params: any = {};
-      
+
       if (filters.start_date) params.date_from = filters.start_date;
       if (filters.end_date) params.date_to = filters.end_date;
       if (filters.site_id) params.site_id = parseInt(filters.site_id);
@@ -130,12 +141,12 @@ const RequestReportsPage: React.FC = () => {
       console.log("API Request Params:", params);
       const response = await reportService.getRequestReports(params);
       console.log("API Response:", response);
-      
+
       if (response.success && response.data) {
         console.log("Requests:", response.data.requests);
         console.log("Summary:", response.data.summary);
-        setReports(response.data.requests as RequestReport[] || []);
-        setSummary(response.data.summary as ReportSummary || {});
+        setReports((response.data.requests as RequestReport[]) || []);
+        setSummary((response.data.summary as ReportSummary) || {});
       }
       setError(null);
     } catch (err: any) {
@@ -148,13 +159,17 @@ const RequestReportsPage: React.FC = () => {
     }
   };
 
-  const showOperationStatus = (type: OperationStatus["type"], message: string, duration: number = 3000) => {
+  const showOperationStatus = (
+    type: OperationStatus["type"],
+    message: string,
+    duration: number = 3000
+  ) => {
     setOperationStatus({ type, message });
     setTimeout(() => setOperationStatus(null), duration);
   };
 
   const exportToPDF = () => {
-    const element = document.createElement('div');
+    const element = document.createElement("div");
     element.innerHTML = `
   <!DOCTYPE html>
 <html lang="en">
@@ -547,18 +562,23 @@ const RequestReportsPage: React.FC = () => {
         </div>
         <div class="report-info">
             <div><strong>Report Type:</strong> Request Reports</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { 
-                day: '2-digit', 
-                month: 'long', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            })}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleDateString(
+              "en-GB",
+              {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }
+            )}</div>
             <div><strong>Total Records:</strong> ${filteredReports.length}</div>
         </div>
     </div>
     
-    ${exportOptions.includeSummary ? `
+    ${
+      exportOptions.includeSummary
+        ? `
     <div class="summary">
         <div class="summary-card">
             <h3>${summary.total_requests || 0}</h3>
@@ -577,17 +597,28 @@ const RequestReportsPage: React.FC = () => {
             <p>Rejected</p>
         </div>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
 
-    ${exportOptions.includeFilters ? `
+    ${
+      exportOptions.includeFilters
+        ? `
     <div class="filters">
         <h3>Applied Filters</h3>
-        <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
-        <p><strong>Site:</strong> ${sites.find(s => s.id?.toString() === filters.site_id)?.name || 'All Sites'}</p>
-        <p><strong>Status:</strong> ${filters.status || 'All Statuses'}</p>
-        <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
+        <p><strong>Date Range:</strong> ${filters.start_date || "Not set"} to ${
+            filters.end_date || "Not set"
+          }</p>
+        <p><strong>Site:</strong> ${
+          sites.find((s) => s.id?.toString() === filters.site_id)?.name ||
+          "All Sites"
+        }</p>
+        <p><strong>Status:</strong> ${filters.status || "All Statuses"}</p>
+        <p><strong>Search:</strong> ${searchTerm || "None"}</p>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
 
     <div class="report-title">Request Reports</div>
 
@@ -601,25 +632,42 @@ const RequestReportsPage: React.FC = () => {
                     <th>Status</th>
                     <th>Items</th>
                     <th>Created Date</th>
-                    ${exportOptions.includeItems ? '<th>Item Details</th>' : ''}
+                    ${exportOptions.includeItems ? "<th>Item Details</th>" : ""}
                 </tr>
             </thead>
             <tbody>
-                ${filteredReports.map(report => `
+                ${filteredReports
+                  .map(
+                    (report) => `
                     <tr>
-                        <td>${report.id || '-'}</td>
-                        <td>${report.site?.name || '-'}</td>
-                        <td>${report.requestedBy?.full_name || '-'}</td>
-                        <td><span class="status ${report.status?.toLowerCase()}">${report.status || '-'}</span></td>
+                        <td>${report.id || "-"}</td>
+                        <td>${report.site?.name || "-"}</td>
+                        <td>${report.requestedBy?.full_name || "-"}</td>
+                        <td><span class="status ${report.status?.toLowerCase()}">${
+                      report.status || "-"
+                    }</span></td>
                         <td>${report.items?.length || 0}</td>
                         <td>${formatDate(report.created_at)}</td>
-                        ${exportOptions.includeItems ? `
-                            <td>${report.items?.map(item => 
-                                `${item.material?.name || 'Unknown'}: ${item.qty_requested} ${item.material?.unit?.symbol || ''}`
-                            ).join('<br>') || 'No items'}</td>
-                        ` : ''}
+                        ${
+                          exportOptions.includeItems
+                            ? `
+                            <td>${
+                              report.items
+                                ?.map(
+                                  (item) =>
+                                    `${item.material?.name || "Unknown"}: ${
+                                      item.qty_requested
+                                    } ${item.material?.unit?.symbol || ""}`
+                                )
+                                .join("<br>") || "No items"
+                            }</td>
+                        `
+                            : ""
+                        }
                     </tr>
-                `).join('')}
+                `
+                  )
+                  .join("")}
             </tbody>
         </table>
     </div>
@@ -633,10 +681,10 @@ const RequestReportsPage: React.FC = () => {
 
     const opt = {
       margin: [10, 10, 10, 10],
-      filename: `request-reports-${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      filename: `request-reports-${new Date().toISOString().split("T")[0]}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     };
 
     html2pdf().from(element).set(opt).save();
@@ -664,10 +712,12 @@ const RequestReportsPage: React.FC = () => {
   const filteredReports = useMemo(() => {
     let filtered = reports.filter(
       (report) =>
-        (!searchTerm.trim() ||
-          report.site?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          report.requestedBy?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          report.status?.toLowerCase().includes(searchTerm.toLowerCase()))
+        !searchTerm.trim() ||
+        report.site?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.requestedBy?.full_name
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        report.status?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     filtered.sort((a, b) => {
@@ -689,12 +739,14 @@ const RequestReportsPage: React.FC = () => {
       }
 
       if (sortBy === "created_at") {
-        return sortOrder === "asc" ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
+        return sortOrder === "asc"
+          ? aValue.getTime() - bValue.getTime()
+          : bValue.getTime() - aValue.getTime();
       }
 
       const aStr = aValue ? aValue.toString().toLowerCase() : "";
       const bStr = bValue ? bValue.toString().toLowerCase() : "";
-      
+
       if (sortOrder === "asc") return aStr > bStr ? 1 : aStr < bStr ? -1 : 0;
       else return aStr < bStr ? 1 : aStr > bStr ? -1 : 0;
     });
@@ -704,7 +756,7 @@ const RequestReportsPage: React.FC = () => {
   }, [reports, searchTerm, sortBy, sortOrder]);
 
   const handleFilterChange = (name: keyof ReportFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
   const applyFilters = () => {
@@ -769,37 +821,67 @@ const RequestReportsPage: React.FC = () => {
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium">#</th>
-              <th 
-                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100" 
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">
+                #
+              </th>
+              <th
+                className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => setSortBy("site_id")}
               >
                 <div className="flex items-center space-x-1">
                   <span>Site</span>
-                  <ChevronDown className={`w-3 h-3 ${sortBy === "site_id" ? "text-primary-600" : "text-gray-400"}`} />
+                  <ChevronDown
+                    className={`w-3 h-3 ${
+                      sortBy === "site_id"
+                        ? "text-primary-600"
+                        : "text-gray-400"
+                    }`}
+                  />
                 </div>
               </th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Requested By</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Items</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium">Status</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Created Date</th>
-              <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">
+                Requested By
+              </th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">
+                Items
+              </th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium">
+                Status
+              </th>
+              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">
+                Created Date
+              </th>
+              {/* <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th> */}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {currentReports.map((report, index) => (
               <tr key={report.id || index} className="hover:bg-gray-25">
-                <td className="py-2 px-2 text-gray-700">{startIndex + index + 1}</td>
-                <td className="py-2 px-2 font-medium text-gray-900 text-xs">{report.site?.name || "-"}</td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{report.requestedBy?.full_name || "-"}</td>
-                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{report.items?.length || 0}</td>
+                <td className="py-2 px-2 text-gray-700">
+                  {startIndex + index + 1}
+                </td>
+                <td className="py-2 px-2 font-medium text-gray-900 text-xs">
+                  {report.site?.name || "-"}
+                </td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">
+                  {report.requestedBy?.full_name || "-"}
+                </td>
+                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">
+                  {report.items?.length || 0}
+                </td>
                 <td className="py-2 px-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                      report.status
+                    )}`}
+                  >
                     {report.status}
                   </span>
                 </td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(report.created_at)}</td>
-                <td className="py-2 px-2">
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">
+                  {formatDate(report.created_at)}
+                </td>
+                {/* <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
                       onClick={() => handleViewRequest(report)} 
@@ -809,7 +891,7 @@ const RequestReportsPage: React.FC = () => {
                       <Eye className="w-3 h-3" />
                     </button>
                   </div>
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
@@ -821,20 +903,33 @@ const RequestReportsPage: React.FC = () => {
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {currentReports.map((report) => (
-        <div key={report.id} className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
+        <div
+          key={report.id}
+          className="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow"
+        >
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
               <FileText className="w-4 h-4 text-primary-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-xs truncate">{report.site?.name || "-"}</div>
-              <div className="text-gray-500 text-xs truncate">{report.requestedBy?.full_name || "-"}</div>
+              <div className="font-medium text-gray-900 text-xs truncate">
+                {report.site?.name || "-"}
+              </div>
+              <div className="text-gray-500 text-xs truncate">
+                {report.requestedBy?.full_name || "-"}
+              </div>
             </div>
           </div>
           <div className="space-y-1 mb-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">Items: {report.items?.length || 0}</span>
-              <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(report.status)}`}>
+              <span className="text-gray-600">
+                Items: {report.items?.length || 0}
+              </span>
+              <span
+                className={`px-2 py-1 rounded-full font-medium ${getStatusColor(
+                  report.status
+                )}`}
+              >
                 {report.status}
               </span>
             </div>
@@ -844,7 +939,11 @@ const RequestReportsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center justify-end">
-            <button onClick={() => handleViewRequest(report)} className="text-gray-400 hover:text-primary-600 p-1" title="View Details">
+            <button
+              onClick={() => handleViewRequest(report)}
+              className="text-gray-400 hover:text-primary-600 p-1"
+              title="View Details"
+            >
               <Eye className="w-3 h-3" />
             </button>
           </div>
@@ -863,21 +962,31 @@ const RequestReportsPage: React.FC = () => {
                 <FileText className="w-5 h-5 text-primary-700" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 text-sm truncate">{report.site?.name || "-"}</div>
-                <div className="text-gray-500 text-xs truncate">{report.requestedBy?.full_name || "-"}</div>
+                <div className="font-medium text-gray-900 text-sm truncate">
+                  {report.site?.name || "-"}
+                </div>
+                <div className="text-gray-500 text-xs truncate">
+                  {report.requestedBy?.full_name || "-"}
+                </div>
               </div>
             </div>
             <div className="hidden md:grid grid-cols-3 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
-              <span className="truncate">Items: {report.items?.length || 0}</span>
-              <span className={`px-2 py-1 rounded-full font-medium text-center ${getStatusColor(report.status)}`}>
+              <span className="truncate">
+                Items: {report.items?.length || 0}
+              </span>
+              <span
+                className={`px-2 py-1 rounded-full font-medium text-center ${getStatusColor(
+                  report.status
+                )}`}
+              >
                 {report.status}
               </span>
               <span>{formatDate(report.created_at)}</span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
-              <button 
-                onClick={() => handleViewRequest(report)} 
-                className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors" 
+              <button
+                onClick={() => handleViewRequest(report)}
+                className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors"
                 title="View Request Details"
               >
                 <Eye className="w-4 h-4" />
@@ -906,7 +1015,8 @@ const RequestReportsPage: React.FC = () => {
     return (
       <div className="flex items-center justify-between bg-white px-3 py-2 border-t border-gray-200">
         <div className="text-xs text-gray-600">
-          Showing {startIndex + 1}-{Math.min(endIndex, filteredReports.length)} of {filteredReports.length}
+          Showing {startIndex + 1}-{Math.min(endIndex, filteredReports.length)}{" "}
+          of {filteredReports.length}
         </div>
         <div className="flex items-center space-x-1">
           <button
@@ -935,8 +1045,12 @@ const RequestReportsPage: React.FC = () => {
                 <Minimize2 className="w-4 h-4" />
               </button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Request Reports</h1>
-                <p className="text-xs text-gray-500 mt-0.5">Analyze and track request data</p>
+                <h1 className="text-lg font-semibold text-gray-900">
+                  Request Reports
+                </h1>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Analyze and track request data
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -955,7 +1069,9 @@ const RequestReportsPage: React.FC = () => {
                 className="flex items-center space-x-1 px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
                 title="Refresh"
               >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`w-3 h-3 ${loading ? "animate-spin" : ""}`}
+                />
                 <span>Refresh</span>
               </button>
             </div>
@@ -964,53 +1080,6 @@ const RequestReportsPage: React.FC = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Requests</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_requests || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Approved</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.approved_requests || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Pending</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.pending_requests || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Rejected</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.rejected_requests || 0}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-white rounded border border-gray-200 p-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 gap-3">
             <div className="flex items-center space-x-2">
@@ -1027,7 +1096,9 @@ const RequestReportsPage: React.FC = () => {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center space-x-1 px-2 py-1.5 text-xs border rounded transition-colors ${
-                  showFilters ? 'bg-primary-50 border-primary-200 text-primary-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  showFilters
+                    ? "bg-primary-50 border-primary-200 text-primary-700"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="w-3 h-3" />
@@ -1038,7 +1109,10 @@ const RequestReportsPage: React.FC = () => {
               <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
-                  const [field, order] = e.target.value.split("-") as [keyof RequestReport, "asc" | "desc"];
+                  const [field, order] = e.target.value.split("-") as [
+                    keyof RequestReport,
+                    "asc" | "desc"
+                  ];
                   setSortBy(field);
                   setSortOrder(order);
                 }}
@@ -1052,27 +1126,33 @@ const RequestReportsPage: React.FC = () => {
               </select>
               <div className="flex items-center border border-gray-200 rounded">
                 <button
-                  onClick={() => setViewMode('table')}
+                  onClick={() => setViewMode("table")}
                   className={`p-1.5 text-xs transition-colors ${
-                    viewMode === 'table' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                    viewMode === "table"
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-400 hover:text-gray-600"
                   }`}
                   title="Table View"
                 >
                   <List className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => setViewMode("grid")}
                   className={`p-1.5 text-xs transition-colors ${
-                    viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                    viewMode === "grid"
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-400 hover:text-gray-600"
                   }`}
                   title="Grid View"
                 >
                   <Grid3X3 className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode("list")}
                   className={`p-1.5 text-xs transition-colors ${
-                    viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                    viewMode === "list"
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-400 hover:text-gray-600"
                   }`}
                   title="List View"
                 >
@@ -1085,45 +1165,65 @@ const RequestReportsPage: React.FC = () => {
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     value={filters.start_date}
-                    onChange={(e) => handleFilterChange('start_date', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("start_date", e.target.value)
+                    }
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
                   <input
                     type="date"
                     value={filters.end_date}
-                    onChange={(e) => handleFilterChange('end_date', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("end_date", e.target.value)
+                    }
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Site</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Site
+                  </label>
                   <select
                     value={filters.site_id}
-                    onChange={(e) => handleFilterChange('site_id', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("site_id", e.target.value)
+                    }
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
                     <option value="">All Sites</option>
                     {sites.map((site) => (
-                      <option key={site.id} value={site.id?.toString()}>{site.name}</option>
+                      <option key={site.id} value={site.id?.toString()}>
+                        {site.name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
                   <select
                     value={filters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("status", e.target.value)
+                    }
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
                     {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1162,14 +1262,20 @@ const RequestReportsPage: React.FC = () => {
         ) : currentReports.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm || filters.site_id || filters.status || filters.start_date || filters.end_date ? 'No requests found matching your criteria' : 'No request reports found'}
+              {searchTerm ||
+              filters.site_id ||
+              filters.status ||
+              filters.start_date ||
+              filters.end_date
+                ? "No requests found matching your criteria"
+                : "No request reports found"}
             </div>
           </div>
         ) : (
           <div>
-            {viewMode === 'table' && renderTableView()}
-            {viewMode === 'grid' && renderGridView()}
-            {viewMode === 'list' && renderListView()}
+            {viewMode === "table" && renderTableView()}
+            {viewMode === "grid" && renderGridView()}
+            {viewMode === "list" && renderListView()}
             {renderPagination()}
           </div>
         )}
@@ -1180,7 +1286,9 @@ const RequestReportsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Export Reports</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Export Reports
+              </h3>
               <button
                 onClick={() => setShowExportModal(false)}
                 className="text-gray-400 hover:text-gray-600 p-1"
@@ -1188,57 +1296,93 @@ const RequestReportsPage: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Export Format
+                </label>
                 <div className="flex items-center p-3 border border-gray-200 rounded bg-gray-50">
                   <FileImage className="w-5 h-5 text-gray-600 mr-3" />
                   <div>
-                    <div className="font-medium text-gray-900 text-sm">PDF Report</div>
-                    <div className="text-xs text-gray-600">Comprehensive formatted report</div>
+                    <div className="font-medium text-gray-900 text-sm">
+                      PDF Report
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Comprehensive formatted report
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Include in Export</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Include in Export
+                </label>
                 <div className="space-y-2">
                   <label className="flex items-center">
                     <input
                       type="checkbox"
                       checked={exportOptions.includeFilters}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeFilters: e.target.checked }))}
+                      onChange={(e) =>
+                        setExportOptions((prev) => ({
+                          ...prev,
+                          includeFilters: e.target.checked,
+                        }))
+                      }
                       className="mr-2"
                     />
-                    <span className="text-sm text-gray-700">Applied filters information</span>
+                    <span className="text-sm text-gray-700">
+                      Applied filters information
+                    </span>
                   </label>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
                       checked={exportOptions.includeSummary}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                      onChange={(e) =>
+                        setExportOptions((prev) => ({
+                          ...prev,
+                          includeSummary: e.target.checked,
+                        }))
+                      }
                       className="mr-2"
                     />
-                    <span className="text-sm text-gray-700">Summary statistics</span>
+                    <span className="text-sm text-gray-700">
+                      Summary statistics
+                    </span>
                   </label>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
                       checked={exportOptions.includeItems}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeItems: e.target.checked }))}
+                      onChange={(e) =>
+                        setExportOptions((prev) => ({
+                          ...prev,
+                          includeItems: e.target.checked,
+                        }))
+                      }
                       className="mr-2"
                     />
-                    <span className="text-sm text-gray-700">Request items details</span>
+                    <span className="text-sm text-gray-700">
+                      Request items details
+                    </span>
                   </label>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
                       checked={exportOptions.includeApprovals}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeApprovals: e.target.checked }))}
+                      onChange={(e) =>
+                        setExportOptions((prev) => ({
+                          ...prev,
+                          includeApprovals: e.target.checked,
+                        }))
+                      }
                       className="mr-2"
                     />
-                    <span className="text-sm text-gray-700">Approval history</span>
+                    <span className="text-sm text-gray-700">
+                      Approval history
+                    </span>
                   </label>
                 </div>
               </div>
@@ -1248,7 +1392,11 @@ const RequestReportsPage: React.FC = () => {
                   <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-blue-700">
                     <p className="font-medium mb-1">Export Information</p>
-                    <p>This will export {filteredReports.length} record{filteredReports.length !== 1 ? 's' : ''} based on your current filters and search criteria.</p>
+                    <p>
+                      This will export {filteredReports.length} record
+                      {filteredReports.length !== 1 ? "s" : ""} based on your
+                      current filters and search criteria.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1266,8 +1414,10 @@ const RequestReportsPage: React.FC = () => {
                 disabled={exporting}
                 className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                {exporting && <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>}
-                <span>{exporting ? 'Exporting...' : 'Export'}</span>
+                {exporting && (
+                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                <span>{exporting ? "Exporting..." : "Export"}</span>
               </button>
             </div>
           </div>
@@ -1276,16 +1426,29 @@ const RequestReportsPage: React.FC = () => {
 
       {operationStatus && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
-            operationStatus.type === "success" ? "bg-green-50 border border-green-200 text-green-800" :
-            operationStatus.type === "error" ? "bg-red-50 border border-red-200 text-red-800" :
-            "bg-primary-50 border border-primary-200 text-primary-800"
-          }`}>
-            {operationStatus.type === "success" && <CheckCircle className="w-4 h-4 text-green-600" />}
-            {operationStatus.type === "error" && <XCircle className="w-4 h-4 text-red-600" />}
-            {operationStatus.type === "info" && <AlertCircle className="w-4 h-4 text-primary-600" />}
+          <div
+            className={`flex items-center space-x-2 px-3 py-2 rounded shadow-lg text-xs ${
+              operationStatus.type === "success"
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : operationStatus.type === "error"
+                ? "bg-red-50 border border-red-200 text-red-800"
+                : "bg-primary-50 border border-primary-200 text-primary-800"
+            }`}
+          >
+            {operationStatus.type === "success" && (
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            )}
+            {operationStatus.type === "error" && (
+              <XCircle className="w-4 h-4 text-red-600" />
+            )}
+            {operationStatus.type === "info" && (
+              <AlertCircle className="w-4 h-4 text-primary-600" />
+            )}
             <span className="font-medium">{operationStatus.message}</span>
-            <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
+            <button
+              onClick={() => setOperationStatus(null)}
+              className="hover:opacity-70"
+            >
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -1296,7 +1459,9 @@ const RequestReportsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Request Details</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Request Details
+              </h3>
               <button
                 onClick={() => {
                   setShowViewModal(false);
@@ -1307,45 +1472,81 @@ const RequestReportsPage: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Request Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Request Information
+                  </h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Request ID</label>
-                      <p className="text-xs text-gray-900">#{selectedRequest.id}</p>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Request ID
+                      </label>
+                      <p className="text-xs text-gray-900">
+                        #{selectedRequest.id}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Site</label>
-                      <p className="text-xs text-gray-900">{selectedRequest.site?.name || '-'}</p>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Site
+                      </label>
+                      <p className="text-xs text-gray-900">
+                        {selectedRequest.site?.name || "-"}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Requested By</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Requested By
+                      </label>
                       <div className="text-xs text-gray-900">
-                        <div className="font-medium">{selectedRequest.requestedBy?.full_name || '-'}</div>
-                        <div className="text-gray-600">{selectedRequest.requestedBy?.email || '-'}</div>
-                        <div className="text-gray-600">{selectedRequest.requestedBy?.role?.name || '-'}</div>
+                        <div className="font-medium">
+                          {selectedRequest.requestedBy?.full_name || "-"}
+                        </div>
+                        <div className="text-gray-600">
+                          {selectedRequest.requestedBy?.email || "-"}
+                        </div>
+                        <div className="text-gray-600">
+                          {selectedRequest.requestedBy?.role?.name || "-"}
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedRequest.status)}`}>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          selectedRequest.status
+                        )}`}
+                      >
                         {selectedRequest.status}
                       </span>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                      <p className="text-xs text-gray-900">{selectedRequest.notes || 'No notes provided'}</p>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Notes
+                      </label>
+                      <p className="text-xs text-gray-900">
+                        {selectedRequest.notes || "No notes provided"}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
-                      <p className="text-xs text-gray-900">{formatDate(selectedRequest.created_at)}</p>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Created At
+                      </label>
+                      <p className="text-xs text-gray-900">
+                        {formatDate(selectedRequest.created_at)}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>
-                      <p className="text-xs text-gray-900">{formatDate(selectedRequest.updated_at)}</p>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Updated At
+                      </label>
+                      <p className="text-xs text-gray-900">
+                        {formatDate(selectedRequest.updated_at)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1353,28 +1554,39 @@ const RequestReportsPage: React.FC = () => {
 
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Requested Items ({selectedRequest.items?.length || 0})</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Requested Items ({selectedRequest.items?.length || 0})
+                  </h4>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {selectedRequest.items && selectedRequest.items.length > 0 ? (
+                    {selectedRequest.items &&
+                    selectedRequest.items.length > 0 ? (
                       selectedRequest.items.map((item, index) => (
-                        <div key={item.id || index} className="bg-gray-50 rounded p-3">
+                        <div
+                          key={item.id || index}
+                          className="bg-gray-50 rounded p-3"
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <div className="font-medium text-xs text-gray-900">
-                              {item.material?.name || `Material ID: ${item.material_id}`}
+                              {item.material?.name ||
+                                `Material ID: ${item.material_id}`}
                             </div>
                             <div className="text-xs text-gray-600">
-                              {item.material?.code || ''}
+                              {item.material?.code || ""}
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                             <div>
-                              <span className="font-medium">Requested:</span> {item.qty_requested}
-                              {item.material?.unit?.symbol && ` ${item.material.unit.symbol}`}
+                              <span className="font-medium">Requested:</span>{" "}
+                              {item.qty_requested}
+                              {item.material?.unit?.symbol &&
+                                ` ${item.material.unit.symbol}`}
                             </div>
                             {item.qty_approved !== undefined && (
                               <div>
-                                <span className="font-medium">Approved:</span> {item.qty_approved}
-                                {item.material?.unit?.symbol && ` ${item.material.unit.symbol}`}
+                                <span className="font-medium">Approved:</span>{" "}
+                                {item.qty_approved}
+                                {item.material?.unit?.symbol &&
+                                  ` ${item.material.unit.symbol}`}
                               </div>
                             )}
                           </div>
@@ -1386,47 +1598,65 @@ const RequestReportsPage: React.FC = () => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-500 italic">No items found</p>
+                      <p className="text-xs text-gray-500 italic">
+                        No items found
+                      </p>
                     )}
                   </div>
                 </div>
 
-                {selectedRequest.approvals && selectedRequest.approvals.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Approvals ({selectedRequest.approvals.length})</h4>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {selectedRequest.approvals.map((approval, index) => (
-                        <div key={approval.id || index} className="bg-gray-50 rounded p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="font-medium text-xs text-gray-900">
-                              {approval.reviewer?.full_name || 'Unknown Reviewer'}
+                {selectedRequest.approvals &&
+                  selectedRequest.approvals.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                        Approvals ({selectedRequest.approvals.length})
+                      </h4>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {selectedRequest.approvals.map((approval, index) => (
+                          <div
+                            key={approval.id || index}
+                            className="bg-gray-50 rounded p-3"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-medium text-xs text-gray-900">
+                                {approval.reviewer?.full_name ||
+                                  "Unknown Reviewer"}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {approval.level}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-600">
-                              {approval.level}
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  approval.action === "APPROVED"
+                                    ? "bg-green-100 text-green-700"
+                                    : approval.action === "REJECTED"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-yellow-100 text-yellow-700" // Pending style
+                                }`}
+                              >
+                                {approval.action === "APPROVED"
+                                  ? "Approved"
+                                  : approval.action === ""
+                                  ? "Rejected"
+                                  : "Pending"}
+                              </span>
+                              <span className="text-xs text-gray-600">
+                                {formatDate(approval.created_at)}
+                              </span>
                             </div>
+                            {approval.comment && (
+                              <div className="text-xs text-gray-600">
+                                <span className="font-medium">Comment:</span>{" "}
+                                {approval.comment}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              approval.action === 'APPROVED' ? 'bg-green-100 text-green-700' : 
-                              approval.action === 'REJECTED' ? 'bg-red-100 text-red-700' : 
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {approval.action}
-                            </span>
-                            <span className="text-xs text-gray-600">
-                              {formatDate(approval.created_at)}
-                            </span>
-                          </div>
-                          {approval.comment && (
-                            <div className="text-xs text-gray-600">
-                              <span className="font-medium">Comment:</span> {approval.comment}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
 

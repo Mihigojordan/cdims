@@ -584,7 +584,7 @@ const StockMovementReportsPage: React.FC = () => {
                             <td>${report.id || '-'}</td>
                             <td>${report.material?.name || `Material ID: ${report.material_id}`}</td>
                             <td><span class="movement-type ${report.movement_type?.toLowerCase()}">${report.movement_type || '-'}</span></td>
-                            <td>${report.quantity} ${report.material?.unit?.symbol || ''}</td>
+                            <td>${report.qty} ${report.material?.unit?.symbol || ''}</td>
                             <td>${report.store?.name || '-'}</td>
                             <td>${report.reference_type || '-'} #${report.reference_id || '-'}</td>
                             <td>${formatDate(report.created_at)}</td>
@@ -750,7 +750,6 @@ const StockMovementReportsPage: React.FC = () => {
               </th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium hidden sm:table-cell">Movement Type</th>
               <th className="text-left py-2 px-2 text-gray-600 font-medium">Quantity</th>
-              <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Reference</th>
               <th 
                 className="text-left py-2 px-2 text-gray-600 font-medium cursor-pointer hover:bg-gray-100 hidden sm:table-cell" 
                 onClick={() => setSortBy("created_at")}
@@ -760,7 +759,7 @@ const StockMovementReportsPage: React.FC = () => {
                   <ChevronDown className={`w-3 h-3 ${sortBy === "created_at" ? "text-primary-600" : "text-gray-400"}`} />
                 </div>
               </th>
-              <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th>
+              {/* <th className="text-right py-2 px-2 text-gray-600 font-medium">Actions</th> */}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -773,10 +772,9 @@ const StockMovementReportsPage: React.FC = () => {
                     {report.movement_type}
                   </span>
                 </td>
-                <td className="py-2 px-2 text-gray-700">{report.quantity} {report.material?.unit?.symbol || ''}</td>
-                <td className="py-2 px-2 text-gray-700 hidden lg:table-cell">{report.reference_type || '-'} #{report.reference_id || '-'}</td>
+                <td className="py-2 px-2 text-gray-700">{report.qty} {report.material?.unit?.symbol || ''}</td>
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(report.created_at)}</td>
-                <td className="py-2 px-2">
+                {/* <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
                       onClick={() => handleViewMovement(report)} 
@@ -786,7 +784,7 @@ const StockMovementReportsPage: React.FC = () => {
                       <Eye className="w-3 h-3" />
                     </button>
                   </div>
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
@@ -810,7 +808,7 @@ const StockMovementReportsPage: React.FC = () => {
           </div>
           <div className="space-y-1 mb-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">Quantity: {report.quantity} {report.material?.unit?.symbol || ''}</span>
+              <span className="text-gray-600">Quantity: {report.qty} {report.material?.unit?.symbol || ''}</span>
               <span className={`px-2 py-1 rounded-full font-medium ${getMovementTypeColor(report.movement_type)}`}>
                 {report.movement_type}
               </span>
@@ -845,7 +843,7 @@ const StockMovementReportsPage: React.FC = () => {
               </div>
             </div>
             <div className="hidden md:grid grid-cols-3 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
-              <span className="truncate">Qty: {report.quantity} {report.material?.unit?.symbol || ''}</span>
+              <span className="truncate">Qty: {report.qty} {report.material?.unit?.symbol || ''}</span>
               <span className={`px-2 py-1 rounded-full font-medium text-center ${getMovementTypeColor(report.movement_type)}`}>
                 {report.movement_type}
               </span>
@@ -961,53 +959,6 @@ const StockMovementReportsPage: React.FC = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-primary-100 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Movements</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_movements || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total In</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_in || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Total Out</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.total_out || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Package className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Net Movement</p>
-                <p className="text-lg font-semibold text-gray-900">{summary.net_movement || 0}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-white rounded border border-gray-200 p-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 gap-3">
             <div className="flex items-center space-x-2">
@@ -1319,7 +1270,7 @@ const StockMovementReportsPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
-                    <p className="text-xs text-gray-900">{selectedMovement.quantity} {selectedMovement.material?.unit?.symbol || ''}</p>
+                    <p className="text-xs text-gray-900">{selectedMovement.qty} {selectedMovement.material?.unit?.symbol || ''}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Reference</label>
