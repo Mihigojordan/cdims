@@ -1,4 +1,4 @@
-const { Request, RequestItem, Material, Unit, Site, User, Role, SiteAssignment, Approval } = require('../../models');
+const { Request, RequestItem, Material, Unit, Site, User, Role, SiteAssignment, Approval, StockHistory } = require('../../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../src/config/database');
 
@@ -802,7 +802,7 @@ const approveRequest = async (req, res) => {
       });
     }
 
-    console.log(' \n ** role : ' , req.user.role.name);
+  
     
     // Check if user has permission to modify items
     const canModifyItems = ['ADMIN', 'PADIRI', 'DIOCESAN_SITE_ENGINEER'].includes(req.user.role.name);
@@ -811,8 +811,7 @@ const approveRequest = async (req, res) => {
       // Start transaction for item modifications
       const transaction = await sequelize.transaction();
 
-      console.log('\n ********* modification  ********* : \n ');
-      
+   
       
       try {
         // Remove items if specified
@@ -847,7 +846,7 @@ const approveRequest = async (req, res) => {
   if (modification.notes != null) updateData.notes = modification.notes;
   if (modification.unit_id != null) updateData.unit_id = modification.unit_id;
 
-  console.log('\n ********* modification  ********* : \n ', modification.request_item_id, updateData);
+ 
 
   if (Object.keys(updateData).length === 0) continue; // skip empty
 
@@ -856,7 +855,7 @@ const approveRequest = async (req, res) => {
     transaction
   });
 
-  console.log('Rows updated:', updatedRows);
+
 }
 
         }
@@ -1455,7 +1454,7 @@ const closeRequisition = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    console.log(' **** ' + request.status);
+   
     
 
     // Only allow closing if status is ISSUED
@@ -1490,6 +1489,7 @@ const closeRequisition = async (req, res) => {
   }
 };
 
+// Site Engineer receive materials endpoint
 // Site Engineer receive materials endpoint
 const receiveMaterials = async (req, res) => {
   try {
@@ -1540,6 +1540,7 @@ const receiveMaterials = async (req, res) => {
 
     try {
       const receivedItems = [];
+      const stockHistoryRecords = [];
 
       for (const item of items) {
         const { request_item_id, qty_received } = item;
@@ -1561,7 +1562,6 @@ const receiveMaterials = async (req, res) => {
 
         // Update request item with received quantity
         const newQtyReceived = (requestItem.qty_received || 0) + qty_received;
-        
         await requestItem.update(
           {
             qty_received: newQtyReceived,
@@ -1571,23 +1571,41 @@ const receiveMaterials = async (req, res) => {
           { transaction }
         );
 
+        // 🔹 Log to StockHistory (no stock table update, just audit)
+        const stockHistory = await StockHistory.create({
+          stock_id: null, // not tied to a store’s stock anymore
+          material_id: requestItem.material_id,
+          store_id: null, // or keep the original store_id if you want traceability
+          movement_type: 'IN', // "IN" at site (materials entering project site)
+          source_type: 'RECEIVE',
+          source_id: id, // request ID
+          qty_before: 0, // site doesn’t track stock, so use 0
+          qty_change: qty_received,
+          qty_after: newQtyReceived, // cumulative received qty at request item level
+          unit_price: null,
+          notes: `Received by site engineer ${req.user.full_name} at ${request.site.name}`,
+          created_by: received_by
+        }, { transaction });
+
         receivedItems.push({
           request_item_id,
           material_name: requestItem.material.name,
           qty_received,
           total_received: newQtyReceived
         });
+
+        stockHistoryRecords.push(stockHistory);
       }
 
       // Check if all items are fully received
-    const allItemsReceived = request.items.every(item => 
-  (Number(item.qty_received) || 0) >= (Number(item.qty_issued) || 0)
-);
+      const allItemsReceived = request.items.every(item =>
+        (Number(item.qty_received) || 0) >= (Number(item.qty_issued) || 0)
+      );
 
       // Update request status
       if (allItemsReceived) {
         await request.update(
-          { 
+          {
             status: 'CLOSED', // Auto-close when all items received
             received_at: new Date(),
             received_by: received_by,
@@ -1598,7 +1616,7 @@ const receiveMaterials = async (req, res) => {
         );
       } else {
         await request.update(
-          { 
+          {
             status: 'RECEIVED', // Partially received
             received_at: new Date(),
             received_by: received_by
@@ -1616,6 +1634,7 @@ const receiveMaterials = async (req, res) => {
         data: {
           request_id: id,
           received_items: receivedItems,
+          stock_history: stockHistoryRecords,
           request_status: allItemsReceived ? 'CLOSED' : 'RECEIVED',
           all_items_received: allItemsReceived
         }
@@ -1632,6 +1651,7 @@ const receiveMaterials = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   getAllRequests,

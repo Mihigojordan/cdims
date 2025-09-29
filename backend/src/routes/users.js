@@ -77,7 +77,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authenticate, authorize('ADMIN', 'PADIRI','DIOCESAN_SITE_ENGINEER'), userController.getAllUsers);
+router.get('/', authenticate, authorize('ADMIN', 'PADIRI','DIOCESAN_SITE_ENGINEER','STOREKEEPER'), userController.getAllUsers);
 
 /**
  * @swagger

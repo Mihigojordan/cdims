@@ -43,6 +43,7 @@ import StockMovementsDashboard from '../pages/dashboard/StockMovement';
 import IssuableRequestsDashboard from '../pages/dashboard/IssuableRequestsDashboard';
 import IssuableMaterialsDashboard from '../pages/dashboard/IssuableMaterialsDashboard';
 import IssueMaterialPage from '../components/dashboard/MaterialRequest/IssueMaterialPage';
+import StockHistory from '../pages/dashboard/StockHistory';
 
 const ProductPage = lazy(() => import('../pages/landing/FeaturesPage'));
 const ServicesPage = lazy(() => import('../pages/landing/ServicePage'));
@@ -123,6 +124,14 @@ const routes = createBrowserRouter([
                 element: (
                   <SuspenseWrapper>
                     <StockManagement />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'stock-history-management',
+                element: (
+                  <SuspenseWrapper>
+                    <StockHistory />
                   </SuspenseWrapper>
                 ),
               },

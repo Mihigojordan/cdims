@@ -58,6 +58,8 @@ const CategoryDashboard: React.FC = () => {
   });
   const [formError, setFormError] = useState<string>('');
   const [parentCategories, setParentCategories] = useState<Category[]>([]);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const navigate = useNavigate();
 
@@ -67,7 +69,7 @@ const CategoryDashboard: React.FC = () => {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, sortBy, sortOrder, allCategories]);
+  }, [searchTerm, sortBy, sortOrder, dateFrom, dateTo, allCategories]);
 
   const loadData = async () => {
     try {
@@ -91,6 +93,7 @@ const CategoryDashboard: React.FC = () => {
   const handleFilterAndSort = () => {
     let filtered = [...allCategories];
 
+    // Apply search term filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(
         (category) =>
@@ -99,6 +102,30 @@ const CategoryDashboard: React.FC = () => {
       );
     }
 
+ // Apply date range filter
+if (dateFrom || dateTo) {
+  filtered = filtered.filter((category) => {
+
+    
+    
+  
+    const createdAt = new Date(category.created_at);
+
+    // Start from the given date or very beginning
+    const fromDate = dateFrom ? new Date(dateFrom) : new Date(0);
+
+    // If dateTo is set, push it to the very end of that day
+    let toDate = dateTo ? new Date(dateTo) : new Date();
+    if (dateTo) {
+      toDate.setHours(23, 59, 59, 999);
+    }
+
+    return createdAt >= fromDate && createdAt <= toDate;
+  });
+}
+
+
+    // Sort filtered results
     filtered.sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
@@ -275,7 +302,7 @@ const CategoryDashboard: React.FC = () => {
                 <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">
                   {category.parent_id ? allCategories.find(c => c.id === category.parent_id)?.name || 'N/A' : 'Top-level'}
                 </td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(category.created_at)}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(category.created_at)} </td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
@@ -564,6 +591,30 @@ const CategoryDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+          {showFilters && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -582,7 +633,7 @@ const CategoryDashboard: React.FC = () => {
         ) : currentCategories.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm ? 'No categories found matching your criteria' : 'No categories found'}
+              {searchTerm || dateFrom || dateTo ? 'No categories found matching your criteria' : 'No categories found'}
             </div>
           </div>
         ) : (

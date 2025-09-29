@@ -457,8 +457,8 @@ const RequisitionManagement = () => {
 
     const handleApproveSuccess = (response: ApproveRequisitionResponse) => {
         const updatedRequisition = response.data.request;
-        setAllRequisitions((prevRequisitions) =>
-            prevRequisitions.map((r) =>
+        setAllRequisitions((prevRequisitions:any) =>
+            prevRequisitions.map((r:any) =>
                 r.id === updatedRequisition.id
                     ? {
                           ...updatedRequisition,
