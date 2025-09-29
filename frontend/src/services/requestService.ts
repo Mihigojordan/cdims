@@ -115,6 +115,81 @@ export interface RequisitionResponse {
   };
 }
 
+export interface ReceiveMaterialItem {
+  request_item_id: number;
+  qty_received: number;
+}
+
+export interface ReceiveMaterialsResponse {
+  success: boolean;
+  data: {
+    request_id: number;
+    received_items: {
+      request_item_id: number;
+      material_name: string;
+      qty_received: number;
+      total_received: number;
+    }[];
+    request_status: 'RECEIVED' | 'PARTIALLY_RECEIVED';
+    all_items_received: boolean;
+  };
+}
+
+
+export interface ModifyRequestItem {
+  request_item_id?: number; // optional for new items
+  material_id?: number;
+  unit_id?: number;
+  qty_requested?: number;
+  qty_approved?: number;
+}
+
+export interface ModifyRequestInput {
+  notes?: string;
+  item_modifications?: ModifyRequestItem[];
+  items_to_add?: ModifyRequestItem[];
+  items_to_remove?: number[]; // request_item_id array
+  modification_reason?: string;
+}
+
+export interface ModifyRequestResponse {
+  success: boolean;
+  data: {
+    request: MaterialRequisition;
+    modifications: {
+      items_modified: number;
+      items_added: number;
+      items_removed: number;
+      new_status: string;
+    };
+  };
+}
+
+export interface ApproveRequestItemModification {
+  request_item_id: number;
+  material_id?: number;
+  unit_id?: number;
+  qty_approved?: number;
+  notes?: string;
+}
+
+export interface ApproveRequestPayload {
+  level: 'DSE' | 'PADIRI' | 'ADMIN';
+  comment: string;
+  item_modifications?: ApproveRequestItemModification[];
+  items_to_add?: ApproveRequestItemModification[];
+  items_to_remove?: number[]; // request_item_id array
+  modification_reason?: string;
+}
+
+export interface ApproveRequestResponse {
+  success: boolean;
+  data: {
+    request: MaterialRequisition;
+  };
+  message: string;
+}
+
 const requisitionService = {
   // Fetch all requisitions with pagination
   getAllRequisitions: async (): Promise<RequisitionResponse> => {
@@ -185,44 +260,44 @@ const requisitionService = {
     }
   },
 // Approve a requisition
-approveRequisition: async (
-  id: string,
-  level: 'DSE' | 'PADIRI',
+approveRequisition:  async (
+  requestId: string,
+  level: 'DSE' | 'PADIRI' | 'ADMIN',
   comment: string,
-  item_modifications?: { request_item_id: number; qty_approved: number }[]
-): Promise<MaterialRequisition> => {
-  if (!id) {
-    throw new Error('Requisition ID is required');
+  modifications?: {
+    item_modifications?: ApproveRequestItemModification[];
+    items_to_add?: ApproveRequestItemModification[];
+    items_to_remove?: number[];
   }
+): Promise<ApproveRequestResponse> => {
+  if (!requestId) throw new Error('Request ID is required');
+  if (!level) throw new Error('Approval level is required');
+  if (!comment) throw new Error('Approval comment is required');
 
   try {
     const token = localStorage.getItem('auth_token');
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
+    if (!token) throw new Error('Authentication token not found');
 
-    const payload: {
-      level: string;
-      comment: string;
-      item_modifications?: { request_item_id: number; qty_approved: number }[];
-    } = { level, comment };
+    const payload: ApproveRequestPayload = {
+      level,
+      comment,
+      ...modifications,
+    };
 
-    if (item_modifications) {
-      payload.item_modifications = item_modifications;
-    }
-
-    const { data } = await api.post<{ success: boolean; data: { request: MaterialRequisition } }>(
-      `/requests/${id}/approve`,
+    const { data } = await api.post<ApproveRequestResponse>(
+      `/requests/${requestId}/approve`,
       payload,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    return data.data.request;
+    if (!data?.success || !data?.data?.request) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data;
   } catch (error: any) {
-    console.error('Error approving requisition:', error);
-    throw new Error(error.response?.data?.message || 'Failed to approve requisition');
+    console.error('Error approving request:', error);
+    throw new Error(error.response?.data?.message || 'Failed to approve request');
   }
 },
 
@@ -306,6 +381,42 @@ rejectRequisition: async (
   }
 },
 
+ receiveMaterials : async  (
+  requestId: string,
+  items: ReceiveMaterialItem[]
+): Promise<ReceiveMaterialsResponse> => {
+  if (!requestId) {
+    throw new Error('Request ID is required');
+  }
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new Error('Items array is required and cannot be empty');
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const { data } = await api.post<ReceiveMaterialsResponse>(
+      `/requests/${requestId}/receive`,
+      { items },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!data?.success || !data?.data) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error('Error receiving materials:', error);
+    throw new Error(error.response?.data?.message || 'Failed to receive materials');
+  }
+},
+
 // Close a requisition
 closeRequisition: async (id: string, comment?: string): Promise<MaterialRequisition> => {
   if (!id) throw new Error('Requisition ID is required');
@@ -328,6 +439,35 @@ closeRequisition: async (id: string, comment?: string): Promise<MaterialRequisit
   } catch (error: any) {
     console.error('Error closing requisition:', error);
     throw new Error(error.response?.data?.message || 'Failed to close requisition');
+  }
+},
+
+modifyRequest : async (
+  requestId: string,
+  payload: ModifyRequestInput
+): Promise<ModifyRequestResponse> => {
+  if (!requestId) {
+    throw new Error('Request ID is required');
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) throw new Error('Authentication token not found');
+
+    const { data } = await api.put<ModifyRequestResponse>(
+      `/requests/${requestId}/modify`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!data?.success || !data?.data) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error('Error modifying request:', error);
+    throw new Error(error.response?.data?.message || 'Failed to modify request');
   }
 },
 

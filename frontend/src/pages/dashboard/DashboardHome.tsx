@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Users,
@@ -81,7 +80,7 @@ const DashboardHome: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   // Helper function to check if user has access to a section or stat
   const hasAccess = (allowedRoles: string[]): boolean => {
@@ -126,7 +125,7 @@ const DashboardHome: React.FC = () => {
       icon: AlertTriangle,
       color: 'bg-primary-500',
       trend: 'up',
-      allowedRoles: ['ADMIN', 'STOREKEEPER'],
+      allowedRoles: ['PADIRI', 'ADMIN', 'STOREKEEPER'],
     },
   ];
 
@@ -136,8 +135,8 @@ const DashboardHome: React.FC = () => {
   // Define section visibility based on roles
   const sectionVisibility = {
     recentRequisitions: hasAccess(['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER', 'SITE_ENGINEER']),
-    lowStockAlerts: hasAccess(['ADMIN', 'STOREKEEPER']),
-    storesOverview: hasAccess(['ADMIN', 'STOREKEEPER']),
+    lowStockAlerts: hasAccess(['PADIRI', 'ADMIN', 'STOREKEEPER']),
+    storesOverview: hasAccess(['PADIRI', 'ADMIN', 'STOREKEEPER']),
     recentSiteAssignments: hasAccess(['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER']),
   };
 
@@ -174,7 +173,7 @@ const DashboardHome: React.FC = () => {
           promises.push(Promise.resolve({ data: { requests: [] } })); // Placeholder for requisitions
         }
 
-        if (hasAccess(['ADMIN', 'STOREKEEPER'])) {
+        if (hasAccess(['PADIRI', 'ADMIN', 'STOREKEEPER'])) {
           promises.push(stockService.getLowStockAlerts());
           promises.push(storeService.getAllStores());
         } else {
@@ -390,7 +389,10 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2" onClick={()=> navigate('/admin/dashboard/material-requisition')}>
+                    <button
+                      className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
+                      onClick={() => navigate('/admin/dashboard/material-requisition')}
+                    >
                       View All Requisitions →
                     </button>
                   </div>
@@ -441,7 +443,10 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"   onClick={()=> navigate('/admin/dashboard/stock-management')}>
+                    <button
+                      className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
+                      onClick={() => navigate('/admin/dashboard/stock-management')}
+                    >
                       View All Alerts →
                     </button>
                   </div>
@@ -466,7 +471,10 @@ const DashboardHome: React.FC = () => {
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold text-gray-900">Stores Overview</h3>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium"  onClick={()=> navigate('/admin/dashboard/store-management')}>
+                    <button
+                      className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      onClick={() => navigate('/admin/dashboard/store-management')}
+                    >
                       View Details
                     </button>
                   </div>
@@ -526,7 +534,10 @@ const DashboardHome: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"  onClick={()=> navigate('/admin/dashboard/site-assign-management')}>
+                    <button
+                      className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
+                      onClick={() => navigate('/admin/dashboard/site-assign-management')}
+                    >
                       View All Assignments →
                     </button>
                   </div>

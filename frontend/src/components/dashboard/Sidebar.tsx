@@ -114,14 +114,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       label: "Role Management",
       icon: User2,
       path: "/admin/dashboard/role-management",
-      allowedRoles: ["ADMIN"],
+      allowedRoles: ["ADMIN","PADIRI"],
     },
     {
       id: "stocks",
       label: "Stock Management",
       icon: Boxes,
       path: "/admin/dashboard/stock-management",
-      allowedRoles: ["ADMIN", "STOREKEEPER"],
+      allowedRoles: ["ADMIN", "STOREKEEPER","PADIRI"],
       isDropdown: true,
       children: [
         {
@@ -178,7 +178,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       label: "Stores Management",
       icon: Store,
       path: "/admin/dashboard/store-management",
-      allowedRoles: ["ADMIN", "STOREKEEPER"],
+      allowedRoles: ["PADIRI","ADMIN", "STOREKEEPER"],
     },
     {
       id: "userManagement",

@@ -802,12 +802,17 @@ const approveRequest = async (req, res) => {
       });
     }
 
+    console.log(' \n ** role : ' , req.user.role.name);
+    
     // Check if user has permission to modify items
     const canModifyItems = ['ADMIN', 'PADIRI', 'DIOCESAN_SITE_ENGINEER'].includes(req.user.role.name);
     
     if (canModifyItems && (item_modifications || items_to_add || items_to_remove)) {
       // Start transaction for item modifications
       const transaction = await sequelize.transaction();
+
+      console.log('\n ********* modification  ********* : \n ');
+      
       
       try {
         // Remove items if specified
@@ -834,27 +839,26 @@ const approveRequest = async (req, res) => {
 
         // Modify existing items if specified
         if (item_modifications && item_modifications.length > 0) {
-          for (const modification of item_modifications) {
-            const updateData = {};
-            
-            if (modification.qty_approved !== undefined) {
-              updateData.qty_approved = modification.qty_approved;
-            }
-            if (modification.material_id !== undefined) {
-              updateData.material_id = modification.material_id;
-            }
-            if (modification.notes !== undefined) {
-              updateData.notes = modification.notes;
-            }
-            if (modification.unit_id !== undefined) {
-              updateData.unit_id = modification.unit_id;
-            }
+        for (const modification of item_modifications) {
+  const updateData = {};
 
-            await RequestItem.update(updateData, {
-              where: { id: modification.request_item_id },
-              transaction
-            });
-          }
+  if (modification.qty_approved != null) updateData.qty_approved = modification.qty_approved;
+  if (modification.material_id != null) updateData.material_id = modification.material_id;
+  if (modification.notes != null) updateData.notes = modification.notes;
+  if (modification.unit_id != null) updateData.unit_id = modification.unit_id;
+
+  console.log('\n ********* modification  ********* : \n ', modification.request_item_id, updateData);
+
+  if (Object.keys(updateData).length === 0) continue; // skip empty
+
+  const [updatedRows] = await RequestItem.update(updateData, {
+    where: { id: modification.request_item_id },
+    transaction
+  });
+
+  console.log('Rows updated:', updatedRows);
+}
+
         }
 
         await transaction.commit();
@@ -890,9 +894,9 @@ const approveRequest = async (req, res) => {
     }
 
     // Update request status
-    if (level === 'DSE') {
+    if (req.user.role.name === 'DIOCESAN_SITE_ENGINEER') {
       request.status = 'VERIFIED'; // DSE changes APPROVED → VERIFIED
-    } else if (level === 'PADIRI') {
+    } else if (req.user.role.name === 'PADIRI' || req.user.role.name === 'ADMIN') {
       request.status = 'APPROVED'; // PADIRI approves VERIFIED → APPROVED
     }
 
@@ -1576,9 +1580,9 @@ const receiveMaterials = async (req, res) => {
       }
 
       // Check if all items are fully received
-      const allItemsReceived = request.items.every(item => 
-        (item.qty_received || 0) >= item.qty_issued
-      );
+    const allItemsReceived = request.items.every(item => 
+  (Number(item.qty_received) || 0) >= (Number(item.qty_issued) || 0)
+);
 
       // Update request status
       if (allItemsReceived) {
@@ -1612,7 +1616,7 @@ const receiveMaterials = async (req, res) => {
         data: {
           request_id: id,
           received_items: receivedItems,
-          request_status: allItemsReceived ? 'RECEIVED' : 'PARTIALLY_RECEIVED',
+          request_status: allItemsReceived ? 'CLOSED' : 'RECEIVED',
           all_items_received: allItemsReceived
         }
       });

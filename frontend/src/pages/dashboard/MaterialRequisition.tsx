@@ -1,3 +1,4 @@
+
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -37,7 +38,9 @@ import html2pdf from 'html2pdf.js';
 import requisitionService, {
     type MaterialRequisition,
     type CreateRequisitionInput,
-    type UpdateRequisitionInput
+    type UpdateRequisitionInput,
+    type ReceiveMaterialItem,
+    type ReceiveMaterialsResponse
 } from '../../services/requestService';
 import AddRequisitionModal from '../../components/dashboard/MaterialRequest/AddClientModal';
 import EditRequisitionModal from '../../components/dashboard/MaterialRequest/EditClientModal';
@@ -45,6 +48,8 @@ import DeleteRequisitionModal from '../../components/dashboard/MaterialRequest/E
 import ViewRequisitionModal from '../../components/dashboard/MaterialRequest/EditClientModal';
 import ApproveRequisitionModal from '../../components/dashboard/request/ApproveRequisitionModal';
 import RejectRequisitionModal from '../../components/dashboard/request/RejectRequisitionModal';
+import ReceiveMaterialsModal from '../../components/dashboard/request/ReceiveMaterialsModal';
+import ModifyRequisitionModal from '../../components/dashboard/request/ModifyRequisitionModal';
 import useAuth from '../../context/AuthContext';
 
 interface OperationStatus {
@@ -55,9 +60,32 @@ interface OperationStatus {
 type ViewMode = 'table' | 'grid' | 'list';
 
 interface RequisitionItem {
+    id: number;
     material_id: number;
     unit_id: number;
     qty_requested: number;
+    qty_approved?: number;
+    qty_issued?: number;
+    qty_received?: number;
+    received_at?: string;
+    received_by?: number;
+    material: {
+        id: number;
+        name: string;
+        description: string;
+        code: string;
+        specifications: string;
+        unit_price: number;
+        category: {
+            id: number;
+            name: string;
+        };
+        unit?: {
+            id: number;
+            name: string;
+            symbol?: string;
+        };
+    };
 }
 
 interface MaterialRequisition {
@@ -68,17 +96,23 @@ interface MaterialRequisition {
     site?: { name: string };
     requestedBy?: { full_name: string };
     status: string;
-    created_at: string; // Added created_at to interface
+    created_at: string;
     approvals?: {
         id: number;
         level: 'DSE' | 'MANAGER' | 'DIRECTOR' | 'PADIRI';
-        action: 'APPROVED' | 'REJECTED' | 'PENDING';
+        action: 'APPROVED' | 'REJECTED' | 'PENDING' | 'MODIFIED';
         reviewer: {
             id: number;
             full_name: string;
             role: { id: number; name: string };
         };
     }[];
+}
+
+interface ApproveRequisitionResponse {
+    success: boolean;
+    data: { request: MaterialRequisition };
+    message: string;
 }
 
 const RequisitionManagement = () => {
@@ -99,14 +133,16 @@ const RequisitionManagement = () => {
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+    const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [selectedRequisition, setSelectedRequisition] = useState<MaterialRequisition | null>(null);
     const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
     const [operationLoading, setOperationLoading] = useState<boolean>(false);
     const [showFilters, setShowFilters] = useState<boolean>(false);
     const { user } = useAuth();
 
-    // Check if user is SITE_ENGINEER
     const isSiteEngineer = user?.role.name === 'SITE_ENGINEER';
+    const canModify = ['ADMIN', 'DIOCESAN_SITE_ENGINEER', 'PADIRI'].includes(user?.role.name);
 
     useEffect(() => {
         const fetchRequisitions = async () => {
@@ -144,7 +180,6 @@ const RequisitionManagement = () => {
         setTimeout(() => setOperationStatus(null), duration);
     };
 
-    // Date formatter
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -283,6 +318,11 @@ const RequisitionManagement = () => {
         setIsEditModalOpen(true);
     };
 
+    const handleModifyRequisition = (requisition: MaterialRequisition) => {
+        setSelectedRequisition(requisition);
+        setIsModifyModalOpen(true);
+    };
+
     const handleApproveRequisition = (requisition: MaterialRequisition) => {
         setSelectedRequisition(requisition);
         setIsApproveModalOpen(true);
@@ -291,6 +331,11 @@ const RequisitionManagement = () => {
     const handleRejectRequisition = (requisition: MaterialRequisition) => {
         setSelectedRequisition(requisition);
         setIsRejectModalOpen(true);
+    };
+
+    const handleReceiveMaterials = (requisition: MaterialRequisition) => {
+        setSelectedRequisition(requisition);
+        setIsReceiveModalOpen(true);
     };
 
     const IssueMaterialPage = (requisition: MaterialRequisition) => {
@@ -303,36 +348,62 @@ const RequisitionManagement = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleCloseRequisition = async (requisition: MaterialRequisition) => {
-        try {
-            setOperationLoading(true);
+    const handleReceiveSuccess = (response: ReceiveMaterialsResponse) => {
+        setAllRequisitions((prev) =>
+            prev.map((r) =>
+                r.id === response.data.request_id
+                    ? {
+                          ...r,
+                          status: response.data.all_items_received ? 'CLOSED' : 'RECEIVED',
+                          items: r.items.map((item) => {
+                              const receivedItem = response.data.received_items.find(
+                                  (ri) => ri.request_item_id === item.id
+                              );
+                              return receivedItem
+                                  ? {
+                                        ...item,
+                                        qty_received: receivedItem.total_received,
+                                        received_at: new Date().toISOString(),
+                                        received_by: user?.id
+                                    }
+                                  : item;
+                          })
+                      }
+                    : r
+            )
+        );
+        showOperationStatus('success', `Materials for requisition #${response.data.request_id} received successfully`);
+        setIsReceiveModalOpen(false);
+        setSelectedRequisition(null);
+    };
 
-            if (!requisition?.id) {
-                throw new Error('Invalid requisition selected');
-            }
-
-            const response = await requisitionService.closeRequisition(requisition.id.toString());
-
-            if (!response?.request_id) {
-                throw new Error(response?.message || 'Failed to close requisition');
-            }
-
-            const updatedRequisition: MaterialRequisition = {
-                ...requisition,
-                status: 'CLOSED',
-            };
-
-            setAllRequisitions((prev) =>
-                prev.map((r) => (r.id == updatedRequisition.id ? updatedRequisition : r))
-            );
-
-            showOperationStatus('success', `Requisition #${requisition.id} closed successfully`);
-        } catch (err: any) {
-            console.error('Error closing requisition:', err);
-            showOperationStatus('error', err.message || 'Failed to close requisition');
-        } finally {
-            setOperationLoading(false);
-        }
+    const handleModifySuccess = (response: any) => {
+        setAllRequisitions((prev) =>
+            prev.map((r) =>
+                r.id === response.data.request.id
+                    ? {
+                          ...response.data.request,
+                          status: response.data.request.status,
+                          approvals: [
+                              ...(r.approvals || []),
+                              {
+                                  id: Date.now(), // Temporary ID, replace with actual ID if provided
+                                  level: user?.role.name === 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
+                                  action: 'MODIFIED',
+                                  reviewer: {
+                                      id: user?.id || 0,
+                                      full_name: user?.full_name || 'Unknown',
+                                      role: { id: user?.role.id || 0, name: user?.role.name || 'Unknown' }
+                                  }
+                              }
+                          ]
+                      }
+                    : r
+            )
+        );
+        showOperationStatus('success', `Requisition #${response.data.request.id} modified successfully`);
+        setIsModifyModalOpen(false);
+        setSelectedRequisition(null);
     };
 
     const handleSaveRequisition = async (data: CreateRequisitionInput | UpdateRequisitionInput) => {
@@ -384,9 +455,29 @@ const RequisitionManagement = () => {
         }
     };
 
-    const handleApproveSuccess = (updatedRequisition: MaterialRequisition) => {
+    const handleApproveSuccess = (response: ApproveRequisitionResponse) => {
+        const updatedRequisition = response.data.request;
         setAllRequisitions((prevRequisitions) =>
-            prevRequisitions.map((r) => (r.id === updatedRequisition.id ? updatedRequisition : r))
+            prevRequisitions.map((r) =>
+                r.id === updatedRequisition.id
+                    ? {
+                          ...updatedRequisition,
+                          approvals: [
+                              ...(r.approvals || []),
+                              {
+                                  id: Date.now(), // Temporary ID, replace with actual ID if provided
+                                  level: user?.role.name === 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
+                                  action: 'APPROVED',
+                                  reviewer: {
+                                      id: user?.id || 0,
+                                      full_name: user?.full_name || 'Unknown',
+                                      role: { id: user?.role.id || 0, name: user?.role.name || 'Unknown' }
+                                  }
+                              }
+                          ]
+                      }
+                    : r
+            )
         );
         showOperationStatus('success', `Requisition #${updatedRequisition.id} ${updatedRequisition.status.toLowerCase()} successfully`);
         setIsApproveModalOpen(false);
@@ -407,11 +498,12 @@ const RequisitionManagement = () => {
             case 'PENDING': return '#F59E0B'; // amber
             case 'SUBMITTED': return '#3B82F6'; // blue
             case 'DSE_REVIEW': return '#8B5CF6'; // purple
-            case 'WAITING_PADIRI_REVIEW': return '#06B6D4'; // cyan
+            case 'VERIFIED': return '#06B6D4'; // cyan
             case 'APPROVED': return '#10B981'; // green
             case 'PARTIALLY_ISSUED': return '#EAB308'; // yellow
             case 'ISSUED': return '#2563EB'; // darker blue
             case 'REJECTED': return '#EF4444'; // red
+            case 'RECEIVED': return '#059669'; // darker green
             case 'CLOSED': return '#6B7280'; // gray
             default: return '#6B7280'; // fallback gray
         }
@@ -422,14 +514,117 @@ const RequisitionManagement = () => {
             case 'PENDING': return <Clock className="w-3 h-3" />;
             case 'SUBMITTED': return <Upload className="w-3 h-3" />;
             case 'DSE_REVIEW': return <Search className="w-3 h-3" />;
-            case 'WAITING_PADIRI_REVIEW': return <UserCheck className="w-3 h-3" />;
+            case 'VERIFIED': return <UserCheck className="w-3 h-3" />;
             case 'APPROVED': return <CheckCircle className="w-3 h-3" />;
             case 'PARTIALLY_ISSUED': return <AlertTriangle className="w-3 h-3" />;
             case 'ISSUED': return <Truck className="w-3 h-3" />;
             case 'REJECTED': return <XCircle className="w-3 h-3" />;
+            case 'RECEIVED': return <CheckSquare className="w-3 h-3" />;
             case 'CLOSED': return <Archive className="w-3 h-3" />;
             default: return <Package className="w-3 h-3" />;
         }
+    };
+
+    const renderActionButtonBasedOnUser = (user: any, requisition: any) => {
+        const status = requisition?.status;
+
+        if ([ 'REJECTED', 'CLOSED', 'RECEIVED'].includes(status)) {
+            return null;
+        }
+
+        // const alreadyApprovedByDiocesan = requisition?.approvals?.some(
+        //     (approval: any) =>
+        //         approval?.reviewer?.role?.name === 'DIOCESAN_SITE_ENGINEER' &&
+        //         approval?.action === 'APPROVED'
+        // );
+
+        // const alreadyApprovedByPadiri = requisition?.approvals?.some(
+        //     (approval: any) =>
+        //         approval?.reviewer?.role?.name === 'PADIRI' &&
+        //         approval?.action === 'APPROVED'
+        // );
+
+        const actionButtons = [];
+
+        if (user?.role.name === 'SITE_ENGINEER' && ['PENDING', 'SUBMITTED'].includes(status)) {
+            actionButtons.push(
+                <button
+                    key="edit"
+                    onClick={() => handleEditRequisition(requisition)}
+                    disabled={operationLoading}
+                    className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                    title="Edit Requisition"
+                >
+                    <Pencil className="w-4 h-4" />
+                </button>
+            );
+        }
+
+        if (user?.role.name === 'SITE_ENGINEER' && ['ISSUED', 'PARTIALLY_ISSUED'].includes(status)) {
+            actionButtons.push(
+                <button
+                    key="receive"
+                    onClick={() => handleReceiveMaterials(requisition)}
+                    disabled={operationLoading}
+                    className="text-gray-400 hover:text-green-600 p-1.5 rounded-full hover:bg-green-50 transition-colors disabled:opacity-50"
+                    title="Receive Materials"
+                >
+                    <CheckSquare className="w-4 h-4" />
+                </button>
+            );
+        }
+
+        if (
+            canModify &&
+            (
+                (user?.role.name === 'DIOCESAN_SITE_ENGINEER' && status === 'VERIFIED') ||
+                (['ADMIN', 'PADIRI'].includes(user?.role.name) && status === 'APPROVED')
+            )
+        ) {
+            actionButtons.push(
+                <button
+                    key="modify"
+                    onClick={() => handleModifyRequisition(requisition)}
+                    disabled={operationLoading}
+                    className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors disabled:opacity-50"
+                    title="Modify Requisition"
+                >
+                    <Edit className="w-4 h-4" />
+                </button>
+            );
+        }
+
+        if (
+            ['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER'].includes(user?.role.name) &&
+            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) &&
+            !(user?.role.name === 'DIOCESAN_SITE_ENGINEER')
+          
+        ) {
+            actionButtons.push(
+                <div key="approve-reject" className="flex items-center space-x-1">
+                    <button
+                        onClick={() => handleApproveRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                        title="Approve Requisition"
+                    >
+                        <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => handleRejectRequisition(requisition)}
+                        disabled={operationLoading}
+                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+                        title="Reject Requisition"
+                    >
+                        <XCircle className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        }
+
+        return actionButtons.length > 0 ? (
+            <div className="flex items-center space-x-1">{actionButtons}</div>
+        ) : null;
     };
 
     const totalPages = Math.ceil(requisitions.length / itemsPerPage);
@@ -441,108 +636,6 @@ const RequisitionManagement = () => {
     const draftRequisitions = allRequisitions.filter((r) => r.status === 'DRAFT').length;
     const pendingRequisitions = allRequisitions.filter((r) => r.status === 'PENDING').length;
     const approvedRequisitions = allRequisitions.filter((r) => r.status === 'APPROVED').length;
-
-    const renderActionButtonBasedOnUser = (user: any, requisition: any) => {
-        const status = requisition?.status;
-
-        if (['APPROVED', 'REJECTED', 'CLOSED'].includes(status)) {
-            return null;
-        }
-
-        const alreadyApprovedByDiocesan = requisition?.approvals?.some(
-            (approval: any) =>
-                approval?.reviewer?.role?.name === 'DIOCESAN_SITE_ENGINEER' &&
-                approval?.action === 'APPROVED'
-        );
-
-        const alreadyApprovedByPadiri = requisition?.approvals?.some(
-            (approval: any) =>
-                approval?.reviewer?.role?.name === 'PADIRI' &&
-                approval?.action === 'APPROVED'
-        );
-
-        if (user?.role.name === 'SITE_ENGINEER' && ['PENDING', 'SUBMITTED'].includes(status)) {
-            return (
-                <button
-                    onClick={() => handleEditRequisition(requisition)}
-                    disabled={operationLoading}
-                    className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-                    title="Edit Requisition"
-                >
-                    <Pencil className="w-4 h-4" />
-                </button>
-            );
-        }
-
-        if (user?.role.name === 'SITE_ENGINEER' && status === 'ISSUED') {
-            return (
-                <button
-                    onClick={() => handleCloseRequisition(requisition)}
-                    disabled={operationLoading}
-                    className="text-gray-400 hover:text-green-600 p-1.5 rounded-full hover:bg-green-50 transition-colors disabled:opacity-50"
-                    title="Confirm Received & Close Requisition"
-                >
-                    <CheckCircle className="w-4 h-4" />
-                </button>
-            );
-        }
-
-        if (alreadyApprovedByPadiri) {
-            return null;
-        }
-
-        if (user?.role.name === 'DIOCESAN_SITE_ENGINEER' && alreadyApprovedByDiocesan) {
-            return null;
-        }
-
-        if (user?.role.name === 'DIOCESAN_SITE_ENGINEER') {
-            return (
-                <div className="flex items-center space-x-1">
-                    <button
-                        onClick={() => handleApproveRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-                        title="Approve Requisition"
-                    >
-                        <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => handleRejectRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-                        title="Reject Requisition"
-                    >
-                        <XCircle className="w-4 h-4" />
-                    </button>
-                </div>
-            );
-        }
-
-        if (user?.role.name === 'PADIRI' && status === 'WAITING_PADIRI_REVIEW') {
-            return (
-                <div className="flex items-center space-x-1">
-                    <button
-                        onClick={() => handleApproveRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-                        title="Approve Requisition"
-                    >
-                        <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => handleRejectRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-                        title="Reject Requisition"
-                    >
-                        <XCircle className="w-4 h-4" />
-                    </button>
-                </div>
-            );
-        }
-
-        return null;
-    };
 
     const renderTableView = () => (
         <div className="bg-white rounded border border-gray-200">
@@ -834,6 +927,24 @@ const RequisitionManagement = () => {
                 }}
                 onReject={handleRejectSuccess}
             />
+            <ReceiveMaterialsModal
+                isOpen={isReceiveModalOpen}
+                requisition={selectedRequisition}
+                onClose={() => {
+                    setIsReceiveModalOpen(false);
+                    setSelectedRequisition(null);
+                }}
+                onReceive={handleReceiveSuccess}
+            />
+            <ModifyRequisitionModal
+                isOpen={isModifyModalOpen}
+                requisition={selectedRequisition}
+                onClose={() => {
+                    setIsModifyModalOpen(false);
+                    setSelectedRequisition(null);
+                }}
+                onModify={handleModifySuccess}
+            />
             {operationStatus && (
                 <div className="fixed top-4 right-4 z-50">
                     <div
@@ -981,46 +1092,35 @@ const RequisitionManagement = () => {
                                 className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
                                 aria-label="Sort options"
                             >
-                                <option value="site_id-asc">Site: A-Z</option>
-                                <option value="site_id-desc">Site: Z-A</option>
-                                <option value="status-asc">Status: A-Z</option>
-                                <option value="status-desc">Status: Z-A</option>
-                                <option value="created_at-asc">Created At: Oldest First</option>
-                                <option value="created_at-desc">Created At: Newest First</option>
+                                <option value="site_id-asc">Site (A-Z)</option>
+                                <option value="site_id-desc">Site (Z-A)</option>
+                                <option value="created_at-asc">Created At (Oldest First)</option>
+                                <option value="created_at-desc">Created At (Newest First)</option>
+                                <option value="requestedBy-asc">Requested By (A-Z)</option>
+                                <option value="requestedBy-desc">Requested By (Z-A)</option>
                             </select>
-                            <button
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setStatusFilter('all');
-                                }}
-                                className="flex items-center space-x-1 px-2 py-1.5 text-xs border border-gray-200 rounded hover:bg-gray-50 transition-colors"
-                                title="Clear filters"
-                                aria-label="Clear filters"
-                            >
-                                <RefreshCw className="w-3 h-3" />
-                            </button>
                             <div className="flex items-center space-x-1">
                                 <button
                                     onClick={() => setViewMode('table')}
-                                    className={`p-1.5 rounded transition-colors ${viewMode === 'table' ? 'bg-primary-100 text-primary-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                                    className={`p-1.5 rounded ${viewMode === 'table' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50'}`}
                                     title="Table View"
-                                    aria-label="Table view"
+                                    aria-label="Switch to table view"
                                 >
                                     <LayoutGrid className="w-3 h-3" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('grid')}
-                                    className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-primary-100 text-primary-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                                    className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50'}`}
                                     title="Grid View"
-                                    aria-label="Grid view"
+                                    aria-label="Switch to grid view"
                                 >
-                                    <LayoutGrid className="w-3 h-3 rotate-45" />
+                                    <LayoutGrid className="w-3 h-3" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('list')}
-                                    className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-primary-100 text-primary-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                                    className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50'}`}
                                     title="List View"
-                                    aria-label="List view"
+                                    aria-label="Switch to list view"
                                 >
                                     <List className="w-3 h-3" />
                                 </button>
@@ -1028,47 +1128,63 @@ const RequisitionManagement = () => {
                         </div>
                     </div>
                     {showFilters && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded border">
-                            <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="mt-3">
+                            <div className="flex flex-wrap gap-2">
                                 <select
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent flex-1"
+                                    className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
                                     aria-label="Filter by status"
                                 >
                                     <option value="all">All Statuses</option>
-                                    <option value="DRAFT">Draft</option>
                                     <option value="PENDING">Pending</option>
+                                    <option value="SUBMITTED">Submitted</option>
+                                    <option value="DSE_REVIEW">DSE Review</option>
+                                    <option value="VERIFIED">Verified</option>
                                     <option value="APPROVED">Approved</option>
+                                    <option value="PARTIALLY_ISSUED">Partially Issued</option>
+                                    <option value="ISSUED">Issued</option>
                                     <option value="REJECTED">Rejected</option>
-                                    <option value="PARTIALLY_APPROVED">Partially Approved</option>
-                                    <option value="FULFILLED">Fulfilled</option>
+                                    <option value="RECEIVED">Received</option>
+                                    <option value="CLOSED">Closed</option>
                                 </select>
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setStatusFilter('all');
+                                        setSortBy('site_id');
+                                        setSortOrder('asc');
+                                    }}
+                                    className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                                    aria-label="Reset filters"
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>Reset</span>
+                                </button>
                             </div>
                         </div>
                     )}
                 </div>
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="flex items-center space-x-2">
-                            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-gray-600 text-xs">Loading requisitions...</span>
-                        </div>
+                    <div className="flex items-center justify-center py-10">
+                        <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                 ) : error ? (
-                    <div className="bg-red-50 border border-red-200 rounded p-4">
-                        <div className="flex items-center space-x-2 text-red-800 text-xs">
-                            <AlertCircle className="w-4 h-4" />
-                            <span>{error}</span>
-                        </div>
+                    <div className="bg-red-50 border border-red-200 rounded p-4 text-center">
+                        <p className="text-xs text-red-600">{error}</p>
+                    </div>
+                ) : requisitions.length === 0 ? (
+                    <div className="bg-white rounded border border-gray-200 p-6 text-center">
+                        <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-600">No requisitions found.</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <>
                         {viewMode === 'table' && renderTableView()}
                         {viewMode === 'grid' && renderGridView()}
                         {viewMode === 'list' && renderListView()}
                         {renderPagination()}
-                    </div>
+                    </>
                 )}
             </div>
         </div>

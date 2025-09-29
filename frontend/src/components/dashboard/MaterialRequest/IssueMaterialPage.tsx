@@ -40,8 +40,12 @@ const IssueMaterialPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const approvedRequests = requests.filter(req => req.status === 'APPROVED');
-  const selectedRequest = approvedRequests.find((req) => req.id === issueForm.request_id);
+const issuableRequests = requests.filter(
+  req => req.status === 'APPROVED' || req.status === 'PARTIALLY_ISSUED'
+);
+
+const selectedRequest = issuableRequests.find((req) => req.id === issueForm.request_id);
+
   const requestItems = selectedRequest?.items || [];
 
   useEffect(() => {
@@ -49,6 +53,8 @@ const IssueMaterialPage: React.FC = () => {
       try {
         setLoading(true);
         const requestsResponse = await stockService.getIssuableRequests();
+        console.log(requestsResponse);
+        
         setRequests(requestsResponse.requests || []);
         setError(null);
       } catch (err: any) {
@@ -108,7 +114,7 @@ const IssueMaterialPage: React.FC = () => {
   };
 
   const handleRequestChange = (requestId: number) => {
-    const selectedReq = approvedRequests.find(req => req.id === requestId);
+    const selectedReq = issuableRequests.find(req => req.id === requestId);
     const items = selectedReq?.items.map(item => {
       const stockForMaterial = stockData.find(s => s.material_id === item.material_id);
       return {
@@ -294,26 +300,27 @@ const IssueMaterialPage: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Request</label>
-                <select
-                  value={issueForm.request_id}
-                  onChange={(e) => handleRequestChange(Number(e.target.value))}
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-                  disabled={operationLoading || approvedRequests.length === 0}
-                  aria-label="Select an approved material request"
-                >
-                  <option value={0}>Select an approved request</option>
-                  {approvedRequests.map((request) => (
-                    <option key={request.id} value={request.id}>
-                      #{request.id} - {request.site?.name || 'N/A'} ({request.status})
-                    </option>
-                  ))}
-                </select>
-                {approvedRequests.length === 0 && (
-                  <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-                    <XCircle className="w-4 h-4" />
-                    <span>No approved requests available</span>
-                  </p>
-                )}
+<select
+  value={issueForm.request_id}
+  onChange={(e) => handleRequestChange(Number(e.target.value))}
+  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
+  disabled={operationLoading || issuableRequests.length === 0}
+  aria-label="Select an issuable material request"
+>
+  <option value={0}>Select a request</option>
+  {issuableRequests.map((request) => (
+    <option key={request.id} value={request.id}>
+      #{request.id} - {request.site?.name || 'N/A'} ({request.status})
+    </option>
+  ))}
+</select>
+{issuableRequests.length === 0 && (
+  <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
+    <XCircle className="w-4 h-4" />
+    <span>No issuable requests available</span>
+  </p>
+)}
+
               </div>
 
               {!stockData.length && !stockLoading && issueForm.request_id && (

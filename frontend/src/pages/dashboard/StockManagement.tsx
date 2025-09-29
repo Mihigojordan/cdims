@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -77,6 +78,7 @@ const StockDashboard: React.FC = () => {
     qty_on_hand: 0,
     low_stock_threshold: 0,
   });
+  const [additionalQty, setAdditionalQty] = useState<number>(0);
   const [thresholdFormData, setThresholdFormData] = useState<SetLowStockThresholdInput>({
     low_stock_threshold: 0,
   });
@@ -212,12 +214,25 @@ const StockDashboard: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'material_id' || name === 'store_id' || name === 'qty_on_hand' || name === 'low_stock_threshold' ? parseInt(value) || 0 : value });
+    if (name === "additional_qty") {
+      const qty = parseInt(value) ;
+      if (qty < 0) {
+        setFormError("Additional quantity cannot be negative");
+        return;
+      }
+      setAdditionalQty(qty);
+      console.log('handleInputChange - Additional Qty:', qty);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: name === "material_id" || name === "store_id" || name === "low_stock_threshold" ? parseInt(value) || 0 : value,
+      });
+    }
   };
 
   const handleThresholdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setThresholdFormData({ low_stock_threshold: parseInt(value) });
+    setThresholdFormData({ low_stock_threshold: parseInt(value) || 0 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -253,22 +268,37 @@ const StockDashboard: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    const validation: ValidationResult = stockService.validateStockData(formData);
-    if (!validation.isValid) {
-      setFormError(validation.errors.join(', '));
-      return;
-    }
-
     if (!selectedStock?.id) {
       setFormError("Invalid stock ID");
       return;
     }
 
+    const currentQty = Number(selectedStock.qty_on_hand) || 0;
+    const totalQty = currentQty + additionalQty;
+    console.log('handleUpdateSubmit - Current Qty:', currentQty, 'Additional Qty:', additionalQty, 'Total Qty:', totalQty);
+
+    const updatedFormData = {
+      qty_on_hand: totalQty,
+      low_stock_threshold: Number(formData.low_stock_threshold) || 0,
+    };
+
+    const validation: ValidationResult = stockService.validateStockData({
+      ...updatedFormData,
+      material_id: Number(selectedStock.material_id) || 0,
+      store_id: Number(selectedStock.store_id) || 0,
+    });
+    if (!validation.isValid) {
+      setFormError(validation.errors.join(', '));
+      return;
+    }
+
     try {
       setOperationLoading(true);
-      await stockService.updateStock(selectedStock.id, formData);
+      console.log('Update Payload:', updatedFormData);
+      await stockService.updateStock(selectedStock.id, updatedFormData);
       setShowUpdateModal(false);
       setSelectedStock(null);
+      setAdditionalQty(0);
       setFormData({
         material_id: 0,
         store_id: 0,
@@ -276,8 +306,9 @@ const StockDashboard: React.FC = () => {
         low_stock_threshold: 0,
       });
       loadData();
-      showOperationStatus("success", `Stock for ${materials.find(m => m.id === formData.material_id)?.name || 'material'} updated successfully!`);
+      showOperationStatus("success", `Stock for ${materials.find(m => m.id === selectedStock.material_id)?.name || 'material'} updated successfully!`);
     } catch (err: any) {
+      console.error('Update Error:', err);
       setFormError(err.message || "Failed to update stock");
     } finally {
       setOperationLoading(false);
@@ -338,14 +369,23 @@ const StockDashboard: React.FC = () => {
 
   const handleEditStock = (stock: Stock) => {
     if (!stock?.id) return;
+    const currentQty = Number(stock.qty_on_hand) || 0;
     setSelectedStock(stock);
     setFormData({
-      material_id: stock.material_id || 0,
-      store_id: stock.store_id || 0,
-      qty_on_hand: stock.qty_on_hand || 0,
-      low_stock_threshold: stock.low_stock_threshold || 0,
+      material_id: Number(stock.material_id) || 0,
+      store_id: Number(stock.store_id) || 0,
+      qty_on_hand: currentQty,
+      low_stock_threshold: Number(stock.low_stock_threshold) || 0,
     });
+    setAdditionalQty(0);
+    setFormError('');
     setShowUpdateModal(true);
+    console.log('handleEditStock - Current Qty:', currentQty, 'FormData:', {
+      material_id: Number(stock.material_id) || 0,
+      store_id: Number(stock.store_id) || 0,
+      qty_on_hand: currentQty,
+      low_stock_threshold: Number(stock.low_stock_threshold) || 0,
+    });
   };
 
   const handleViewStock = (stock: Stock) => {
@@ -1210,45 +1250,31 @@ const StockDashboard: React.FC = () => {
             <form onSubmit={handleUpdateSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
-                <select
-                  name="material_id"
-                  value={formData.material_id}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  disabled
-                >
-                  <option value="0">Select Material</option>
-                  {materials.map((material) => (
-                    <option key={material.id} value={material.id}>{material.name}</option>
-                  ))}
-                </select>
+                <p className="text-xs text-gray-900">{selectedStock.material?.name || '-'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
-                <select
-                  name="store_id"
-                  value={formData.store_id}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  disabled
-                >
-                  <option value="0">Select Store</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>{store.name}</option>
-                  ))}
-                </select>
+                <p className="text-xs text-gray-900">{selectedStock.store?.name || '-'}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Quantity on Hand *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Current Quantity on Hand</label>
+                <p className="text-xs text-gray-900">{Number(selectedStock.qty_on_hand) || 0}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Additional Quantity *</label>
                 <input
                   type="number"
-                  name="qty_on_hand"
-                  value={formData.qty_on_hand}
+                  name="additional_qty"
+                  value={additionalQty}
                   onChange={handleInputChange}
                   required
+                  min="0"
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter quantity"
+                  placeholder="Enter additional quantity"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  New Total Quantity: {(Number(selectedStock.qty_on_hand) || 0) + additionalQty}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Low Stock Threshold</label>
@@ -1257,6 +1283,7 @@ const StockDashboard: React.FC = () => {
                   name="low_stock_threshold"
                   value={formData.low_stock_threshold}
                   onChange={handleInputChange}
+                  min="0"
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
                   placeholder="Enter low stock threshold"
                 />
@@ -1267,6 +1294,7 @@ const StockDashboard: React.FC = () => {
                   onClick={() => {
                     setShowUpdateModal(false);
                     setSelectedStock(null);
+                    setAdditionalQty(0);
                     setFormData({
                       material_id: 0,
                       store_id: 0,

@@ -71,7 +71,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *                         items_per_page:
  *                           type: integer
  */
-router.get('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getAllStock);
+router.get('/', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getAllStock);
 
 /**
  * @swagger
@@ -151,7 +151,7 @@ router.get('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController
  *                         items_per_page:
  *                           type: integer
  */
-router.get('/movements', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getStockMovements);
+router.get('/movements', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getStockMovements);
 
 /**
  * @swagger
@@ -353,7 +353,7 @@ router.get('/history', authenticate, authorize('STOREKEEPER', 'ADMIN', 'PADIRI')
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/procurement-recommendations', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getProcurementRecommendations);
+router.get('/procurement-recommendations', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getProcurementRecommendations);
 
 /**
  * @swagger
@@ -414,7 +414,7 @@ router.get('/procurement-recommendations', authenticate, authorize('STOREKEEPER'
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/issuable-requests', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getIssuableRequests);
+router.get('/issuable-requests', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getIssuableRequests);
 
 /**
  * @swagger
@@ -492,7 +492,7 @@ router.get('/issuable-requests', authenticate, authorize('STOREKEEPER', 'ADMIN')
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getIssuedMaterials);
+router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getIssuedMaterials);
 
 /**
  * @swagger
@@ -606,7 +606,7 @@ router.get('/issued-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/issue-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.issueMaterials);
+router.post('/issue-materials', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.issueMaterials);
 
 
 
@@ -668,7 +668,7 @@ router.post('/issue-materials', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *                         items_per_page:
  *                           type: integer
  */
-router.get('/alerts/low-stock', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getLowStockAlerts);
+router.get('/alerts/low-stock', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getLowStockAlerts);
 
 /**
  * @swagger
@@ -741,7 +741,7 @@ router.get('/alerts/low-stock', authenticate, authorize('STOREKEEPER', 'ADMIN'),
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.createStock);
+router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.createStock);
 
 /**
  * @swagger
@@ -781,8 +781,8 @@ router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockControlle
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getStockById);
-router.get('material/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.getStockByMaterialId);
+router.get('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getStockById);
+router.get('material/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.getStockByMaterialId);
 
 /**
  * @swagger
@@ -853,7 +853,7 @@ router.get('material/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stoc
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.updateStock);
+router.put('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.updateStock);
 
 
 /**
@@ -921,7 +921,7 @@ router.put('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockControl
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id/threshold', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.setLowStockThreshold);
+router.put('/:id/threshold', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.setLowStockThreshold);
 
 /**
  * @swagger
@@ -970,7 +970,7 @@ router.put('/:id/threshold', authenticate, authorize('STOREKEEPER', 'ADMIN'), st
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id/acknowledge-alert', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.acknowledgeLowStockAlert);
+router.put('/:id/acknowledge-alert', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.acknowledgeLowStockAlert);
 
 /**
  * @swagger
@@ -1069,6 +1069,6 @@ router.put('/:id/acknowledge-alert', authenticate, authorize('STOREKEEPER', 'ADM
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/:id/add-quantity', authenticate, authorize('STOREKEEPER', 'ADMIN'), stockController.addStockQuantity);
+router.post('/:id/add-quantity', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), stockController.addStockQuantity);
 
 module.exports = router;

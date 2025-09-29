@@ -585,9 +585,13 @@ const issueMaterials = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    if (request.status !== 'APPROVED') {
-      return res.status(400).json({ success: false, message: 'Request must be approved before issuing materials' });
-    }
+if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
+  return res.status(400).json({
+    success: false,
+    message: 'Request must be approved or partially issued before issuing materials',
+  });
+}
+
 
     // 3. Start transaction
     const transaction = await sequelize.transaction();
@@ -697,11 +701,14 @@ const issueMaterials = async (req, res) => {
       transaction
     });
 
-    const allItemsIssued = updatedRequest.items.every(item => 
-      item.qty_issued >= (item.qty_approved || item.qty_requested) || 
-      (item.qty_approved || item.qty_requested) <= 0
-    );
-    const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
+// allItemsIssued → true if all items have qty_issued > 0 (even if less than approved)
+const allItemsIssued = updatedRequest.items.every(
+  item => item.qty_issued > 0 || (item.qty_approved || item.qty_requested) <= 0
+);
+
+// someItemsIssued → true if at least one item has qty_issued > 0
+const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
+
     
     if (allItemsIssued) {
       await request.update(
@@ -745,45 +752,49 @@ const getIssuableRequests = async (req, res) => {
   try {
     const { page = 1, limit = 10, site_id, status } = req.query;
     const offset = (page - 1) * limit;
+const whereClause = {
+  status: {
+    [Op.in]: ['APPROVED', 'PARTIALLY_ISSUED']
+  }
+};
 
-    const whereClause = { status: 'APPROVED' };
-    if (site_id) whereClause.site_id = site_id;
+if (site_id) whereClause.site_id = site_id;
 
-    const { count, rows: requests } = await Request.findAndCountAll({
-      where: whereClause,
+const { count, rows: requests } = await Request.findAndCountAll({
+  where: whereClause,
+  include: [
+    {
+      model: RequestItem,
+      as: 'items',
+      where: {
+        qty_issued: 0 // Only items not yet issued
+      },
       include: [
         {
-          model: RequestItem,
-          as: 'items',
-          where: {
-            qty_issued: 0 // Only items not yet issued
-          },
+          model: Material,
+          as: 'material',
           include: [
             {
-              model: Material,
-              as: 'material',
-              include: [
-                {
-                  model: Unit,
-                  as: 'unit'
-                }
-              ]
+              model: Unit,
+              as: 'unit'
             }
           ]
-        },
-        {
-          model: User,
-          as: 'requestedBy'
-        },
-        {
-          model: Site,
-          as: 'site'
         }
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['created_at', 'ASC']]
-    });
+      ]
+    },
+    {
+      model: User,
+      as: 'requestedBy'
+    },
+    {
+      model: Site,
+      as: 'site'
+    }
+  ],
+  limit: parseInt(limit),
+  offset: parseInt(offset),
+  order: [['created_at', 'ASC']]
+});
 
     res.json({
       success: true,

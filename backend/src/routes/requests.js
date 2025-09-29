@@ -1036,7 +1036,7 @@ router.post('/:id/approve-storekeeper', authenticate, authorize('PADIRI'), reque
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/:id/reject', authenticate, authorize('DIOCESAN_SITE_ENGINEER', 'PADIRI'), requestController.rejectRequest);
+router.post('/:id/reject', authenticate, authorize('ADMIN','DIOCESAN_SITE_ENGINEER', 'PADIRI'), requestController.rejectRequest);
 
 /**
  * @swagger

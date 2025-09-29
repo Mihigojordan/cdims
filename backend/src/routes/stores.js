@@ -141,8 +141,8 @@ const { authenticate, authorize } = require('../middleware/auth');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeController.getAllStores);
-router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeController.createStore);
+router.get('/', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), storeController.getAllStores);
+router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), storeController.createStore);
 
 /**
  * @swagger
@@ -298,8 +298,8 @@ router.post('/', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeControlle
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeController.getStoreById);
-router.put('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeController.updateStore);
-router.delete('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN'), storeController.deleteStore);
+router.get('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), storeController.getStoreById);
+router.put('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), storeController.updateStore);
+router.delete('/:id', authenticate, authorize('STOREKEEPER', 'ADMIN','PADIRI'), storeController.deleteStore);
 
 module.exports = router;
