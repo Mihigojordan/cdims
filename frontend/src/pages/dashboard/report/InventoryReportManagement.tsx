@@ -513,35 +513,7 @@ const InventoryReportsPage: React.FC = () => {
               </div>
           </div>
           
-          ${exportOptions.includeSummary ? `
-          <div class="summary">
-              <div class="summary-card">
-                  <h3>${summary.total_items || 0}</h3>
-                  <p>Total Stock Items</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.low_stock_items || 0}</h3>
-                  <p>Low Stock Items</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.out_of_stock_items || 0}</h3>
-                  <p>Out of Stock Items</p>
-              </div>
-              <div class="summary-card">
-                  <h3>RWF ${(summary.total_value || 0).toLocaleString()}</h3>
-                  <p>Total Stock Value</p>
-              </div>
-          </div>
-          ` : ''}
-
-          ${exportOptions.includeFilters ? `
-          <div class="filters">
-              <h3>Applied Filters</h3>
-              <p><strong>Store:</strong> ${stores.find(s => s.id?.toString() === filters.store_id)?.name || 'All Stores'}</p>
-              <p><strong>Low Stock Only:</strong> ${filters.low_stock_only ? 'Yes' : 'No'}</p>
-              <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
-          </div>
-          ` : ''}
+        
 
           <div class="report-title">Inventory Reports</div>
 

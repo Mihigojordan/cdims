@@ -540,37 +540,7 @@ const StockMovementReportsPage: React.FC = () => {
             </div>
         </div>
         
-        ${exportOptions.includeSummary ? `
-        <div class="summary">
-            <div class="summary-card">
-                <h3>${summary.total_movements || 0}</h3>
-                <p>Total Movements</p>
-            </div>
-            <div class="summary-card">
-                <h3>${summary.total_in || 0}</h3>
-                <p>Total In</p>
-            </div>
-            <div class="summary-card">
-                <h3>${summary.total_out || 0}</h3>
-                <p>Total Out</p>
-            </div>
-            <div class="summary-card">
-                <h3>${summary.net_movement || 0}</h3>
-                <p>Net Movement</p>
-            </div>
-        </div>
-        ` : ''}
-
-        ${exportOptions.includeFilters ? `
-        <div class="filters">
-            <h3>Applied Filters</h3>
-            <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
-            <p><strong>Store:</strong> ${stores.find(s => s.id?.toString() === filters.store_id)?.name || 'All Stores'}</p>
-            <p><strong>Movement Type:</strong> ${movementTypeOptions.find(o => o.value === filters.movement_type)?.label || 'All Movement Types'}</p>
-            <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
-        </div>
-        ` : ''}
-
+       
         <div class="report-title">Stock Movement Reports</div>
 
         <div class="table-container">
@@ -588,9 +558,9 @@ const StockMovementReportsPage: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredReports.map(report => `
+                    ${filteredReports.map((report,index) => `
                         <tr>
-                            <td>${report.id || '-'}</td>
+                            <td>${(index + 1 ) || '-'}</td>
                             <td>${report.material?.name || `Material ID: ${report.material_id}`}</td>
                             <td><span class="movement-type ${report.movement_type?.toLowerCase()}">${report.movement_type || '-'}</span></td>
                             <td>${report.qty} ${report.material?.unit?.symbol || ''}</td>

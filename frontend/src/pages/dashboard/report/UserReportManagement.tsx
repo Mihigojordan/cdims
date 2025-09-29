@@ -518,42 +518,14 @@ const UserActivityReportsPage: React.FC = () => {
               </div>
           </div>
           
-          ${exportOptions.includeSummary ? `
-          <div class="summary">
-              <div class="summary-card">
-                  <h3>${summary.total_users || 0}</h3>
-                  <p>Total Users</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.total_requests || 0}</h3>
-                  <p>Total Requests</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.approved_requests || 0}</h3>
-                  <p>Approved</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.pending_requests || 0}</h3>
-                  <p>Pending</p>
-              </div>
-          </div>
-          ` : ''}
-
-          ${exportOptions.includeFilters ? `
-          <div class="filters">
-              <h3>Applied Filters</h3>
-              <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
-              <p><strong>User:</strong> ${allUsers.find(u => u.user_id === filters.user_id)?.user_name || 'All Users'}</p>
-              <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
-          </div>
-          ` : ''}
-
+         
           <div class="report-title">User Activity Reports</div>
 
           <div class="table-container">
               <table>
                   <thead>
                       <tr>
+                          <th>ID</th>
                           <th>User</th>
                           <th>Total Requests</th>
                           <th>Approved</th>
@@ -562,8 +534,9 @@ const UserActivityReportsPage: React.FC = () => {
                       </tr>
                   </thead>
                   <tbody>
-                      ${filteredUserActivity.map(activity => `
+                      ${filteredUserActivity.map((activity,index) => `
                           <tr>
+                              <td>${(index + 1 ) || '-'}</td>
                               <td>${activity.user_name || '-'}</td>
                               <td>${formatNumber(activity.total_requests)}</td>
                               <td>${formatNumber(activity.approved_requests)}</td>
