@@ -175,6 +175,18 @@ interface LowStockAlertsFilterParams {
   store_id?: number;
 }
 
+// Extend the filter params interface
+interface StockHistoryFilterParams {
+  page?: number;
+  limit?: number;
+  stock_id?: number;
+  material_id?: number;
+  store_id?: number;
+  movement_type?: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
+  date_from?: string;
+  date_to?: string;
+}
+
 // Interface for pagination
 interface Pagination {
   current_page: number;
@@ -470,6 +482,34 @@ class StockService {
       console.error('Error fetching issued materials:', error);
       const errorMessage =
         error.response?.data?.message || error.message || 'Failed to fetch issued materials';
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Get stock history with filtering and pagination
+   * @param params - Query parameters for filtering
+   * @returns Array of stock history with pagination
+   */
+  async getStockHistory(params?: StockHistoryFilterParams): Promise<{ history: StockMovement[]; pagination: Pagination }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.stock_id) queryParams.append('stock_id', params.stock_id.toString());
+      if (params?.material_id) queryParams.append('material_id', params.material_id.toString());
+      if (params?.store_id) queryParams.append('store_id', params.store_id.toString());
+      if (params?.movement_type) queryParams.append('movement_type', params.movement_type);
+      if (params?.date_from) queryParams.append('date_from', params.date_from);
+      if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+      const response: AxiosResponse<{ success: boolean; data: { history: StockMovement[]; pagination: Pagination } }> =
+        await this.api.get(`/stock/history?${queryParams.toString()}`);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching stock history:', error);
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Failed to fetch stock history';
       throw new Error(errorMessage);
     }
   }

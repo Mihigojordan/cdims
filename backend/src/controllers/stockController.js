@@ -229,7 +229,7 @@ const getStockByMaterialId = async (req, res) => {
 const updateStock = async (req, res) => {
   try {
     const { id } = req.params;
-    const { qty_on_hand, reorder_level, low_stock_threshold, low_stock_alert } = req.body;
+    const { qty_on_hand, reorder_level, low_stock_threshold, low_stock_alert, notes } = req.body;
 
     const stock = await Stock.findByPk(id);
     if (!stock) {
@@ -239,18 +239,46 @@ const updateStock = async (req, res) => {
       });
     }
 
+    // Keep current quantity for history logging
+    const currentQty = stock.qty_on_hand;
+
+    // Determine quantity change
+    const newQty = qty_on_hand !== undefined ? qty_on_hand : currentQty;
+    const addedQty = newQty - currentQty;
+
+    
+
     // Check if stock is going low
     let shouldAlert = false;
-    if (low_stock_threshold && qty_on_hand <= low_stock_threshold) {
+    if (low_stock_threshold && newQty <= low_stock_threshold) {
       shouldAlert = true;
     }
 
+    // Update stock
     await stock.update({
-      qty_on_hand,
+      qty_on_hand: newQty,
       reorder_level,
       low_stock_threshold,
       low_stock_alert: shouldAlert || low_stock_alert
     });
+
+    // Record stock history (only if quantity actually changed)
+    if (addedQty !== 0) {
+      await StockHistory.create({
+        stock_id: stock.id,
+        material_id: stock.material_id,
+        store_id: stock.store_id,
+        movement_type: addedQty > 0 ? 'IN' : 'OUT', // Decide direction
+        source_type: 'ADJUSTMENT',
+        source_id: id, // Using stock ID as reference
+        qty_before: currentQty,
+        qty_change: addedQty,
+        qty_after: newQty,
+        unit_price: null,
+        notes: notes || `Stock adjusted by ${ req.user.role.name}  - ${ req.user.full_name}`,
+        created_by: req.user.id
+      });
+    }
 
     res.json({
       success: true,
@@ -265,6 +293,7 @@ const updateStock = async (req, res) => {
     });
   }
 };
+
 
 const getLowStockAlerts = async (req, res) => {
   try {
@@ -585,13 +614,12 @@ const issueMaterials = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
-  return res.status(400).json({
-    success: false,
-    message: 'Request must be approved or partially issued before issuing materials',
-  });
-}
-
+    if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Request must be approved or partially issued before issuing materials',
+      });
+    }
 
     // 3. Start transaction
     const transaction = await sequelize.transaction();
@@ -599,6 +627,7 @@ if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
     try {
       const issuedItems = [];
       const stockMovements = [];
+      const stockHistoryRecords = [];
 
       for (const item of items) {
         const { request_item_id, qty_issued, store_id, notes } = item;
@@ -619,7 +648,7 @@ if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
           throw new Error(`Cannot issue more than requested for ${requestItem.material.name}`);
         }
 
-        // Fetch stock with row-level lock (for concurrency safety)
+        // Fetch stock with row-level lock
         const stock = await Stock.findOne({
           where: { material_id: requestItem.material_id, store_id },
           transaction,
@@ -634,50 +663,63 @@ if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
           throw new Error(`Insufficient stock for ${requestItem.material.name}. Available: ${stock.qty_on_hand}, Requested: ${qty_issued}`);
         }
 
-        // Update request item with issued quantity (fix decimal precision)
-        const currentQtyIssued = parseFloat(requestItem.qty_issued || 0);
-        const addedQty = parseFloat(qty_issued);
-        const newQtyIssued = currentQtyIssued + addedQty;
-        
+        // Track current stock quantity before issuing
+        const currentQty = stock.qty_on_hand;
+        const newQtyOnHand = currentQty - qty_issued;
+
+        // Update request item
         await requestItem.update(
           {
-            qty_issued: newQtyIssued,
+            qty_issued: qty_issued,
             issued_at: new Date(),
             issued_by: req.user.id
           },
           { transaction }
         );
 
-        // Update remaining approved quantity (fix decimal precision)
+        // Update remaining approved quantity
         const qtyApproved = parseFloat(requestItem.qty_approved || requestItem.qty_requested);
-        const remainingApproved = qtyApproved - newQtyIssued;
+        const remainingApproved = qtyApproved - qty_issued;
         await requestItem.update(
           { qty_approved: remainingApproved },
           { transaction }
         );
 
         // Update stock
-        const newQtyOnHand = stock.qty_on_hand - qty_issued;
         const shouldAlert = newQtyOnHand <= stock.low_stock_threshold;
-
         await stock.update(
           { qty_on_hand: newQtyOnHand, low_stock_alert: shouldAlert },
           { transaction }
         );
 
-        // Create stock movement record
+        // Create stock movement record (business log)
         const stockMovement = await StockMovement.create({
           material_id: requestItem.material_id,
           store_id: store_id,
-          movement_type: 'OUT',         // ✅ matches model
-          source_type: 'ISSUE',         // ✅ matches model ENUM
-          source_id: request_id,        // ✅ matches model
-          qty: qty_issued,              // ✅ matches model
-          unit_price: null,             // optional
+          movement_type: 'OUT',
+          source_type: 'ISSUE',
+          source_id: request_id,
+          qty: qty_issued,
+          unit_price: null,
           notes: notes || `Issued to ${request.requestedBy.full_name} for ${request.site.name}`,
           created_by: req.user.id
         }, { transaction });
 
+        // Create stock history record (audit log)
+        const stockHistory = await StockHistory.create({
+          stock_id: stock.id,
+          material_id: stock.material_id,
+          store_id: stock.store_id,
+          movement_type: 'OUT',
+          source_type: 'ISSUE',
+          source_id: request_id,
+          qty_before: currentQty,
+          qty_change: -qty_issued,
+          qty_after: newQtyOnHand,
+          unit_price: null,
+          notes: notes || `Issued to ${ request.requestedBy.role.name} ${request.requestedBy.full_name} for ${request.site.name}`,
+          created_by: req.user.id
+        }, { transaction });
 
         issuedItems.push({
           request_item_id,
@@ -687,40 +729,31 @@ if (request.status !== 'APPROVED' && request.status !== 'PARTIALLY_ISSUED') {
         });
 
         stockMovements.push(stockMovement);
+        stockHistoryRecords.push(stockHistory);
       }
 
-    // 4. Update overall request status
-    // Reload request items to get updated quantities
-    const updatedRequest = await Request.findByPk(request_id, {
-      include: [
-        {
-          model: RequestItem,
-          as: 'items'
-        }
-      ],
-      transaction
-    });
+      // 4. Update overall request status
+      const updatedRequest = await Request.findByPk(request_id, {
+        include: [{ model: RequestItem, as: 'items' }],
+        transaction
+      });
 
-// allItemsIssued → true if all items have qty_issued > 0 (even if less than approved)
-const allItemsIssued = updatedRequest.items.every(
-  item => item.qty_issued > 0 || (item.qty_approved || item.qty_requested) <= 0
-);
-
-// someItemsIssued → true if at least one item has qty_issued > 0
-const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
-
-    
-    if (allItemsIssued) {
-      await request.update(
-        { status: 'ISSUED', issued_at: new Date(), issued_by: req.user.id },
-        { transaction }
+      const allItemsIssued = updatedRequest.items.every(
+        item => item.qty_issued > 0 || (item.qty_approved || item.qty_requested) <= 0
       );
-    } else if (someItemsIssued) {
-      await request.update(
-        { status: 'PARTIALLY_ISSUED', issued_at: new Date(), issued_by: req.user.id },
-        { transaction }
-      );
-    }
+      const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
+
+      if (allItemsIssued) {
+        await request.update(
+          { status: 'ISSUED', issued_at: new Date(), issued_by: req.user.id },
+          { transaction }
+        );
+      } else if (someItemsIssued) {
+        await request.update(
+          { status: 'PARTIALLY_ISSUED', issued_at: new Date(), issued_by: req.user.id },
+          { transaction }
+        );
+      }
 
       // 5. Commit transaction
       await transaction.commit();
@@ -732,6 +765,7 @@ const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
           request_id,
           issued_items: issuedItems,
           stock_movements: stockMovements,
+          stock_history: stockHistoryRecords,
           request_status: allItemsIssued ? 'ISSUED' : 'PARTIALLY_ISSUED'
         }
       });
@@ -747,6 +781,7 @@ const someItemsIssued = updatedRequest.items.some(item => item.qty_issued > 0);
     });
   }
 };
+
 
 const getIssuableRequests = async (req, res) => {
   try {

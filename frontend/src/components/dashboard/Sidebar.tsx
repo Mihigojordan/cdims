@@ -131,6 +131,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
           path: "/admin/dashboard/stock-management",
         },
         {
+          id: "stocks-history",
+          label: "Stock History",
+          icon: Boxes, // Kept Boxes for main stock management
+          path: "/admin/dashboard/stock-history-management",
+        },
+        {
           id: "stock-movement",
           label: "Stock Movement",
           icon: Truck, // Unique icon for stock movement (transport/movement)

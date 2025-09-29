@@ -252,7 +252,8 @@ const createCategory = async (req, res) => {
 
     const category = await Category.create({
       name,
-      parent_id
+      parent_id,
+      creayed
     });
 
     res.status(201).json({
