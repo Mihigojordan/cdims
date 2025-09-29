@@ -509,35 +509,7 @@ const SitePerformanceReportsPage: React.FC = () => {
               </div>
           </div>
           
-          ${exportOptions.includeSummary ? `
-          <div class="summary">
-              <div class="summary-card">
-                  <h3>${summary.total_sites || 0}</h3>
-                  <p>Total Sites</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.total_requests || 0}</h3>
-                  <p>Total Requests</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.approved_requests || 0}</h3>
-                  <p>Approved</p>
-              </div>
-              <div class="summary-card">
-                  <h3>${summary.pending_requests || 0}</h3>
-                  <p>Pending</p>
-              </div>
-          </div>
-          ` : ''}
-
-          ${exportOptions.includeFilters ? `
-          <div class="filters">
-              <h3>Applied Filters</h3>
-              <p><strong>Date Range:</strong> ${filters.start_date || 'Not set'} to ${filters.end_date || 'Not set'}</p>
-              <p><strong>Site:</strong> ${sites.find(s => s.id?.toString() === filters.site_id)?.name || 'All Sites'}</p>
-              <p><strong>Search:</strong> ${searchTerm || 'None'}</p>
-          </div>
-          ` : ''}
+        
 
           <div class="report-title">Site Performance Reports</div>
 

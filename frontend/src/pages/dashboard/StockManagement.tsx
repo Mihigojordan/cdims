@@ -225,7 +225,7 @@ const StockDashboard: React.FC = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: name === "material_id" || name === "store_id" || name === "low_stock_threshold" ? parseInt(value) || 0 : value,
+        [name]: name === "material_id" || name === "store_id" || name === "low_stock_threshold" ? parseInt(value) : value,
       });
     }
   };
