@@ -368,15 +368,16 @@ const RequisitionManagement = () => {
     };
 
     const handleReceiveSuccess = (response: ReceiveMaterialsResponse) => {
+           console.log(response);
         setAllRequisitions((prev) =>
             prev.map((r) =>
-                r.id === response.data.request_id
+                r.id == response.data.request_id
                     ? {
                           ...r,
                           status: response.data.request_status ,
                           items: r.items.map((item) => {
                               const receivedItem = response.data.received_items.find(
-                                  (ri) => ri.request_item_id === item.id
+                                  (ri) => ri.request_item_id == item.id
                               );
                               return receivedItem
                                   ? {
@@ -399,7 +400,7 @@ const RequisitionManagement = () => {
     const handleModifySuccess = (response: any) => {
         setAllRequisitions((prev) =>
             prev.map((r) =>
-                r.id === response.data.request.id
+                r.id == response.data.request.id
                     ? {
                           ...response.data.request,
                           status: response.data.request.status,
@@ -407,7 +408,7 @@ const RequisitionManagement = () => {
                               ...(r.approvals || []),
                               {
                                   id: Date.now(), // Temporary ID, replace with actual ID if provided
-                                  level: user?.role.name === 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
+                                  level: user?.role.name == 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
                                   action: 'MODIFIED',
                                   reviewer: {
                                       id: user?.id || 0,
@@ -476,16 +477,18 @@ const RequisitionManagement = () => {
 
     const handleApproveSuccess = (response: ApproveRequisitionResponse) => {
         const updatedRequisition = response.data.request;
+        console.log(response);
+        
         setAllRequisitions((prevRequisitions:any) =>
             prevRequisitions.map((r:any) =>
-                r.id === updatedRequisition.id
+                r.id == updatedRequisition.id
                     ? {
                           ...updatedRequisition,
                           approvals: [
                               ...(r.approvals || []),
                               {
                                   id: Date.now(), // Temporary ID, replace with actual ID if provided
-                                  level: user?.role.name === 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
+                                  level: user?.role.name == 'DIOCESAN_SITE_ENGINEER' ? 'DSE' : user?.role.name,
                                   action: 'APPROVED',
                                   reviewer: {
                                       id: user?.id || 0,
@@ -600,34 +603,36 @@ const RequisitionManagement = () => {
                 </button>
             );
         }
+if (
+    ['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER'].includes(user?.role.name) &&
+    ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) &&
+    !(
+        (user?.role.name === 'DIOCESAN_SITE_ENGINEER' && status === 'VERIFIED') ||
+        (['ADMIN', 'PADIRI'].includes(user?.role.name) && status === 'APPROVED')
+    )
+) {
+    actionButtons.push(
+        <div key="approve-reject" className="flex items-center space-x-1">
+            <button
+                onClick={() => handleApproveRequisition(requisition)}
+                disabled={operationLoading}
+                className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
+                title="Approve Requisition"
+            >
+                <Check className="w-4 h-4" />
+            </button>
+            <button
+                onClick={() => handleRejectRequisition(requisition)}
+                disabled={operationLoading}
+                className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+                title="Reject Requisition"
+            >
+                <XCircle className="w-4 h-4" />
+            </button>
+        </div>
+    );
+}
 
-        if (
-            ['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER'].includes(user?.role.name) &&
-            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) 
-          
-          
-        ) {
-            actionButtons.push(
-                <div key="approve-reject" className="flex items-center space-x-1">
-                    <button
-                        onClick={() => handleApproveRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-primary-600 p-1.5 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50"
-                        title="Approve Requisition"
-                    >
-                        <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => handleRejectRequisition(requisition)}
-                        disabled={operationLoading}
-                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
-                        title="Reject Requisition"
-                    >
-                        <XCircle className="w-4 h-4" />
-                    </button>
-                </div>
-            );
-        }
 
         return actionButtons.length > 0 ? (
             <div className="flex items-center space-x-1">{actionButtons}</div>

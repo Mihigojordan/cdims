@@ -78,6 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
     ];
     const stockPages = [
       "/admin/dashboard/stock-management",
+      "/admin/dashboard/stock-history-management",
       "/admin/dashboard/stock-movement",
       "/admin/dashboard/issuable-requests",
       "/admin/dashboard/issuable-materials",

@@ -28,7 +28,7 @@ const Approval = sequelize.define('Approval', {
     }
   },
   action: {
-    type: DataTypes.ENUM('APPROVED', 'REJECTED', 'NEEDS_CHANGES'),
+    type: DataTypes.ENUM('APPROVED', 'REJECTED', 'VERIFIED','MODIFIED'),
     allowNull: false
   },
   comment: {

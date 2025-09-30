@@ -43,6 +43,10 @@ const RequestItem = sequelize.define('RequestItem', {
     type: DataTypes.DECIMAL(12, 3),
     defaultValue: 0
   },
+  qty_remaining: {                  // ✅ new field
+    type: DataTypes.DECIMAL(12, 3),
+    defaultValue: 0
+  },
   qty_received: {
     type: DataTypes.DECIMAL(12, 3),
     allowNull: true,
@@ -79,9 +83,9 @@ const RequestItem = sequelize.define('RequestItem', {
   }
 }, {
   tableName: 'request_items',
-  timestamps: true,              // ✅ enables Sequelize timestamps
-  createdAt: 'created_at',       // ✅ custom field name
-  updatedAt: 'updated_at',       // ✅ custom field name
+  timestamps: true,              // enables Sequelize timestamps
+  createdAt: 'created_at',       // custom field name
+  updatedAt: 'updated_at',       // custom field name
   indexes: [
     { fields: ['request_id'] }
   ]

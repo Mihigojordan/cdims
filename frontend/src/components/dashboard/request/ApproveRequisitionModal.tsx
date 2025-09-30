@@ -303,7 +303,7 @@ const ApproveRequisitionModal: React.FC<ApproveRequisitionModalProps> = ({ isOpe
                   <p className="text-sm text-gray-500">No items available in this requisition.</p>
                 ) : (
                   formData.item_modifications.map((item, index) => (
-                    <div key={item.request_item_id} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                    <div key={item.request_item_id} className={`grid grid-cols-1 md:grid-cols-6 gap-4 ${formData.items_to_remove.includes(item.request_item_id) ? 'bg-red-200 border border-red-300' : ''} p-4 rounded-lg items-end`}>
                       <div className="space-y-2 col-span-2">
                         <label className="text-sm font-medium text-gray-700">Material</label>
                         <select

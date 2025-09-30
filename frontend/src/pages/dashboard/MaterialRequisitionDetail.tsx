@@ -63,10 +63,14 @@ const RequestDetailView: React.FC = () => {
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'REJECTED':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'DRAFT':
+
+     case 'VERIFIED':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+          
+      case 'CLOSED':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-slate-100 text-slate-800 border-slate-200';
     }
   };
 
@@ -79,6 +83,8 @@ const RequestDetailView: React.FC = () => {
         return 'text-red-600';
       case 'PENDING':
         return 'text-yellow-600';
+      case 'VERIFIED':
+        return 'text-blue-600';
       default:
         return 'text-gray-600';
     }
@@ -217,6 +223,8 @@ const RequestDetailView: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issued</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
                     {!isSiteEngineer && (
                       <>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
@@ -248,6 +256,20 @@ const RequestDetailView: React.FC = () => {
                           item.qty_approved === item.qty_requested ? 'text-green-600' : 'text-orange-600'
                         }`}>
                           {item.qty_approved ?? '0'} {item.material.unit?.symbol || ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm font-medium ${
+                          item.qty_issued === item.qty_requested ? 'text-green-600' : 'text-orange-600'
+                        }`}>
+                          {item.qty_issued ?? '0'} {item.material.unit?.symbol || ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm font-medium ${
+                          item.qty_remaining === item.qty_requested ? 'text-green-600' : 'text-orange-600'
+                        }`}>
+                          {item.qty_remaining ?? '0'} {item.material.unit?.symbol || ''}
                         </span>
                       </td>
                       {!isSiteEngineer && (

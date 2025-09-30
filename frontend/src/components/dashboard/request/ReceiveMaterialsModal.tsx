@@ -24,7 +24,7 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
     useEffect(() => {
         if (isOpen && requisition) {
             const initialItems = requisition.items
-                ?.filter(item => (item.qty_issued || 0) > 0)
+                ?.filter(item => (item.qty_issued || 0) > 0) // Only include issued items
                 .map(item => ({
                     request_item_id: item.id,
                     qty_received: item.qty_issued || 0, // Default to full quantity issued
@@ -92,6 +92,8 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
         try {
             setLoading(true);
             setSubmitError(null);
+            console.log(items);
+            
             const response = await requisitionService.receiveMaterials(requisition.id.toString(), items);
             onReceive(response);
         } catch (err: any) {
@@ -112,6 +114,8 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
     if (!isOpen || !requisition) return null;
 
     const issuedItems = requisition.items?.filter(item => (item.qty_issued || 0) > 0) || [];
+    const notIssuedItems = requisition.items?.filter(item => (item.qty_issued || 0) === 0) || [];
+    const allItems = requisition.items || [];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -152,7 +156,7 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
                     </div>
 
                     {/* Materials Table */}
-                    {issuedItems.length > 0 ? (
+                    {allItems.length > 0 ? (
                         <div className="border border-gray-200 rounded overflow-hidden">
                             <table className="w-full text-xs">
                                 <thead className="bg-gray-50">
@@ -161,15 +165,18 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
                                         <th className="text-left py-3 px-3 text-gray-600 font-medium">Unit</th>
                                         <th className="text-right py-3 px-3 text-gray-600 font-medium">Qty Issued</th>
                                         <th className="text-right py-3 px-3 text-gray-600 font-medium">Qty Received</th>
+                                        <th className="text-left py-3 px-3 text-gray-600 font-medium">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {issuedItems.map((requisitionItem) => {
+                                    {allItems.map((requisitionItem) => {
                                         const item = items.find(i => i.request_item_id === requisitionItem.id);
                                         const validation = item ? getItemValidation(item) : { isValid: true, message: '' };
+                                        const isIssued = (requisitionItem.qty_issued || 0) > 0;
+                                        const hasRemaining = (requisitionItem.qty_remaining || 0) > 0;
                                         
                                         return (
-                                            <tr key={requisitionItem.id} className="hover:bg-gray-25">
+                                            <tr key={requisitionItem.id} className={`hover:bg-gray-25 ${!isIssued ? 'bg-gray-50' : ''}`}>
                                                 <td className="py-3 px-3 text-gray-700">
                                                     {requisitionItem.material.name}
                                                 </td>
@@ -180,27 +187,48 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
                                                     {requisitionItem.qty_issued || 0}
                                                 </td>
                                                 <td className="py-3 px-3">
-                                                    <div className="flex flex-col items-end space-y-1">
-                                                        <input
-                                                            type="number"
-                                                            step="0.001"
-                                                            min="0"
-                                                            max={requisitionItem.qty_issued || 0}
-                                                            value={item?.qty_received ?? ''}
-                                                            onChange={(e) => handleQuantityChange(requisitionItem.id, e.target.value)}
-                                                            placeholder="0"
-                                                            className={`w-24 px-2 py-1 border rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all ${
-                                                                !validation.isValid 
-                                                                    ? 'border-red-300 bg-red-50' 
-                                                                    : 'border-gray-200 hover:border-gray-300'
-                                                            }`}
-                                                            disabled={loading}
-                                                            aria-label={`Quantity received for ${requisitionItem.material.name}`}
-                                                        />
-                                                        {!validation.isValid && validation.message && (
-                                                            <p className="text-red-500 text-xs">{validation.message}</p>
-                                                        )}
-                                                    </div>
+                                                    {isIssued ? (
+                                                        <div className="flex flex-col items-end space-y-1">
+                                                            <input
+                                                                type="number"
+                                                                step="0.001"
+                                                                min="0"
+                                                                max={requisitionItem.qty_issued || 0}
+                                                                value={item?.qty_received ?? ''}
+                                                                onChange={(e) => handleQuantityChange(requisitionItem.id, e.target.value)}
+                                                                placeholder="0"
+                                                                className={`w-24 px-2 py-1 border rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all ${
+                                                                    !validation.isValid 
+                                                                        ? 'border-red-300 bg-red-50' 
+                                                                        : 'border-gray-200 hover:border-gray-300'
+                                                                }`}
+                                                                disabled={loading}
+                                                                aria-label={`Quantity received for ${requisitionItem.material.name}`}
+                                                            />
+                                                            {!validation.isValid && validation.message && (
+                                                                <p className="text-red-500 text-xs">{validation.message}</p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-end">
+                                                            <span className="text-gray-400 text-xs">-</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-3">
+                                                    {!isIssued ? (
+                                                        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                            Not yet issued
+                                                        </span>
+                                                    ) : hasRemaining ? (
+                                                        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                                                            {requisitionItem.qty_remaining} remaining
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-green-50 text-green-700 border border-green-200">
+                                                            Ready
+                                                        </span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -210,7 +238,32 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
                         </div>
                     ) : (
                         <div className="text-center py-8 text-gray-500 text-xs">
-                            No materials have been issued for this requisition.
+                            No materials in this requisition.
+                        </div>
+                    )}
+
+                    {/* Info messages */}
+                    {notIssuedItems.length > 0 && (
+                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded flex items-start space-x-2 text-yellow-800 text-xs">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium mb-1">Some materials are not yet issued</p>
+                                <p className="text-yellow-700">
+                                    {notIssuedItems.length} material{notIssuedItems.length > 1 ? 's' : ''} {notIssuedItems.length > 1 ? 'are' : 'is'} waiting to be issued by the storekeeper.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {allItems.some(item => (item.qty_remaining || 0) > 0 && (item.qty_issued || 0) > 0) && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded flex items-start space-x-2 text-blue-800 text-xs">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium mb-1">Materials will be delivered soon</p>
+                                <p className="text-blue-700">
+                                    Some materials have remaining quantities that will be issued and delivered in the next batch.
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -248,4 +301,4 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
     );
 };
 
-export default ReceiveMaterialsModal;
+export default ReceiveMaterialsModal
