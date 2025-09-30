@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Shield, Power } from 'lucide-react';
 import  useAuth ,{ type AuthContextType } from '../../../../context/AuthContext';
 import Swal from 'sweetalert2';
 import authService from '../../../../services/authService';
 import ChangePasswordModal from './security/ChangePasswordModal';
 import { logout } from '../../../../services/adminAuthService';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -109,6 +110,28 @@ const SecuritySettings: React.FC = () => {
   const { user } = useAuth() as AuthContextType;
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const location =  useLocation();
+  const navigate  = useNavigate();
+useEffect(() => {
+  const passwordChangeRequired = location.state?.passwordChangeRequired;
+  
+  if (passwordChangeRequired) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Password Change Required',
+      text: 'You must change your password before accessing other features.',
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#3085d6',
+      allowOutsideClick: false,
+    });
+
+    // Clear state
+    navigate(location.pathname + location.search, { 
+      replace: true, 
+      state: {} 
+    });
+  }
+}, [location,navigate]);
 
   const handleChangePassword = () => {
     setIsChangePasswordModalOpen(true);

@@ -28,13 +28,22 @@ const authenticate = async (req, res, next) => {
     }
 
     // Check if user needs to change password on first login
-    if (user.first_login && req.path !== '/api/auth/change-password' && req.method !== 'PUT') {
-      return res.status(403).json({
-        success: false,
-        message: 'Password change required on first login.',
-        requires_password_change: true
-      });
+ // Check if user needs to change password on first login
+if (user.first_login && req.path !== '/api/auth/change-password' && req.method !== 'PUT') {
+  return res.status(403).json({
+    success: false,
+    message: 'Password change required on first login.',
+    requires_password_change: true,
+    user: {
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      first_login: user.first_login
     }
+  });
+}
 
     req.user = user;
     next();

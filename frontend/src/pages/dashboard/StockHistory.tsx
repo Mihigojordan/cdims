@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Search,
@@ -9,6 +8,7 @@ import {
   Filter,
   AlertTriangle,
   Package,
+  X,
 } from 'lucide-react';
 import stockService, { type StockMovement, type Pagination, type Material, type Store } from '../../services/stockService';
 import materialService from '../../services/materialsService';
@@ -103,13 +103,31 @@ const StockHistory: React.FC = () => {
     setFilters((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filteredHistory = history.filter(
-    (item) =>
+  const filteredHistory = history.filter((item) => {
+    // Search term filter
+    const matchesSearch =
       !searchTerm ||
       item.material?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.store?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.notes?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      item.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Date range filter
+    const createdAt = item.created_at ? new Date(item.created_at) : null;
+    const start = filters.date_from ? new Date(filters.date_from) : null;
+    const end = filters.date_to ? new Date(filters.date_to) : null;
+
+    if (end) {
+      end.setHours(23, 59, 59, 999);
+    }
+
+    const matchesDate =
+      !createdAt || (!start && !end) ||
+      (start && end && createdAt >= start && createdAt <= end) ||
+      (start && !end && createdAt >= start) ||
+      (end && !start && createdAt <= end);
+
+    return matchesSearch && matchesDate;
+  });
 
   const formatDate = (date?: Date | string): string => {
     if (!date) return new Date().toLocaleDateString('en-GB');
@@ -231,53 +249,83 @@ const StockHistory: React.FC = () => {
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={filters.store_id || ''}
-                  onChange={(e) => handleFilterChange(e, 'store_id')}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Stores</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filters.material_id || ''}
-                  onChange={(e) => handleFilterChange(e, 'material_id')}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Materials</option>
-                  {materials.map((material) => (
-                    <option key={material.id} value={material.id}>
-                      {material.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filters.movement_type || ''}
-                  onChange={(e) => handleFilterChange(e, 'movement_type')}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Movement Types</option>
-                  <option value="IN">IN</option>
-                  <option value="OUT">OUT</option>
-                  <option value="TRANSFER">TRANSFER</option>
-                  <option value="ADJUSTMENT">ADJUSTMENT</option>
-                </select>
-                <input
-                  type="date"
-                  value={filters.date_from || ''}
-                  onChange={(e) => handleFilterChange(e, 'date_from')}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
-                <input
-                  type="date"
-                  value={filters.date_to || ''}
-                  onChange={(e) => handleFilterChange(e, 'date_to')}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
+                  <select
+                    value={filters.store_id || ''}
+                    onChange={(e) => handleFilterChange(e, 'store_id')}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">All Stores</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
+                  <select
+                    value={filters.material_id || ''}
+                    onChange={(e) => handleFilterChange(e, 'material_id')}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">All Materials</option>
+                    {materials.map((material) => (
+                      <option key={material.id} value={material.id}>
+                        {material.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Movement Type</label>
+                  <select
+                    value={filters.movement_type || ''}
+                    onChange={(e) => handleFilterChange(e, 'movement_type')}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">All Movement Types</option>
+                    <option value="IN">IN</option>
+                    <option value="OUT">OUT</option>
+                    <option value="TRANSFER">TRANSFER</option>
+                    <option value="ADJUSTMENT">ADJUSTMENT</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={filters.date_from || ''}
+                    onChange={(e) => handleFilterChange(e, 'date_from')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={filters.date_to || ''}
+                    onChange={(e) => handleFilterChange(e, 'date_to')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                {(filters.date_from || filters.date_to) && (
+                  <button
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        date_from: '',
+                        date_to: '',
+                        page: 1,
+                      }))
+                    }
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    Clear Dates
+                  </button>
+                )}
                 {(filters.store_id || filters.material_id || filters.movement_type || filters.date_from || filters.date_to) && (
                   <button
                     onClick={() =>
@@ -291,9 +339,9 @@ const StockHistory: React.FC = () => {
                         date_to: '',
                       })
                     }
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
                   >
-                    Clear Filters
+                    Clear All Filters
                   </button>
                 )}
               </div>
@@ -337,7 +385,6 @@ const StockHistory: React.FC = () => {
                       <th className="text-left py-2 px-2 text-gray-600 font-medium">Qty Change</th>
                       <th className="text-left py-2 px-2 text-gray-600 font-medium">Qty After</th>
                       <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Notes</th>
-                      {/* <th className="text-left py-2 px- Pagerank */}
                       <th className="text-left py-2 px-2 text-gray-600 font-medium hidden lg:table-cell">Created By</th>
                       <th className="text-left py-2 px-2 text-gray-600 font-medium">Created At</th>
                     </tr>
@@ -382,7 +429,7 @@ const StockHistory: React.FC = () => {
             {operationStatus.type === 'info' && <AlertTriangle className="w-4 h-4 text-primary-600" />}
             <span className="font-medium">{operationStatus.message}</span>
             <button onClick={() => setOperationStatus(null)} className="hover:opacity-70">
-              <ChevronDown className="w-3 h-3" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         </div>

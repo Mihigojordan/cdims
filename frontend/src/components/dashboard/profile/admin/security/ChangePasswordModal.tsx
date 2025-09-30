@@ -113,6 +113,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
         textColor: '#1f2937',
         titleColor: '#1f2937',
       }).then(() => {
+        window.location.reload()
         setFormData({ oldPassword: '', newPassword: '', confirmPassword: '' });
         setErrors({});
         onClose();

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -35,6 +34,16 @@ interface OperationStatus {
   message: string;
 }
 
+interface StockFilterParams {
+  date_from?: string;
+  date_to?: string;
+}
+
+interface AlertFilterParams {
+  date_from?: string;
+  date_to?: string;
+}
+
 const StockDashboard: React.FC = () => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [allStocks, setAllStocks] = useState<Stock[]>([]);
@@ -61,6 +70,8 @@ const StockDashboard: React.FC = () => {
   const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [showFilters, setShowFilters] = useState(false);
+  const [stockFilters, setStockFilters] = useState<StockFilterParams>({ date_from: '', date_to: '' });
+  const [alertFilters, setAlertFilters] = useState<AlertFilterParams>({ date_from: '', date_to: '' });
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedAlertStore, setSelectedAlertStore] = useState("");
   const [selectedAlertMaterial, setSelectedAlertMaterial] = useState("");
@@ -89,25 +100,25 @@ const StockDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [stockFilters, alertFilters]);
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, sortBy, sortOrder, allStocks, selectedStore]);
+  }, [searchTerm, sortBy, sortOrder, allStocks, selectedStore, stockFilters]);
 
   useEffect(() => {
     handleAlertFilterAndSort();
-  }, [alertSearchTerm, alertSortBy, alertSortOrder, alerts, selectedAlertStore, selectedAlertMaterial]);
+  }, [alertSearchTerm, alertSortBy, alertSortOrder, alerts, selectedAlertStore, selectedAlertMaterial, alertFilters]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setAlertsLoading(true);
       const [stockResponse, materialsResponse, storesResponse, alertsResponse] = await Promise.all([
-        stockService.getAllStock(),
+        stockService.getAllStock(stockFilters),
         materialService.getAllMaterials(),
         storeService.getAllStores(),
-        stockService.getLowStockAlerts({ page: 1, limit: 1000 }),
+        stockService.getLowStockAlerts({ page: 1, limit: 1000, ...alertFilters }),
       ]);
       setAllStocks(stockResponse.stock || []);
       setMaterials(materialsResponse || []);
@@ -144,11 +155,28 @@ const StockDashboard: React.FC = () => {
       filtered = filtered.filter(stock => stock.store?.name?.toLowerCase() === selectedStore.toLowerCase());
     }
 
+    // Date range filter
+    const start = stockFilters.date_from ? new Date(stockFilters.date_from) : null;
+    const end = stockFilters.date_to ? new Date(stockFilters.date_to) : null;
+    if (end) {
+      end.setHours(23, 59, 59, 999);
+    }
+
+    filtered = filtered.filter((stock) => {
+      const createdAt = stock.createdAt ? new Date(stock.createdAt) : null;
+      return (
+        !createdAt || (!start && !end) ||
+        (start && end && createdAt >= start && createdAt <= end) ||
+        (start && !end && createdAt >= start) ||
+        (end && !start && createdAt <= end)
+      );
+    });
+
     filtered.sort((a, b) => {
       const aValue = sortBy === "material_id" ? a.material?.name : sortBy === "store_id" ? a.store?.name : a[sortBy];
       const bValue = sortBy === "material_id" ? b.material?.name : sortBy === "store_id" ? b.store?.name : b[sortBy];
 
-      if (sortBy === "created_at" || sortBy === "updated_at") {
+      if (sortBy === "createdAt" || sortBy === "updated_at") {
         const aDate = aValue ? new Date(aValue as string | Date) : new Date(0);
         const bDate = bValue ? new Date(bValue as string | Date) : new Date(0);
         return sortOrder === "asc" ? aDate.getTime() - bDate.getTime() : bDate.getTime() - aDate.getTime();
@@ -182,11 +210,28 @@ const StockDashboard: React.FC = () => {
       filtered = filtered.filter(alert => alert.material?.name?.toLowerCase() === selectedAlertMaterial.toLowerCase());
     }
 
+    // Date range filter
+    const start = alertFilters.date_from ? new Date(alertFilters.date_from) : null;
+    const end = alertFilters.date_to ? new Date(alertFilters.date_to) : null;
+    if (end) {
+      end.setHours(23, 59, 59, 999);
+    }
+
+    filtered = filtered.filter((alert) => {
+      const createdAt = alert.createdAt ? new Date(alert.createdAt) : null;
+      return (
+        !createdAt || (!start && !end) ||
+        (start && end && createdAt >= start && createdAt <= end) ||
+        (start && !end && createdAt >= start) ||
+        (end && !start && createdAt <= end)
+      );
+    });
+
     filtered.sort((a, b) => {
       const aValue = alertSortBy === "material_id" ? a.material?.name : alertSortBy === "store_id" ? a.store?.name : a[alertSortBy];
       const bValue = alertSortBy === "material_id" ? b.material?.name : alertSortBy === "store_id" ? b.store?.name : b[alertSortBy];
 
-      if (alertSortBy === "created_at" || alertSortBy === "updated_at") {
+      if (alertSortBy === "createdAt" || alertSortBy === "updated_at") {
         const aDate = aValue ? new Date(aValue as string | Date) : new Date(0);
         const bDate = bValue ? new Date(bValue as string | Date) : new Date(0);
         return alertSortOrder === "asc" ? aDate.getTime() - bDate.getTime() : bDate.getTime() - aDate.getTime();
@@ -215,13 +260,12 @@ const StockDashboard: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === "additional_qty") {
-      const qty = parseInt(value) ;
+      const qty = parseInt(value) || 0;
       if (qty < 0) {
         setFormError("Additional quantity cannot be negative");
         return;
       }
       setAdditionalQty(qty);
-      console.log('handleInputChange - Additional Qty:', qty);
     } else {
       setFormData({
         ...formData,
@@ -233,6 +277,28 @@ const StockDashboard: React.FC = () => {
   const handleThresholdInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setThresholdFormData({ low_stock_threshold: parseInt(value) || 0 });
+  };
+
+  const handleStockFilterChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: keyof StockFilterParams
+  ) => {
+    setStockFilters((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+      page: 1,
+    }));
+  };
+
+  const handleAlertFilterChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: keyof AlertFilterParams
+  ) => {
+    setAlertFilters((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+      page: 1,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -275,7 +341,6 @@ const StockDashboard: React.FC = () => {
 
     const currentQty = Number(selectedStock.qty_on_hand) || 0;
     const totalQty = currentQty + additionalQty;
-    console.log('handleUpdateSubmit - Current Qty:', currentQty, 'Additional Qty:', additionalQty, 'Total Qty:', totalQty);
 
     const updatedFormData = {
       qty_on_hand: totalQty,
@@ -294,7 +359,6 @@ const StockDashboard: React.FC = () => {
 
     try {
       setOperationLoading(true);
-      console.log('Update Payload:', updatedFormData);
       await stockService.updateStock(selectedStock.id, updatedFormData);
       setShowUpdateModal(false);
       setSelectedStock(null);
@@ -308,7 +372,6 @@ const StockDashboard: React.FC = () => {
       loadData();
       showOperationStatus("success", `Stock for ${materials.find(m => m.id === selectedStock.material_id)?.name || 'material'} updated successfully!`);
     } catch (err: any) {
-      console.error('Update Error:', err);
       setFormError(err.message || "Failed to update stock");
     } finally {
       setOperationLoading(false);
@@ -380,12 +443,6 @@ const StockDashboard: React.FC = () => {
     setAdditionalQty(0);
     setFormError('');
     setShowUpdateModal(true);
-    console.log('handleEditStock - Current Qty:', currentQty, 'FormData:', {
-      material_id: Number(stock.material_id) || 0,
-      store_id: Number(stock.store_id) || 0,
-      qty_on_hand: currentQty,
-      low_stock_threshold: Number(stock.low_stock_threshold) || 0,
-    });
   };
 
   const handleViewStock = (stock: Stock) => {
@@ -467,7 +524,7 @@ const StockDashboard: React.FC = () => {
                 <td className="py-2 px-2 text-gray-700">
                   RWF {((stock.material?.unit_price || 0) * (stock.qty_on_hand || 0)).toLocaleString()}
                 </td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(stock.created_at)}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(stock.createdAt)}</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
@@ -564,7 +621,7 @@ const StockDashboard: React.FC = () => {
             </div>
             <div className="hidden md:grid grid-cols-2 gap-4 text-xs text-gray-600 flex-1 max-w-xl px-4">
               <span className="truncate">Qty: {stock.qty_on_hand}</span>
-              <span>{formatDate(stock.created_at)}</span>
+              <span>{formatDate(stock.createdAt)}</span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
               <button 
@@ -661,35 +718,68 @@ const StockDashboard: React.FC = () => {
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={selectedAlertStore}
-                  onChange={(e) => setSelectedAlertStore(e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Stores</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.name}>{store.name}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedAlertMaterial}
-                  onChange={(e) => setSelectedAlertMaterial(e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Materials</option>
-                  {materials.map((material) => (
-                    <option key={material.id} value={material.name}>{material.name}</option>
-                  ))}
-                </select>
-                {(selectedAlertStore || selectedAlertMaterial) && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
+                  <select
+                    value={selectedAlertStore}
+                    onChange={(e) => setSelectedAlertStore(e.target.value)}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">All Stores</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.name}>{store.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
+                  <select
+                    value={selectedAlertMaterial}
+                    onChange={(e) => setSelectedAlertMaterial(e.target.value)}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">All Materials</option>
+                    {materials.map((material) => (
+                      <option key={material.id} value={material.name}>{material.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={alertFilters.date_from || ''}
+                    onChange={(e) => handleAlertFilterChange(e, 'date_from')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={alertFilters.date_to || ''}
+                    onChange={(e) => handleAlertFilterChange(e, 'date_to')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                {(selectedAlertStore || selectedAlertMaterial || alertFilters.date_from || alertFilters.date_to) && (
                   <button
                     onClick={() => {
                       setSelectedAlertStore("");
                       setSelectedAlertMaterial("");
+                      setAlertFilters({ date_from: '', date_to: '' });
                     }}
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
                   >
-                    Clear Filters
+                    Clear All Filters
+                  </button>
+                )}
+                {(alertFilters.date_from || alertFilters.date_to) && (
+                  <button
+                    onClick={() => setAlertFilters({ date_from: '', date_to: '' })}
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    Clear Dates
                   </button>
                 )}
               </div>
@@ -710,7 +800,7 @@ const StockDashboard: React.FC = () => {
           ) : currentAlerts.length === 0 ? (
             <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500 mt-3">
               <div className="text-xs">
-                {alertSearchTerm || selectedAlertStore || selectedAlertMaterial
+                {alertSearchTerm || selectedAlertStore || selectedAlertMaterial || alertFilters.date_from || alertFilters.date_to
                   ? 'No alerts found matching your criteria'
                   : 'No low stock alerts at this time'}
               </div>
@@ -990,8 +1080,8 @@ const StockDashboard: React.FC = () => {
                 <option value="material_id-desc">Material (Z-A)</option>
                 <option value="store_id-asc">Store (A-Z)</option>
                 <option value="qty_on_hand-asc">Quantity (Low-High)</option>
-                <option value="created_at-desc">Newest</option>
-                <option value="created_at-asc">Oldest</option>
+                <option value="createdAt-desc">Newest</option>
+                <option value="createdAt-asc">Oldest</option>
               </select>
               <div className="flex items-center border border-gray-200 rounded">
                 <button
@@ -1027,22 +1117,54 @@ const StockDashboard: React.FC = () => {
           {showFilters && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={selectedStore}
-                  onChange={(e) => setSelectedStore(e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">All Stores</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.name}>{store.name}</option>
-                  ))}
-                </select>
-                {selectedStore && (
-                  <button
-                    onClick={() => setSelectedStore("")}
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Store</label>
+                  <select
+                    value={selectedStore}
+                    onChange={(e) => setSelectedStore(e.target.value)}
+                    className="w-full sm:w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
-                    Clear Filters
+                    <option value="">All Stores</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.name}>{store.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={stockFilters.date_from || ''}
+                    onChange={(e) => handleStockFilterChange(e, 'date_from')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={stockFilters.date_to || ''}
+                    onChange={(e) => handleStockFilterChange(e, 'date_to')}
+                    className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                {(selectedStore || stockFilters.date_from || stockFilters.date_to) && (
+                  <button
+                    onClick={() => {
+                      setSelectedStore("");
+                      setStockFilters({ date_from: '', date_to: '' });
+                    }}
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+                {(stockFilters.date_from || stockFilters.date_to) && (
+                  <button
+                    onClick={() => setStockFilters({ date_from: '', date_to: '' })}
+                    className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    Clear Dates
                   </button>
                 )}
               </div>
@@ -1066,7 +1188,7 @@ const StockDashboard: React.FC = () => {
         ) : currentStocks.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm || selectedStore ? 'No stock found matching your criteria' : 'No stock found'}
+              {searchTerm || selectedStore || stockFilters.date_from || stockFilters.date_to ? 'No stock found matching your criteria' : 'No stock found'}
             </div>
           </div>
         ) : (
@@ -1403,7 +1525,7 @@ const StockDashboard: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
-                <p className="text-xs text-gray-900">{formatDate(selectedStock.created_at)}</p>
+                <p className="text-xs text-gray-900">{formatDate(selectedStock.createdAt)}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>

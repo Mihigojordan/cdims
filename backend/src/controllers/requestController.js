@@ -1,4 +1,4 @@
-const { Request, RequestItem, Material, Unit, Site, User, Role, SiteAssignment, Approval, StockHistory } = require('../../models');
+const { Request, RequestItem, Material, Unit, Site, User, Role, SiteAssignment, Approval, StockHistory, StockMovement, Stock } = require('../../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../src/config/database');
 
@@ -1520,7 +1520,26 @@ const receiveMaterials = async (req, res) => {
       ]
     });
 
+    const stockMovement = await StockMovement.findAll({
+  where: { source_id: id },
+  include: [
+    {
+      model: Request,
+      as: 'source', // make sure the alias matches your association
+      
+    }
+  ]
+});
+
+
+
     if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+    if (!stockMovement) {
       return res.status(404).json({
         success: false,
         message: 'Request not found'
@@ -1545,22 +1564,35 @@ const receiveMaterials = async (req, res) => {
       for (const item of items) {
         const { request_item_id, qty_received } = item;
 
+        
         // Find matching request item
         const requestItem = request.items.find(ri => ri.id === request_item_id);
         if (!requestItem) {
           throw new Error(`Request item ${request_item_id} not found`);
         }
-
+        
         // Validate quantity
         if (qty_received > requestItem.qty_issued) {
           throw new Error(`Cannot receive more than issued for ${requestItem.material.name}. Issued: ${requestItem.qty_issued}, Received: ${qty_received}`);
         }
-
+        
         if (qty_received <= 0) {
           throw new Error(`Received quantity must be greater than 0 for ${requestItem.material.name}`);
         }
 
-        // Update request item with received quantity
+        const foundMaterial = stockMovement.find(s=> s.material_id == requestItem.material_id);
+
+        if(!foundMaterial){
+            throw new Error(`Couldnt find the material for the stock`);
+        }
+
+          const stock = await Stock.findOne({
+            where: { material_id: requestItem.material_id, store_id:foundMaterial.store_id },
+            transaction,
+            lock: transaction.LOCK.UPDATE
+          });
+ 
+          // Update request item with received quantity
         const newQtyReceived = (requestItem.qty_received || 0) + qty_received;
         await requestItem.update(
           {
@@ -1573,9 +1605,9 @@ const receiveMaterials = async (req, res) => {
 
         // 🔹 Log to StockHistory (no stock table update, just audit)
         const stockHistory = await StockHistory.create({
-          stock_id: null, // not tied to a store’s stock anymore
+          stock_id: stock.id, // not tied to a store’s stock anymore
           material_id: requestItem.material_id,
-          store_id: null, // or keep the original store_id if you want traceability
+          store_id: foundMaterial.store_id, // or keep the original store_id if you want traceability
           movement_type: 'IN', // "IN" at site (materials entering project site)
           source_type: 'RECEIVE',
           source_id: id, // request ID

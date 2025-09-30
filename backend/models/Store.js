@@ -38,20 +38,11 @@ const Store = sequelize.define('Store', {
     validate: {
       isEmail: true
     }
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'stores',
-  timestamps: false // We're managing timestamps manually
+  timestamps: true,   // ✅ Sequelize manages createdAt & updatedAt
+  underscored: true   // ✅ names them created_at, updated_at
 });
 
 module.exports = Store;

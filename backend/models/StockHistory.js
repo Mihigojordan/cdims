@@ -80,15 +80,11 @@ const StockHistory = sequelize.define('StockHistory', {
     },
     onUpdate: 'CASCADE',
     onDelete: 'SET NULL'
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'stock_history',
-  timestamps: false,
+  timestamps: true,   // ✅ createdAt & updatedAt handled by Sequelize
+  underscored: true,  // ✅ snake_case (created_at, updated_at)
   indexes: [
     {
       fields: ['stock_id', 'created_at']

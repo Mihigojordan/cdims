@@ -1,4 +1,3 @@
-
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -122,6 +121,8 @@ const RequisitionManagement = () => {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [dateFrom, setDateFrom] = useState<string>(''); // New state for start date
+    const [dateTo, setDateTo] = useState<string>(''); // New state for end date
     const [sortBy, setSortBy] = useState<keyof MaterialRequisition>('site_id');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [itemsPerPage] = useState(8);
@@ -173,7 +174,7 @@ const RequisitionManagement = () => {
 
     useEffect(() => {
         handleFilterAndSort();
-    }, [searchTerm, statusFilter, sortBy, sortOrder, allRequisitions]);
+    }, [searchTerm, statusFilter, dateFrom, dateTo, sortBy, sortOrder, allRequisitions]);
 
     const showOperationStatus = (type: OperationStatus['type'], message: string, duration: number = 3000) => {
         setOperationStatus({ type, message });
@@ -193,6 +194,7 @@ const RequisitionManagement = () => {
     const handleFilterAndSort = () => {
         let filtered = [...allRequisitions];
 
+        // Apply search term filter
         if (searchTerm.trim()) {
             filtered = filtered.filter(
                 (requisition) =>
@@ -203,10 +205,22 @@ const RequisitionManagement = () => {
             );
         }
 
+        // Apply status filter
         if (statusFilter !== 'all') {
             filtered = filtered.filter((requisition) => requisition.status === statusFilter);
         }
 
+        // Apply date range filter
+        if (dateFrom || dateTo) {
+            filtered = filtered.filter((requisition) => {
+                const createdAt = new Date(requisition.created_at).getTime();
+                const from = dateFrom ? new Date(dateFrom).setHours(0, 0, 0, 0) : -Infinity;
+                const to = dateTo ? new Date(dateTo).setHours(23, 59, 59, 999) : Infinity;
+                return createdAt >= from && createdAt <= to;
+            });
+        }
+
+        // Apply sorting
         filtered.sort((a, b) => {
             let aValue: any = a[sortBy] ?? '';
             let bValue: any = b[sortBy] ?? '';
@@ -230,6 +244,11 @@ const RequisitionManagement = () => {
 
         setRequisitions(filtered);
         setCurrentPage(1);
+    };
+
+    const handleClearDates = () => {
+        setDateFrom('');
+        setDateTo('');
     };
 
     const handleExportPDF = async () => {
@@ -354,7 +373,7 @@ const RequisitionManagement = () => {
                 r.id === response.data.request_id
                     ? {
                           ...r,
-                          status: response.data.all_items_received ? 'CLOSED' : 'RECEIVED',
+                          status: response.data.request_status ,
                           items: r.items.map((item) => {
                               const receivedItem = response.data.received_items.find(
                                   (ri) => ri.request_item_id === item.id
@@ -531,18 +550,6 @@ const RequisitionManagement = () => {
         if ([ 'REJECTED', 'CLOSED', 'RECEIVED'].includes(status)) {
             return null;
         }
-
-        // const alreadyApprovedByDiocesan = requisition?.approvals?.some(
-        //     (approval: any) =>
-        //         approval?.reviewer?.role?.name === 'DIOCESAN_SITE_ENGINEER' &&
-        //         approval?.action === 'APPROVED'
-        // );
-
-        // const alreadyApprovedByPadiri = requisition?.approvals?.some(
-        //     (approval: any) =>
-        //         approval?.reviewer?.role?.name === 'PADIRI' &&
-        //         approval?.action === 'APPROVED'
-        // );
 
         const actionButtons = [];
 
@@ -1130,6 +1137,26 @@ const RequisitionManagement = () => {
                     {showFilters && (
                         <div className="mt-3">
                             <div className="flex flex-wrap gap-2">
+                                <div className="relative">
+                                    <Calendar className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
+                                    <input
+                                        type="date"
+                                        value={dateFrom}
+                                        onChange={(e) => setDateFrom(e.target.value)}
+                                        className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                                        aria-label="Filter by start date"
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <Calendar className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
+                                    <input
+                                        type="date"
+                                        value={dateTo}
+                                        onChange={(e) => setDateTo(e.target.value)}
+                                        className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                                        aria-label="Filter by end date"
+                                    />
+                                </div>
                                 <select
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -1149,17 +1176,27 @@ const RequisitionManagement = () => {
                                     <option value="CLOSED">Closed</option>
                                 </select>
                                 <button
+                                    onClick={handleClearDates}
+                                    className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                                    aria-label="Clear date filters"
+                                >
+                                    <X className="w-3 h-3" />
+                                    <span>Clear Dates</span>
+                                </button>
+                                <button
                                     onClick={() => {
                                         setSearchTerm('');
                                         setStatusFilter('all');
+                                        setDateFrom('');
+                                        setDateTo('');
                                         setSortBy('site_id');
                                         setSortOrder('asc');
                                     }}
                                     className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
-                                    aria-label="Reset filters"
+                                    aria-label="Reset all filters"
                                 >
                                     <RefreshCw className="w-3 h-3" />
-                                    <span>Reset</span>
+                                    <span>Clear All</span>
                                 </button>
                             </div>
                         </div>

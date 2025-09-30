@@ -457,7 +457,7 @@ const DashboardHome: React.FC = () => {
       const users = usersResponse?.data?.users || [];
       const assignedSites = hasAccess(siteEngineerRole) ? siteAssignmentsResponse || [] : [];
       const recentMaterials = materials
-        .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+        .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
         .slice(0, 3);
 
       const prevMaterials = prevMaterialsResponse || [];
@@ -832,7 +832,7 @@ const DashboardHome: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-600">Added</p>
-                          <p className="font-medium text-gray-900">{formatDate(material.created_at)}</p>
+                          <p className="font-medium text-gray-900">{formatDate(material.createdAt)}</p>
                         </div>
                       </div>
                     ))}

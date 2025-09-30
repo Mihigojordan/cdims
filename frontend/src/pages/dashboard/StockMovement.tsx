@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
@@ -15,6 +14,7 @@ import {
   Grid3X3,
   List,
   AlignJustify,
+  Calendar, // Added Calendar icon
 } from 'lucide-react';
 import stockService, { type StockMovement, type Request, type User, type StockMovementsFilterParams, type Pagination } from '../../services/stockService';
 import materialService, { type Material } from '../../services/materialsService';
@@ -59,7 +59,7 @@ const StockMovementsDashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<keyof StockMovement>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(8); // Fixed to 8 to match DepartmentDashboard
+  const [itemsPerPage] = useState<number>(8);
   const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
   const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -67,6 +67,8 @@ const StockMovementsDashboard: React.FC = () => {
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
   const [selectedMovementType, setSelectedMovementType] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>(''); // Added dateFrom
+  const [dateTo, setDateTo] = useState<string>(''); // Added dateTo
 
   // Debounce search input
   const debounce = useCallback((fn: (...args: any[]) => void, delay: number) => {
@@ -85,13 +87,18 @@ const StockMovementsDashboard: React.FC = () => {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, selectedStore, selectedMaterial, selectedMovementType, sortBy, sortOrder, allMovements]);
+  }, [searchTerm, selectedStore, selectedMaterial, selectedMovementType, dateFrom, dateTo, sortBy, sortOrder, allMovements]);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      const params: StockMovementsFilterParams = {};
+      // Server-side date filtering (optional, uncomment if needed)
+      // if (dateFrom) params.date_from = dateFrom;
+      // if (dateTo) params.date_to = dateTo;
+
       const [movementsResponse, materialsResponse, storesResponse] = await Promise.all([
-        stockService.getStockMovements(),
+        stockService.getStockMovements(params),
         materialService.getAllMaterials(),
         storeService.getAllStores(),
       ]);
@@ -139,6 +146,18 @@ const StockMovementsDashboard: React.FC = () => {
       filtered = filtered.filter((movement) => movement.movement_type === selectedMovementType);
     }
 
+    if (dateFrom) {
+      filtered = filtered.filter(
+        (movement) => new Date(movement.created_at || '').setHours(0, 0, 0, 0) >= new Date(dateFrom).setHours(0, 0, 0, 0)
+      );
+    }
+
+    if (dateTo) {
+      filtered = filtered.filter(
+        (movement) => new Date(movement.created_at || '').setHours(0, 0, 0, 0) <= new Date(dateTo).setHours(23, 59, 59, 999)
+      );
+    }
+
     filtered.sort((a, b) => {
       const aValue = sortBy === 'material_id' ? (a.material?.name || '') : sortBy === 'store_id' ? (a.store?.name || '') : a[sortBy];
       const bValue = sortBy === 'material_id' ? (b.material?.name || '') : sortBy === 'store_id' ? (b.store?.name || '') : b[sortBy];
@@ -150,12 +169,26 @@ const StockMovementsDashboard: React.FC = () => {
       }
 
       const aStr = aValue ? aValue.toString().toLowerCase() : '';
-      const bStr = bValue ? bValue.toString().toLowerCase() : '';
+      const bStr = bValue ? aValue.toString().toLowerCase() : '';
       return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
     });
 
     setMovements(filtered);
-    setCurrentPage(1); // Reset to first page, matching DepartmentDashboard
+    setCurrentPage(1);
+  };
+
+  const handleClearDates = () => {
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const handleClearFilters = () => {
+    setSelectedStore('');
+    setSelectedMaterial('');
+    setSelectedMovementType('');
+    setDateFrom('');
+    setDateTo('');
+    setSearchTerm('');
   };
 
   const handleExportPDF = async () => {
@@ -181,7 +214,9 @@ const StockMovementsDashboard: React.FC = () => {
           <style>
             body { font-family: Arial, sans-serif; padding: 10px; font-size: 10px; }
             h1 { font-size: 14px; margin-bottom: 5px; }
-            p { font-size: 9px; margin-bottom: 10px; }
+            p { font-size: 9px; margin-bottom: 5px; }
+            .filters { margin-bottom: 10px; }
+            .filters p { margin: 2px 0; }
             table { width: 100%; border-collapse: collapse; font-size: 10px; }
             th, td { border: 1px solid #ddd; padding: 4px; text-align: left; vertical-align: middle; }
             th { background-color: #2563eb; color: white; font-weight: bold; font-size: 10px; }
@@ -190,6 +225,13 @@ const StockMovementsDashboard: React.FC = () => {
         <body>
           <h1>Stock Movements Report</h1>
           <p>Exported on: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' })}</p>
+          <div class="filters">
+            <p><strong>Store:</strong> ${selectedStore || 'All'}</p>
+            <p><strong>Material:</strong> ${selectedMaterial || 'All'}</p>
+            <p><strong>Movement Type:</strong> ${selectedMovementType || 'All'}</p>
+            <p><strong>From Date:</strong> ${dateFrom ? new Date(dateFrom).toLocaleDateString('en-GB') : 'Not specified'}</p>
+            <p><strong>To Date:</strong> ${dateTo ? new Date(dateTo).toLocaleDateString('en-GB') : 'Not specified'}</p>
+          </div>
           <table>
             <thead>
               <tr>
@@ -250,7 +292,7 @@ const StockMovementsDashboard: React.FC = () => {
   const uniqueStores = [...new Set(allMovements.map(movement => movement.store?.name))].filter(name => name).length;
   const uniqueMaterials = [...new Set(allMovements.map(movement => movement.material?.name))].filter(name => name).length;
 
-  const totalPages = Math.ceil(movements.length / itemsPerPage); // Match DepartmentDashboard
+  const totalPages = Math.ceil(movements.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentMovements = movements.slice(startIndex, endIndex);
@@ -637,18 +679,43 @@ const StockMovementsDashboard: React.FC = () => {
                   <option value="TRANSFER">TRANSFER</option>
                   <option value="ADJUSTMENT">ADJUSTMENT</option>
                 </select>
-                {(selectedStore || selectedMaterial || selectedMovementType) && (
-                  <button
-                    onClick={() => {
-                      setSelectedStore('');
-                      setSelectedMaterial('');
-                      setSelectedMovementType('');
-                    }}
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
-                    aria-label="Clear all filters"
-                  >
-                    Clear Filters
-                  </button>
+                <div className="relative">
+                  <Calendar className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="text-xs border border-gray-200 rounded px-7 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    aria-label="Filter by start date"
+                  />
+                </div>
+                <div className="relative">
+                  <Calendar className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="text-xs border border-gray-200 rounded px-7 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    aria-label="Filter by end date"
+                  />
+                </div>
+                {(selectedStore || selectedMaterial || selectedMovementType || dateFrom || dateTo) && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleClearDates}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                      aria-label="Clear date filters"
+                    >
+                      Clear Dates
+                    </button>
+                    <button
+                      onClick={handleClearFilters}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded"
+                      aria-label="Clear all filters"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -671,7 +738,7 @@ const StockMovementsDashboard: React.FC = () => {
         ) : currentMovements.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm || selectedStore || selectedMaterial || selectedMovementType
+              {searchTerm || selectedStore || selectedMaterial || selectedMovementType || dateFrom || dateTo
                 ? 'No stock movements found matching your criteria'
                 : 'No stock movements found'}
             </div>
