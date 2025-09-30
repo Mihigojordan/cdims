@@ -40,12 +40,11 @@ const IssueMaterialPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-const issuableRequests = requests.filter(
-  req => req.status === 'APPROVED' || req.status === 'PARTIALLY_ISSUED'
-);
+  const issuableRequests = requests.filter(
+    req => req.status === 'APPROVED' || req.status === 'PARTIALLY_ISSUED'  || req.status === 'RECEIVED'
+  );
 
-const selectedRequest = issuableRequests.find((req) => req.id === issueForm.request_id);
-
+  const selectedRequest = issuableRequests.find((req) => req.id === issueForm.request_id);
   const requestItems = selectedRequest?.items || [];
 
   useEffect(() => {
@@ -53,8 +52,6 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
       try {
         setLoading(true);
         const requestsResponse = await stockService.getIssuableRequests();
-        console.log(requestsResponse);
-        
         setRequests(requestsResponse.requests || []);
         setError(null);
       } catch (err: any) {
@@ -117,13 +114,29 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
     const selectedReq = issuableRequests.find(req => req.id === requestId);
     const items = selectedReq?.items.map(item => {
       const stockForMaterial = stockData.find(s => s.material_id === item.material_id);
+      
+      const qtyIssued = Number(item.qty_issued || 0);
+      const qtyRemaining = Number(item.qty_remaining || 0);
+      const qtyApproved = Number(item.qty_approved || 0);
+      const qtyRequested = Number(item.qty_requested || 0);
+      
+      let defaultQty = 0;
+      if (qtyRemaining > 0) {
+        defaultQty = qtyRemaining;
+      } else if (qtyApproved > 0) {
+        defaultQty = qtyApproved;
+      } else {
+        defaultQty = qtyRequested;
+      }
+      
       return {
         request_item_id: item.id,
-        qty_issued: item.qty_approved || 0,
+        qty_issued: defaultQty,
         checked: false,
         store_id: stockForMaterial ? stockForMaterial.store_id : 0,
       };
     }) || [];
+    
     const defaultNotes = selectedReq
       ? `Issued to ${selectedReq.requestedBy?.full_name || 'N/A'} for ${selectedReq.site?.name || 'N/A'}`
       : '';
@@ -132,19 +145,63 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
   };
 
   const handleItemCheck = (requestItemId: number, checked: boolean) => {
-    setIssueForm({
-      ...issueForm,
-      items: issueForm.items.map(item =>
-        item.request_item_id === requestItemId ? { ...item, checked } : item
-      ),
+    setIssueForm(prevForm => {
+      const updatedItems = prevForm.items.map(item => {
+        if (item.request_item_id === requestItemId) {
+          if (checked) {
+            const requestItem = requestItems.find(ri => ri.id === requestItemId);
+            if (requestItem) {
+              const qtyIssued = Number(requestItem.qty_issued || 0);
+              const qtyRemaining = Number(requestItem.qty_remaining || 0);
+              const qtyApproved = Number(requestItem.qty_approved || 0);
+              const qtyRequested = Number(requestItem.qty_requested || 0);
+              
+              let autoQty = 0;
+              if (qtyRemaining > 0) {
+                autoQty = qtyRemaining;
+              } else if (qtyApproved > 0) {
+                autoQty = qtyApproved;
+              } else {
+                autoQty = qtyRequested;
+              }
+              
+              const stock = stockData.find(s => s.material_id === requestItem.material_id && s.store_id === item.store_id);
+              const availableQty = stock?.qty_on_hand || 0;
+              const finalQty = Math.min(autoQty, availableQty);
+              
+              return { ...item, checked, qty_issued: finalQty };
+            }
+          }
+          return { ...item, checked };
+        }
+        return item;
+      });
+      
+      return { ...prevForm, items: updatedItems };
     });
     setShowConfirm(false);
   };
 
   const debouncedHandleQuantityChange = debounce((requestItemId: number, qty: number) => {
     const selectedItem = requestItems.find(item => item.id === requestItemId);
-    const maxQty = selectedItem?.qty_approved || 0;
+    if (!selectedItem) return;
+    
+    const qtyIssued = Number(selectedItem.qty_issued || 0);
+    const qtyRemaining = Number(selectedItem.qty_remaining || 0);
+    const qtyApproved = Number(selectedItem.qty_approved || 0);
+    const qtyRequested = Number(selectedItem.qty_requested || 0);
+    
+    let maxQty = 0;
+    if (qtyRemaining > 0) {
+      maxQty = qtyRemaining;
+    } else if (qtyApproved > 0) {
+      maxQty = qtyApproved - qtyIssued;
+    } else {
+      maxQty = qtyRequested - qtyIssued;
+    }
+    
     const validatedQty = Math.max(0, Math.min(qty, maxQty));
+    
     setIssueForm({
       ...issueForm,
       items: issueForm.items.map(item =>
@@ -208,11 +265,14 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
           })),
       };
       await stockService.issueMaterials(payload);
-      showOperationStatus('success', 'Materials issued successfully');
+      showOperationStatus('success', 'Materials issued successfully', 5000);
       setIssueForm({ request_id: 0, items: [], notes: '' });
       setStockData([]);
       setShowConfirm(false);
-      onClose();
+      
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } catch (err: any) {
       const errorMessage = err.message.includes('already been issued')
         ? err.message
@@ -278,9 +338,47 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
     );
   };
 
+  if (loading) {
+    return (
+      <div className="bg-white flex overflow-y-auto max-h-[90vh] items-center justify-center z-50 p-4">
+        <div className="rounded-xl w-full">
+          <div className="flex items-center justify-center p-12">
+            <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="ml-3 text-gray-700 text-base font-medium">Loading requests...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (issuableRequests.length === 0) {
+    return (
+      <div className="bg-white flex overflow-y-auto max-h-[90vh] items-center justify-center z-50 p-4">
+        <div className="rounded-xl w-full max-w-2xl mx-auto">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="p-6 bg-yellow-100 rounded-full mb-6">
+              <AlertCircle className="w-16 h-16 text-yellow-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No Issuable Requests Available</h3>
+            <p className="text-base text-gray-600 text-center max-w-md mb-8">
+              There are currently no approved or partially issued requests that can have materials issued. 
+              Please check back later or ensure requests have been approved first.
+            </p>
+            <button
+              onClick={onClose}
+              className="px-8 py-3 text-base font-medium text-white bg-primary-600 border border-transparent rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 shadow-md hover:shadow-lg"
+            >
+              Go Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white flex overflow-y-auto max-h-[90vh] items-center justify-center z-50 p-4">
-      <div className=" rounded-xl  w-full ">
+      <div className="rounded-xl w-full">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-primary-100 rounded-lg">
@@ -290,159 +388,183 @@ const selectedRequest = issuableRequests.find((req) => req.id === issueForm.requ
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center p-6">
-            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="ml-3 text-gray-700 text-sm font-medium">Loading requests...</span>
-          </div>
-        ) : (
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-            <div className="space-y-6">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Request</label>
+              <select
+                value={issueForm.request_id}
+                onChange={(e) => handleRequestChange(Number(e.target.value))}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
+                disabled={operationLoading}
+                aria-label="Select an issuable material request"
+              >
+                <option value={0}>Select a request</option>
+                {issuableRequests.map((request) => (
+                  <option key={request.id} value={request.id}>
+                    #{request.id} - {request.site?.name || 'N/A'} ({request.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!stockData.length && !stockLoading && issueForm.request_id !== 0 && (
+              <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
+                <XCircle className="w-4 h-4" />
+                <span>No stock data available</span>
+              </p>
+            )}
+
+            {requestItems.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Request</label>
-<select
-  value={issueForm.request_id}
-  onChange={(e) => handleRequestChange(Number(e.target.value))}
-  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-  disabled={operationLoading || issuableRequests.length === 0}
-  aria-label="Select an issuable material request"
->
-  <option value={0}>Select a request</option>
-  {issuableRequests.map((request) => (
-    <option key={request.id} value={request.id}>
-      #{request.id} - {request.site?.name || 'N/A'} ({request.status})
-    </option>
-  ))}
-</select>
-{issuableRequests.length === 0 && (
-  <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-    <XCircle className="w-4 h-4" />
-    <span>No issuable requests available</span>
-  </p>
-)}
-
-              </div>
-
-              {!stockData.length && !stockLoading && issueForm.request_id && (
-                <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-                  <XCircle className="w-4 h-4" />
-                  <span>No stock data available</span>
-                </p>
-              )}
-
-              {requestItems.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Requested Items</label>
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {requestItems.map((item) => {
-                      const formItem = issueForm.items.find(i => i.request_item_id === item.id);
-                      const maxQty = item.qty_approved || 0;
-                      const isIssued = item.qty_issued > 0;
-                      const stock = stockData.find(s => s.material_id === item.material_id);
-                      const availableQty = stock?.qty_on_hand || 0;
-                      const storeName = stock?.store.name || 'N/A';
-                      return (
-                        <div key={item.id} className={`border rounded-lg p-4 transition-colors duration-200 ${
-                          isIssued
-                            ? 'border-gray-200 bg-gray-50'
-                            : formItem?.checked
-                            ? 'border-primary-300 bg-primary-50'
-                            : 'border-gray-200 bg-white hover:bg-gray-50'
-                        }`}>
-                          <div className="flex items-start space-x-3">
-                            <input
-                              type="checkbox"
-                              checked={formItem?.checked || false}
-                              onChange={(e) => handleItemCheck(item.id, e.target.checked)}
-                              className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                              disabled={isIssued || operationLoading || !stock}
-                              aria-label={`Select ${item.material?.name || 'item'}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className={`text-sm font-medium ${isIssued ? 'text-gray-500' : 'text-gray-900'}`}>
-                                  {item.material?.name || 'N/A'}
-                                  {isIssued && (
-                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                                      Already Issued
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
-                              <div className="text-sm text-gray-600 mb-3 space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Requested: {item.qty_requested} {item.material?.unit?.symbol || ''}</span>
-                                  <span>Approved: {item.qty_approved || 0} {item.material?.unit?.symbol || ''}</span>
-                                </div>
-                                <div className={`text-sm ${stock ? 'text-green-600' : 'text-red-600'}`}>
-                                  Available: {stock ? `${availableQty} in ${storeName}` : 'No stock available'}
-                                </div>
-                              </div>
-                              {formItem?.checked && !isIssued && stock && (
-                                <div className="pt-3 border-t border-gray-200">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantity Issued</label>
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="number"
-                                      value={formItem.qty_issued}
-                                      onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))}
-                                      className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-                                      min="0"
-                                      max={maxQty}
-                                      placeholder={`Max ${maxQty}`}
-                                      disabled={operationLoading}
-                                      aria-label={`Quantity for ${item.material?.name || 'item'}`}
-                                    />
-                                    <span className="text-sm text-gray-500 min-w-0">
-                                      {item.material?.unit?.symbol || ''}
-                                    </span>
-                                  </div>
-                                  {formItem.qty_issued > maxQty && (
-                                    <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-                                      <XCircle className="w-4 h-4" />
-                                      <span>Cannot exceed approved quantity ({maxQty})</span>
-                                    </p>
-                                  )}
-                                  {formItem.qty_issued > availableQty && (
-                                    <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-                                      <XCircle className="w-4 h-4" />
-                                      <span>Insufficient stock. Available: {availableQty}</span>
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                              {!stock && formItem?.checked && (
-                                <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
-                                  <XCircle className="w-4 h-4" />
-                                  <span>No stock available for this material</span>
-                                </p>
-                              )}
+                <label className="block text-sm font-medium text-gray-700 mb-3">Requested Items</label>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {requestItems.map((item) => {
+                    const formItem = issueForm.items.find(i => i.request_item_id === item.id);
+                    const qtyIssued = Number(item.qty_issued || 0);
+                    const qtyRemaining = Number(item.qty_remaining || 0);
+                    const qtyApproved = Number(item.qty_approved || 0);
+                    const qtyRequested = Number(item.qty_requested || 0);
+                    
+                    let maxQty = 0;
+                    if (qtyRemaining > 0) {
+                      maxQty = qtyRemaining;
+                    } else if (qtyApproved > 0) {
+                      maxQty = qtyApproved - qtyIssued;
+                    } else {
+                      maxQty = qtyRequested - qtyIssued;
+                    }
+                    
+                    const isFullyIssued = qtyIssued >= (qtyApproved || qtyRequested) && maxQty <= 0;
+                    const isPartiallyIssued = qtyIssued > 0 && maxQty > 0;
+                    const stock = stockData.find(s => s.material_id === item.material_id);
+                    const availableQty = stock?.qty_on_hand || 0;
+                    const storeName = stock?.store.name || 'N/A';
+                    
+                    return (
+                      <div key={item.id} className={`border rounded-lg p-4 transition-colors duration-200 ${
+                        isFullyIssued
+                          ? 'border-green-200 bg-green-50'
+                          : isPartiallyIssued
+                          ? 'border-orange-200 bg-orange-50'
+                          : formItem?.checked
+                          ? 'border-primary-300 bg-primary-50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}>
+                        <div className="flex items-start space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={formItem?.checked || false}
+                            onChange={(e) => handleItemCheck(item.id, e.target.checked)}
+                            className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                            disabled={isFullyIssued || operationLoading || !stock}
+                            aria-label={`Select ${item.material?.name || 'item'}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className={`text-sm font-medium ${isFullyIssued ? 'text-green-700' : isPartiallyIssued ? 'text-orange-700' : 'text-gray-900'}`}>
+                                {item.material?.name || 'N/A'}
+                                {isFullyIssued && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Fully Issued
+                                  </span>
+                                )}
+                                {isPartiallyIssued && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                    Partially Issued
+                                  </span>
+                                )}
+                              </p>
                             </div>
+                            <div className="text-sm text-gray-600 mb-3 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Requested: {qtyRequested} {item.material?.unit?.symbol || ''}</span>
+                                <span>Approved: {qtyApproved || 0} {item.material?.unit?.symbol || ''}</span>
+                              </div>
+                              {qtyIssued > 0 && (
+                                <div className="flex justify-between font-medium text-orange-600">
+                                  <span>Already Issued: {qtyIssued} {item.material?.unit?.symbol || ''}</span>
+                                  {qtyRemaining > 0 && (
+                                    <span className="text-primary-600">Remaining: {qtyRemaining} {item.material?.unit?.symbol || ''}</span>
+                                  )}
+                                </div>
+                              )}
+                              <div className={`text-sm ${stock ? 'text-green-600' : 'text-red-600'}`}>
+                                Available: {stock ? `${availableQty} in ${storeName}` : 'No stock available'}
+                              </div>
+                            </div>
+                            {formItem?.checked && !isFullyIssued && stock && (
+                              <div className="pt-3 border-t border-gray-200">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Quantity to Issue
+                                  {isPartiallyIssued && (
+                                    <span className="text-xs text-orange-600 ml-2">(Remaining: {maxQty})</span>
+                                  )}
+                                </label>
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="number"
+                                    value={formItem.qty_issued}
+                                    onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))}
+                                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
+                                    min="0"
+                                    max={maxQty}
+                                    step="0.01"
+                                    placeholder={`Max ${maxQty}`}
+                                    disabled={operationLoading}
+                                    aria-label={`Quantity for ${item.material?.name || 'item'}`}
+                                  />
+                                  <span className="text-sm text-gray-500 min-w-0">
+                                    {item.material?.unit?.symbol || ''}
+                                  </span>
+                                </div>
+                                {formItem.qty_issued > maxQty && (
+                                  <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
+                                    <XCircle className="w-4 h-4" />
+                                    <span>Cannot exceed {isPartiallyIssued ? 'remaining' : 'approved'} quantity ({maxQty})</span>
+                                  </p>
+                                )}
+                                {formItem.qty_issued > availableQty && (
+                                  <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
+                                    <XCircle className="w-4 h-4" />
+                                    <span>Insufficient stock. Available: {availableQty}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {!stock && formItem?.checked && (
+                              <p className="text-sm text-red-600 mt-2 flex items-center space-x-1">
+                                <XCircle className="w-4 h-4" />
+                                <span>No stock available for this material</span>
+                              </p>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={issueForm.notes}
-                  onChange={(e) => setIssueForm({ ...issueForm, notes: e.target.value })}
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none transition-colors duration-200"
-                  rows={3}
-                  disabled={operationLoading}
-                  placeholder="Add any additional notes..."
-                  aria-label="Additional notes"
-                />
               </div>
+            )}
 
-              {renderConfirmation()}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+              <textarea
+                value={issueForm.notes}
+                onChange={(e) => setIssueForm({ ...issueForm, notes: e.target.value })}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none transition-colors duration-200"
+                rows={3}
+                disabled={operationLoading}
+                placeholder="Add any additional notes..."
+                aria-label="Additional notes"
+              />
             </div>
+
+            {renderConfirmation()}
           </div>
-        )}
+        </div>
 
         {!showConfirm && (
           <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">

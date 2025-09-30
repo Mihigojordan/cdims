@@ -254,7 +254,7 @@ const ModifyRequisitionModal: React.FC<ModifyRequisitionModalProps> = ({ isOpen,
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-y-auto">
         <div className="bg-primary-500 rounded-t-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -298,7 +298,7 @@ const ModifyRequisitionModal: React.FC<ModifyRequisitionModalProps> = ({ isOpen,
             {formData.item_modifications.map((item, index) => {
               const requisitionItem = requisition.items.find((ri) => ri.id === item.request_item_id);
               return (
-                <div key={item.request_item_id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div key={item.request_item_id} className={` ${formData.items_to_remove.includes(item.request_item_id) ? 'bg-red-200 border border-red-300' : ''} grid grid-cols-1 md:grid-cols-4 p-3 rounded-md  gap-4 items-end  `}>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Material</label>
                     <select

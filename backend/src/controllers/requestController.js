@@ -882,7 +882,23 @@ const approveRequest = async (req, res) => {
       where: { request_id: id, level, reviewer_id }
     });
 
-    if (!existingApproval) {
+    
+
+    // Update request status
+    if (req.user.role.name === 'DIOCESAN_SITE_ENGINEER') {
+      request.status = 'VERIFIED'; // DSE changes APPROVED → VERIFIED
+      if (!existingApproval) {
+      await Approval.create({
+        request_id: id,
+        level,
+        reviewer_id,
+        action: 'VERIFIED',
+        comment
+      });
+    }
+    } else if (req.user.role.name === 'PADIRI' || req.user.role.name === 'ADMIN') {
+      request.status = 'APPROVED'; // PADIRI approves VERIFIED → APPROVED
+      if (!existingApproval) {
       await Approval.create({
         request_id: id,
         level,
@@ -891,12 +907,6 @@ const approveRequest = async (req, res) => {
         comment
       });
     }
-
-    // Update request status
-    if (req.user.role.name === 'DIOCESAN_SITE_ENGINEER') {
-      request.status = 'VERIFIED'; // DSE changes APPROVED → VERIFIED
-    } else if (req.user.role.name === 'PADIRI' || req.user.role.name === 'ADMIN') {
-      request.status = 'APPROVED'; // PADIRI approves VERIFIED → APPROVED
     }
 
     await request.save();
@@ -1490,7 +1500,6 @@ const closeRequisition = async (req, res) => {
 };
 
 // Site Engineer receive materials endpoint
-// Site Engineer receive materials endpoint
 const receiveMaterials = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1520,37 +1529,28 @@ const receiveMaterials = async (req, res) => {
       ]
     });
 
-    const stockMovement = await StockMovement.findAll({
-  where: { source_id: id },
-  include: [
-    {
-      model: Request,
-      as: 'source', // make sure the alias matches your association
-      
-    }
-  ]
-});
-
-
-
     if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: 'Request not found'
-      });
-    }
-    if (!stockMovement) {
-      return res.status(404).json({
-        success: false,
-        message: 'Request not found'
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    // Check if request is in ISSUED status
-    if (request.status !== 'ISSUED' && request.status !== 'PARTIALLY_ISSUED') {
+    // Check if request is in ISSUED or PARTIALLY_ISSUED
+    if (!['ISSUED', 'PARTIALLY_ISSUED'].includes(request.status)) {
       return res.status(400).json({
         success: false,
         message: 'Request must be issued before materials can be received'
+      });
+    }
+
+    // Load stock movements (for store traceability)
+    const stockMovement = await StockMovement.findAll({
+      where: { source_id: id },
+      include: [{ model: Request, as: 'source' }]
+    });
+
+    if (!stockMovement || stockMovement.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stock movements not found for this request'
       });
     }
 
@@ -1564,58 +1564,59 @@ const receiveMaterials = async (req, res) => {
       for (const item of items) {
         const { request_item_id, qty_received } = item;
 
-        
         // Find matching request item
         const requestItem = request.items.find(ri => ri.id === request_item_id);
         if (!requestItem) {
           throw new Error(`Request item ${request_item_id} not found`);
         }
-        
-        // Validate quantity
+
+        // Validate received quantity
         if (qty_received > requestItem.qty_issued) {
-          throw new Error(`Cannot receive more than issued for ${requestItem.material.name}. Issued: ${requestItem.qty_issued}, Received: ${qty_received}`);
+          throw new Error(
+            `Cannot receive more than issued for ${requestItem.material.name}. Issued: ${requestItem.qty_issued}, Received: ${qty_received}`
+          );
         }
-        
         if (qty_received <= 0) {
           throw new Error(`Received quantity must be greater than 0 for ${requestItem.material.name}`);
         }
 
-        const foundMaterial = stockMovement.find(s=> s.material_id == requestItem.material_id);
-
-        if(!foundMaterial){
-            throw new Error(`Couldnt find the material for the stock`);
+        const foundMaterial = stockMovement.find(s => s.material_id == requestItem.material_id);
+        if (!foundMaterial) {
+          throw new Error(`Could not find stock movement for material ${requestItem.material.name}`);
         }
 
-          const stock = await Stock.findOne({
-            where: { material_id: requestItem.material_id, store_id:foundMaterial.store_id },
-            transaction,
-            lock: transaction.LOCK.UPDATE
-          });
- 
-          // Update request item with received quantity
-        const newQtyReceived = (requestItem.qty_received || 0) + qty_received;
+        const stock = await Stock.findOne({
+          where: { material_id: requestItem.material_id, store_id: foundMaterial.store_id },
+          transaction,
+          lock: transaction.LOCK.UPDATE
+        });
+
+        // Update received & remaining quantities
+        const newQtyReceived = (Number(requestItem.qty_received) || 0) + Number(qty_received);
+
+
         await requestItem.update(
           {
             qty_received: newQtyReceived,
+           
             received_at: new Date(),
-            received_by: received_by
+            received_by
           },
           { transaction }
         );
 
-        // 🔹 Log to StockHistory (no stock table update, just audit)
+        // Log stock history (audit only, not stock table)
         const stockHistory = await StockHistory.create({
-          stock_id: stock.id, // not tied to a store’s stock anymore
+          stock_id: stock.id,
           material_id: requestItem.material_id,
-          store_id: foundMaterial.store_id, // or keep the original store_id if you want traceability
-          movement_type: 'IN', // "IN" at site (materials entering project site)
+          store_id: foundMaterial.store_id,
+          movement_type: 'IN', // Materials entering site
           source_type: 'RECEIVE',
-          source_id: id, // request ID
-          qty_before: 0, // site doesn’t track stock, so use 0
+          source_id: id,
+          qty_before: Number(requestItem.qty_received) || 0,
           qty_change: qty_received,
-          qty_after: newQtyReceived, // cumulative received qty at request item level
-          unit_price: null,
-          notes: `Received by site engineer ${req.user.full_name} at ${request.site.name}`,
+          qty_after: newQtyReceived,
+          notes: `Received by ${req.user.full_name} at ${request.site.name}`,
           created_by: received_by
         }, { transaction });
 
@@ -1623,24 +1624,25 @@ const receiveMaterials = async (req, res) => {
           request_item_id,
           material_name: requestItem.material.name,
           qty_received,
-          total_received: newQtyReceived
+          total_received: newQtyReceived,
+          qty_remaining: requestItem.qty_remaining
         });
 
         stockHistoryRecords.push(stockHistory);
       }
 
-      // Check if all items are fully received
+      // ✅ Double check: are all items fully received?
       const allItemsReceived = request.items.every(item =>
-        (Number(item.qty_received) || 0) >= (Number(item.qty_issued) || 0)
+        (Number(item.qty_issued) || 0) === 0 || (Number(item.qty_remaining) || 0) === 0
       );
 
       // Update request status
       if (allItemsReceived) {
         await request.update(
           {
-            status: 'CLOSED', // Auto-close when all items received
+            status: 'CLOSED',
             received_at: new Date(),
-            received_by: received_by,
+            received_by,
             closed_at: new Date(),
             closed_by: received_by
           },
@@ -1649,9 +1651,9 @@ const receiveMaterials = async (req, res) => {
       } else {
         await request.update(
           {
-            status: 'RECEIVED', // Partially received
+            status: 'RECEIVED',
             received_at: new Date(),
-            received_by: received_by
+            received_by
           },
           { transaction }
         );
