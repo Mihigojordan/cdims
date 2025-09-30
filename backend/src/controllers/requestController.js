@@ -841,6 +841,7 @@ const approveRequest = async (req, res) => {
         for (const modification of item_modifications) {
   const updateData = {};
 
+  if (modification.qty_requested != null) updateData.qty_requested = modification.qty_requested;
   if (modification.qty_approved != null) updateData.qty_approved = modification.qty_approved;
   if (modification.material_id != null) updateData.material_id = modification.material_id;
   if (modification.notes != null) updateData.notes = modification.notes;
