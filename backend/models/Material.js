@@ -49,7 +49,9 @@ const Material = sequelize.define('Material', {
     defaultValue: true
   }
 }, {
-  tableName: 'materials'
+  tableName: 'materials',
+  timestamps: true,  // ✅ adds createdAt & updatedAt automatically
+  underscored: true  // ✅ makes them snake_case (created_at, updated_at)
 });
 
 module.exports = Material;

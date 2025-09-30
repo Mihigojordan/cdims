@@ -13,7 +13,9 @@ const Stock = sequelize.define('Stock', {
     references: {
       model: 'stores',
       key: 'id'
-    }
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE'
   },
   material_id: {
     type: DataTypes.BIGINT,
@@ -21,7 +23,9 @@ const Stock = sequelize.define('Stock', {
     references: {
       model: 'materials',
       key: 'id'
-    }
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE'
   },
   qty_on_hand: {
     type: DataTypes.DECIMAL(12, 3),
@@ -45,6 +49,8 @@ const Stock = sequelize.define('Stock', {
   }
 }, {
   tableName: 'stock',
+  timestamps: true,   // ✅ enable timestamps
+  underscored: true,  // ✅ created_at, updated_at
   indexes: [
     {
       unique: true,

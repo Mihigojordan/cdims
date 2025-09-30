@@ -64,6 +64,10 @@ const MaterialManagement: React.FC = () => {
   });
   const [formError, setFormError] = useState<string>('');
 
+  // Add state for date filters
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,7 +76,7 @@ const MaterialManagement: React.FC = () => {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [searchTerm, sortBy, sortOrder, allMaterials]);
+  }, [searchTerm, sortBy, sortOrder, allMaterials, startDate, endDate]);
 
   const loadData = async () => {
     try {
@@ -107,6 +111,7 @@ const MaterialManagement: React.FC = () => {
   const handleFilterAndSort = () => {
     let filtered = [...allMaterials];
 
+    // Apply search term filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(
         (material) =>
@@ -116,11 +121,37 @@ const MaterialManagement: React.FC = () => {
       );
     }
 
+    // Apply date range filter
+    if (startDate || endDate) {
+      filtered = filtered.filter((material) => {
+        const createdAt = material.createdAt ? new Date(material.createdAt) : null;
+        if (!createdAt) return false;
+
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+
+        // Adjust end date to include the entire day
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+        }
+
+        if (start && end) {
+          return createdAt >= start && createdAt <= end;
+        } else if (start) {
+          return createdAt >= start;
+        } else if (end) {
+          return createdAt <= end;
+        }
+        return true;
+      });
+    }
+
+    // Apply sorting
     filtered.sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
-      if (sortBy === "created_at" || sortBy === "updated_at") {
+      if (sortBy === "createdAt" || sortBy === "updated_at") {
         const aDate = typeof aValue === "string" || aValue instanceof Date ? new Date(aValue) : new Date(0);
         const bDate = typeof bValue === "string" || bValue instanceof Date ? new Date(bValue) : new Date(0);
         return sortOrder === "asc" ? aDate.getTime() - bDate.getTime() : bDate.getTime() - aDate.getTime();
@@ -335,7 +366,7 @@ const MaterialManagement: React.FC = () => {
                   {material.unit_id ? units.find(u => u.id === material.unit_id)?.name || 'N/A' : 'None'}
                 </td>
                 <td className="py-2 px-2 text-gray-700 hidden md:table-cell">{formatCurrency(material.unit_price)}</td>
-                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(material.created_at)}</td>
+                <td className="py-2 px-2 text-gray-700 hidden sm:table-cell">{formatDate(material.createdAt)}</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center justify-end space-x-1">
                     <button 
@@ -432,7 +463,7 @@ const MaterialManagement: React.FC = () => {
               <span className="truncate">{material.specification || 'N/A'}</span>
               <span className="truncate">{material.category_id ? categories.find(c => c.id === material.category_id)?.name || 'N/A' : 'None'}</span>
               <span className="truncate">{formatCurrency(material.unit_price)}</span>
-              <span>{formatDate(material.created_at)}</span>
+              <span>{formatDate(material.createdAt)}</span>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0">
               <button 
@@ -606,8 +637,8 @@ const MaterialManagement: React.FC = () => {
               >
                 <option value="name-asc">Name (A-Z)</option>
                 <option value="name-desc">Name (Z-A)</option>
-                <option value="created_at-desc">Newest</option>
-                <option value="created_at-asc">Oldest</option>
+                <option value="createdAt-desc">Newest</option>
+                <option value="createdAt-asc">Oldest</option>
               </select>
               <div className="flex items-center border border-gray-200 rounded">
                 <button
@@ -640,6 +671,38 @@ const MaterialManagement: React.FC = () => {
               </div>
             </div>
           </div>
+          {/* Date Filter Section */}
+          {showFilters && (
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-40 px-3 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+              >
+                Clear Dates
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -658,7 +721,7 @@ const MaterialManagement: React.FC = () => {
         ) : currentMaterials.length === 0 ? (
           <div className="bg-white rounded border border-gray-200 p-8 text-center text-gray-500">
             <div className="text-xs">
-              {searchTerm ? 'No materials found matching your criteria' : 'No materials found'}
+              {searchTerm || startDate || endDate ? 'No materials found matching your criteria' : 'No materials found'}
             </div>
           </div>
         ) : (
@@ -1019,7 +1082,7 @@ const MaterialManagement: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Created At</label>
-                <p className="text-xs text-gray-900">{formatDate(selectedMaterial.created_at)}</p>
+                <p className="text-xs text-gray-900">{formatDate(selectedMaterial.createdAt)}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Updated At</label>

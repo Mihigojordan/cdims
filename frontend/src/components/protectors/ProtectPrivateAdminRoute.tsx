@@ -5,14 +5,14 @@ import useAdminAuth from '../../context/AuthContext';
 
 interface ProtectPrivateAdminRouteProps {
   children: ReactNode;
-  requiredRole?: string; // optional: restrict access by role
+  requiredRole?: string;
 }
 
 const ProtectPrivateAdminRoute: React.FC<ProtectPrivateAdminRouteProps> = ({
   children,
   requiredRole,
 }) => {
-  const { isAuthenticated, isLoading, user } = useAdminAuth();
+  const { isAuthenticated, isLoading, user, requiresPasswordChange } = useAdminAuth();
   const location = useLocation();
  
   if (isLoading) {
@@ -26,13 +26,20 @@ const ProtectPrivateAdminRoute: React.FC<ProtectPrivateAdminRouteProps> = ({
     );
   }
 
-  if (!isAuthenticated ) {
-    // Redirect to login if not authenticated or not active
+  if (!isAuthenticated) {
     return <Navigate to="/auth/admin/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole) {
-    // Optionally restrict access by role
+  // Check if password change is required and user is not already on the security tab
+  if (requiresPasswordChange && !location.search.includes('security')) {
+    return <Navigate 
+      to="/admin/dashboard/profile?tab=security" 
+      state={{ from: location, passwordChangeRequired: true }} 
+      replace 
+    />;
+  }
+
+  if (requiredRole && user?.role?.name !== requiredRole) {
     return <Navigate to="/auth/admin/login" state={{ from: location }} replace />;
   }
 

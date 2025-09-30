@@ -11,7 +11,7 @@ export interface Material {
   unit_id: number;
   unit_price?: number;
   active?: boolean;
-  created_at?: Date;
+  createdAt?: Date;
   updated_at?: Date;
   category?: Category;
   unit?: Unit;

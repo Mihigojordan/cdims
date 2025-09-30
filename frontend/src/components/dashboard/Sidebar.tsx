@@ -109,6 +109,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       icon: TrendingUp,
       path: "/admin/dashboard",
     },
+      {
+      id: "userManagement",
+      label: "User Management",
+      icon: Users, // Changed to Users for clarity (multiple users)
+      path: "/admin/dashboard/client-management",
+      allowedRoles: ["PADIRI", "ADMIN"],
+    },
     {
       id: "role",
       label: "Role Management",
@@ -186,13 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onToggle }) => {
       path: "/admin/dashboard/store-management",
       allowedRoles: ["PADIRI","ADMIN", "STOREKEEPER"],
     },
-    {
-      id: "userManagement",
-      label: "User Management",
-      icon: Users, // Changed to Users for clarity (multiple users)
-      path: "/admin/dashboard/client-management",
-      allowedRoles: ["PADIRI", "ADMIN"],
-    },
+  
     {
       id: "materialRequisition",
       label: "Material Requisition",

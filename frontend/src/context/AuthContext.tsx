@@ -19,6 +19,7 @@ export interface AuthContextType {
   updateProfile: (updates: Partial<User>) => Promise<User>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  requiresPasswordChange: boolean; // Add this field
 }
 
 interface LoginData {
@@ -33,11 +34,13 @@ export const AuthContext = createContext<AuthContextType>({
   updateProfile: () => Promise.resolve({} as User),
   isAuthenticated: false,
   isLoading: true,
+  requiresPasswordChange: false,
 });
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  requiresPasswordChange?: boolean;
 }
 
 interface AuthContextProviderProps {
@@ -50,25 +53,26 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
 
   const updateAuthState = (authData: AuthState) => {
     setUser(authData.user);
     setIsAuthenticated(authData.isAuthenticated);
+    setRequiresPasswordChange(authData.requiresPasswordChange || authData.user?.first_login || false);
   };
 
   const login = async (data: LoginData): Promise<AuthResponse> => {
     try {
       console.log(data);
-      
+     
       const response = await authService.login(data);
-
       if (response.success && response.data?.user) {
         updateAuthState({
           user: response.data.user,
           isAuthenticated: true,
+          requiresPasswordChange: response.data.user.first_login || false,
         });
       }
-
       return response;
     } catch (error: any) {
       throw new Error(error.message);
@@ -78,10 +82,18 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
   const logout = async (): Promise<unknown> => {
     try {
       const response = await authService.logout();
-      updateAuthState({ user: null, isAuthenticated: false });
+      updateAuthState({ 
+        user: null, 
+        isAuthenticated: false,
+        requiresPasswordChange: false 
+      });
       return response;
     } catch (error: any) {
-      updateAuthState({ user: null, isAuthenticated: false });
+      updateAuthState({ 
+        user: null, 
+        isAuthenticated: false,
+        requiresPasswordChange: false 
+      });
       throw new Error(error.message);
     }
   };
@@ -92,6 +104,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
       updateAuthState({
         user: updatedUser,
         isAuthenticated: true,
+        requiresPasswordChange: updatedUser.first_login || false,
       });
       return updatedUser;
     } catch (error: any) {
@@ -103,17 +116,25 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
     setIsLoading(true);
     try {
       const userProfile = await authService.getProfile();
-
       if (userProfile) {
         updateAuthState({
           user: userProfile,
           isAuthenticated: true,
+          requiresPasswordChange: userProfile.first_login || false,
         });
       } else {
-        updateAuthState({ user: null, isAuthenticated: false });
+        updateAuthState({ 
+          user: null, 
+          isAuthenticated: false,
+          requiresPasswordChange: false 
+        });
       }
     } catch {
-      updateAuthState({ user: null, isAuthenticated: false });
+      updateAuthState({ 
+        user: null, 
+        isAuthenticated: false,
+        requiresPasswordChange: false 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -130,6 +151,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
     user,
     isLoading,
     isAuthenticated,
+    requiresPasswordChange,
   };
 
   return (
