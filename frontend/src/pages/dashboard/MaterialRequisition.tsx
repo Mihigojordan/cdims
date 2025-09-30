@@ -603,8 +603,8 @@ const RequisitionManagement = () => {
 
         if (
             ['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER'].includes(user?.role.name) &&
-            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) &&
-            !(user?.role.name === 'DIOCESAN_SITE_ENGINEER')
+            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) 
+          
           
         ) {
             actionButtons.push(
@@ -640,7 +640,7 @@ const RequisitionManagement = () => {
     const currentRequisitions = requisitions.slice(startIndex, endIndex);
 
     const totalRequisitions = allRequisitions.length;
-    const draftRequisitions = allRequisitions.filter((r) => r.status === 'DRAFT').length;
+    const closedRequisitions = allRequisitions.filter((r) => r.status === 'CLOSED').length;
     const pendingRequisitions = allRequisitions.filter((r) => r.status === 'PENDING').length;
     const approvedRequisitions = allRequisitions.filter((r) => r.status === 'APPROVED').length;
 
@@ -1029,17 +1029,7 @@ const RequisitionManagement = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white rounded shadow p-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-3 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <Edit className="w-5 h-5 text-yellow-600" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-600">Draft</p>
-                                <p className="text-lg font-semibold text-gray-900">{draftRequisitions}</p>
-                            </div>
-                        </div>
-                    </div>
+                    
                     <div className="bg-white rounded shadow p-4">
                         <div className="flex items-center space-x-3">
                             <div className="p-3 bg-orange-100 rounded-full flex items-center justify-center">
@@ -1059,6 +1049,17 @@ const RequisitionManagement = () => {
                             <div>
                                 <p className="text-xs text-gray-600">Approved</p>
                                 <p className="text-lg font-semibold text-gray-900">{approvedRequisitions}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded shadow p-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-3 bg-zinc-100 rounded-full flex items-center justify-center">
+                                <Archive className="w-5 h-5 text-zinc-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Closed</p>
+                                <p className="text-lg font-semibold text-gray-900">{closedRequisitions}</p>
                             </div>
                         </div>
                     </div>
