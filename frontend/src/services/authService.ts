@@ -14,6 +14,7 @@ export interface User {
   phone?: string;
   role: Role;
   active?: boolean;
+  first_login?: boolean; // Add this field
   created_at?: string;
   updated_at?: string;
 }
@@ -21,6 +22,7 @@ export interface User {
 export interface AuthResponse {
   success: boolean;
   message: string;
+  requires_password_change?: boolean; // Add this field
   data?: {
     token: string;
     user: User;
@@ -35,7 +37,7 @@ export interface ProfileResponse {
 }
 
 interface LoginData {
-  email: string; // backend expects "email"
+  email: string;
   password: string;
 }
 
@@ -81,6 +83,10 @@ class AuthService {
 
       return response.data.data.user;
     } catch (error: any) {
+      // Handle 403 for password change required
+      if (error.response?.status === 403 && error.response?.data?.requires_password_change) {
+        return error.response.data.user || null;
+      }
       if (error.response?.status === 401) return null;
       const msg =
         error.response?.data?.message ||
@@ -164,7 +170,7 @@ class AuthService {
       const response: AxiosResponse<{ success: boolean; message: string }> =
         await api.delete('/auth/delete-account', {
           headers: { Authorization: `Bearer ${token}` },
-          data: { password }, // axios DELETE requires `data` for body
+          data: { password },
         });
 
       localStorage.removeItem('auth_token');

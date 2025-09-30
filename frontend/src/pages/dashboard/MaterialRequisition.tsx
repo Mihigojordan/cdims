@@ -373,7 +373,7 @@ const RequisitionManagement = () => {
                 r.id === response.data.request_id
                     ? {
                           ...r,
-                          status: response.data.all_items_received ? 'CLOSED' : 'RECEIVED',
+                          status: response.data.request_status ,
                           items: r.items.map((item) => {
                               const receivedItem = response.data.received_items.find(
                                   (ri) => ri.request_item_id === item.id
