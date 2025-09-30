@@ -603,8 +603,8 @@ const RequisitionManagement = () => {
 
         if (
             ['PADIRI', 'ADMIN', 'DIOCESAN_SITE_ENGINEER'].includes(user?.role.name) &&
-            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) &&
-            !(user?.role.name === 'DIOCESAN_SITE_ENGINEER')
+            ['PENDING', 'SUBMITTED', 'DSE_REVIEW', 'VERIFIED'].includes(status) 
+          
           
         ) {
             actionButtons.push(
