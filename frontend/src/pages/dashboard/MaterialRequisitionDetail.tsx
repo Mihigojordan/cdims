@@ -220,11 +220,12 @@ const RequestDetailView: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issued</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recieved</th>
                     {!isSiteEngineer && (
                       <>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
@@ -243,11 +244,7 @@ const RequestDetailView: React.FC = () => {
                           <p className="text-xs text-gray-400 mt-1">{item.material.specifications}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          {item.material.code}
-                        </span>
-                      </td>
+                     
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {item.qty_requested} {item.material.unit?.symbol || ''}
                       </td>
@@ -266,10 +263,15 @@ const RequestDetailView: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`text-sm font-medium ${
-                          item.qty_remaining === item.qty_requested ? 'text-green-600' : 'text-orange-600'
-                        }`}>
+                        <span className={`text-sm font-medium `}>
                           {item.qty_remaining ?? '0'} {item.material.unit?.symbol || ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm font-medium ${
+                          item.qty_received === item.qty_requested ? 'text-green-600' : 'text-orange-600'
+                        }`}>
+                          {item.qty_received ?? '0'} {item.material.unit?.symbol || ''}
                         </span>
                       </td>
                       {!isSiteEngineer && (
