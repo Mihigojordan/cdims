@@ -707,9 +707,9 @@ const DashboardHome: React.FC = () => {
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
                       onClick={() => navigate(
                         hasAccess(storekeeperRole)
-                          ? '/dashboard/stock-requisitions'
+                          ? '/admin/dashboard/stock-management'
                           : hasAccess([...siteEngineerRole, ...diocesanSiteEngineerRole])
-                          ? '/dashboard/material-requisition'
+                          ? '/admin/dashboard/material-requisition'
                           : '/admin/dashboard/material-requisition'
                       )}
                     >
@@ -764,7 +764,7 @@ const DashboardHome: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/dashboard/stock-alerts' : '/admin/dashboard/stock-management')}
+                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/admin/dashboard/stock-management' : '/admin/dashboard/stock-management')}
                     >
                       View All Alerts →
                     </button>
@@ -802,7 +802,7 @@ const DashboardHome: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/dashboard/stock-history' : '/admin/dashboard/stock-history')}
+                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/admin/dashboard/stock-history-management' : '/admin/dashboard/stock-history-management')}
                     >
                       View All Stock History →
                     </button>
@@ -840,7 +840,7 @@ const DashboardHome: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate(hasAccess(diocesanSiteEngineerRole) ? '/dashboard/materials' : '/admin/dashboard/material-management')}
+                      onClick={() => navigate(hasAccess(diocesanSiteEngineerRole) ? '/admin/dashboard/material-management' : '/admin/dashboard/material-management')}
                     >
                       View All Materials →
                     </button>
@@ -860,7 +860,7 @@ const DashboardHome: React.FC = () => {
                     <h3 className="text-base font-semibold text-gray-900">Stores Overview</h3>
                     <button
                       className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/dashboard/store-management' : '/admin/dashboard/store-management')}
+                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/admin/dashboard/store-management' : '/admin/dashboard/store-management')}
                     >
                       View Details
                     </button>
@@ -921,14 +921,19 @@ const DashboardHome: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                     {hasAccess(siteEngineerRole) ?
+''
+                     :
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate(hasAccess([...siteEngineerRole, ...diocesanSiteEngineerRole]) ? '/dashboard/site-assignments' : '/admin/dashboard/site-assign-management')}
+                      onClick={() => navigate(hasAccess([...siteEngineerRole, ...diocesanSiteEngineerRole]) ? '/admin/dashboard/site-assign-management' : '/admin/dashboard/site-assign-management')}
                     >
+                      
                       View All Site Assignments →
                     </button>
                   </div>
+}
                 </div>
               </div>
             )}
@@ -960,7 +965,7 @@ const DashboardHome: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/dashboard/stock-levels' : '/admin/dashboard/stock-management')}
+                      onClick={() => navigate(hasAccess(storekeeperRole) ? '/admin/dashboard/stock-management' : '/admin/dashboard/stock-management')}
                     >
                       View All Stock Levels →
                     </button>
@@ -976,7 +981,7 @@ const DashboardHome: React.FC = () => {
                 </div>
                 <div className="p-6">
                   <div className="space-y-4">
-                    {dashboardData.assignedSites.slice(0, 3).map((site) => (
+                    {( hasAccess(siteEngineerRole) ?dashboardData.assignedSites  : dashboardData.assignedSites.slice(0, 3)).map((site) => (
                       <div key={site.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
                           <MapPin className="w-4 h-4 text-primary-600" />
@@ -991,14 +996,18 @@ const DashboardHome: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                   {hasAccess(siteEngineerRole) ?
+                   ""
+                   :
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       className="w-full text-primary-600 hover:text-primary-700 font-medium text-sm py-2"
-                      onClick={() => navigate('/dashboard/assigned-sites')}
+                      onClick={() => navigate('/admin/dashboard/site-assign-management')}
                     >
                       View All Assigned Sites →
                     </button>
                   </div>
+}
                 </div>
               </div>
             )}
