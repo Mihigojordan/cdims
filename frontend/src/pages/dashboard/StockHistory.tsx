@@ -13,6 +13,7 @@ import {
 import stockService, { type StockMovement, type Pagination, type Material, type Store } from '../../services/stockService';
 import materialService from '../../services/materialsService';
 import storeService from '../../services/storeService';
+import { useSearchParams } from 'react-router-dom';
 
 interface StockHistoryFilterParams {
   page?: number;
@@ -42,18 +43,38 @@ const StockHistory: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<StockHistoryFilterParams>({
-    page: 1,
-    limit: 20,
-    store_id: undefined,
-    material_id: undefined,
-    movement_type: undefined,
-    date_from: '',
-    date_to: '',
-  });
-  const [searchTerm, setSearchTerm] = useState<string>('');
+   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize filters from URL
+  const [filters, setFilters] = useState<StockHistoryFilterParams>(() => ({
+    page: Number(searchParams.get('page')) || 1,
+    limit: Number(searchParams.get('limit')) || 15,
+    store_id: searchParams.get('store_id') ? Number(searchParams.get('store_id')) : undefined,
+    material_id: searchParams.get('material_id') ? Number(searchParams.get('material_id')) : undefined,
+    movement_type: (searchParams.get('movement_type') as any) || undefined,
+    date_from: searchParams.get('date_from') || '',
+    date_to: searchParams.get('date_to') || '',
+  }));
+  
+  const [searchTerm, setSearchTerm] = useState<string>(searchParams.get('search') || '');
+
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [operationStatus, setOperationStatus] = useState<OperationStatus | null>(null);
+
+    // Update URL when filters change
+  useEffect(() => {
+    const params: any = {};
+    
+    if (filters.page && filters.page !== 1) params.page = filters.page.toString();
+    if (filters.store_id) params.store_id = filters.store_id.toString();
+    if (filters.material_id) params.material_id = filters.material_id.toString();
+    if (filters.movement_type) params.movement_type = filters.movement_type;
+    if (filters.date_from) params.date_from = filters.date_from;
+    if (filters.date_to) params.date_to = filters.date_to;
+    if (searchTerm) params.search = searchTerm;
+    
+    setSearchParams(params, { replace: true });
+  }, [filters, searchTerm, setSearchParams]);
 
   useEffect(() => {
     loadData();
@@ -98,36 +119,12 @@ const StockHistory: React.FC = () => {
     }));
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setFilters((prev) => ({ ...prev, page: 1 }));
-  };
+  // const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   setSearchTerm(e.target.value);
+  //   setFilters((prev) => ({ ...prev, page: 1 }));
+  // };
 
-  const filteredHistory = history.filter((item) => {
-    // Search term filter
-    const matchesSearch =
-      !searchTerm ||
-      item.material?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.store?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // Date range filter
-    const createdAt = item.created_at ? new Date(item.created_at) : null;
-    const start = filters.date_from ? new Date(filters.date_from) : null;
-    const end = filters.date_to ? new Date(filters.date_to) : null;
-
-    if (end) {
-      end.setHours(23, 59, 59, 999);
-    }
-
-    const matchesDate =
-      !createdAt || (!start && !end) ||
-      (start && end && createdAt >= start && createdAt <= end) ||
-      (start && !end && createdAt >= start) ||
-      (end && !start && createdAt <= end);
-
-    return matchesSearch && matchesDate;
-  });
+ 
 
   const formatDate = (date?: Date | string): string => {
     if (!date) return new Date().toLocaleDateString('en-GB');
@@ -140,62 +137,69 @@ const StockHistory: React.FC = () => {
     });
   };
 
-  const totalPages = Math.ceil(filteredHistory.length / pagination.items_per_page);
-  const startIndex = (filters.page! - 1) * pagination.items_per_page;
-  const endIndex = startIndex + pagination.items_per_page;
-  const currentHistory = filteredHistory.slice(startIndex, endIndex);
+  // Use server data directly:
+const currentHistory = history;
+const totalPages = pagination.total_pages;
+const startIndex = (pagination.current_page - 1) * pagination.items_per_page;
 
-  const renderPagination = () => {
-    const pages: number[] = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, filters.page! - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-
-    return (
-      <div className="flex items-center justify-between bg-white px-3 py-2 border-t border-gray-200">
-        <div className="text-xs text-gray-600">
-          Showing {startIndex + 1}-{Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length}
-        </div>
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setFilters((prev) => ({ ...prev, page: prev.page! - 1 }))}
-            disabled={filters.page === 1}
-            className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-3 h-3" />
-          </button>
-          {pages.map((page) => (
-            <button
-              key={page}
-              onClick={() => setFilters((prev) => ({ ...prev, page }))}
-              className={`px-2 py-1 text-xs rounded ${
-                filters.page === page
-                  ? 'bg-primary-500 text-white'
-                  : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            onClick={() => setFilters((prev) => ({ ...prev, page: prev.page! + 1 }))}
-            disabled={filters.page === totalPages}
-            className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
-    );
+// Update handleSearch to trigger API call instead of local filtering:
+const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setFilters((prev) => ({ ...prev, page: 1 }));
   };
+
+// In renderPagination, use pagination state:
+const renderPagination = () => {
+  const pages: number[] = [];
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, pagination.current_page - Math.floor(maxVisiblePages / 2));
+  const endPage = Math.min(pagination.total_pages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="flex items-center justify-between bg-white px-3 py-2 border-t border-gray-200">
+      <div className="text-xs text-gray-600">
+        Showing {((pagination.current_page - 1) * pagination.items_per_page) + 1}-{Math.min(pagination.current_page * pagination.items_per_page, pagination.total_items)} of {pagination.total_items}
+      </div>
+      <div className="flex items-center space-x-1">
+        <button
+          onClick={() => setFilters((prev) => ({ ...prev, page: pagination.current_page - 1 }))}
+          disabled={pagination.current_page === 1}
+          className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-3 h-3" />
+        </button>
+        {pages.map((page) => (
+          <button
+            key={page}
+            onClick={() => setFilters((prev) => ({ ...prev, page }))}
+            className={`px-2 py-1 text-xs rounded ${
+              pagination.current_page === page
+                ? 'bg-primary-500 text-white'
+                : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          onClick={() => setFilters((prev) => ({ ...prev, page: pagination.current_page + 1 }))}
+          disabled={pagination.current_page === pagination.total_pages}
+          className="flex items-center px-2 py-1 text-xs text-gray-500 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
   return (
     <div className="min-h-screen bg-gray-50 text-xs">
