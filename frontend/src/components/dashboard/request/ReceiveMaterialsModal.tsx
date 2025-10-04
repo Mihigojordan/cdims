@@ -25,26 +25,22 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
         if (isOpen && requisition) {
             const initialItems = requisition.items
                 ?.filter(item => {
-                    const qtyIssued = item.qty_issued || 0;
-                    const qtyReceived = item.qty_received || 0;
-                    const qtyRemaining = item.qty_remaining || 0;
+                    const qtyIssued = Number(item.qty_issued || 0);
+                    const qtyReceived = Number(item.qty_received || 0);
                     
-                    // Only include items that:
-                    // 1. Have been issued (qty_issued > 0)
-                    // 2. Haven't been fully received yet (qty_received < qty_issued)
-                    // 3. OR have remaining quantity to be issued
-                    return qtyIssued > 0 && (qtyReceived < qtyIssued || qtyRemaining > 0);
+                    // Only include items that have NEW unreceived quantities
+                    // If qty_issued === qty_received, the item was fully received from previous issue
+                    // Don't include it even if qty_remaining > 0 (nothing new was issued this time)
+                    return qtyIssued > qtyReceived;
                 })
                 .map(item => {
-                    const qtyRemaining = item.qty_remaining || 0;
-                    const qtyIssued = item.qty_issued || 0;
-                    const qtyReceived = item.qty_received || 0;
+                    const qtyIssued = Number(item.qty_issued || 0);
+                    const qtyReceived = Number(item.qty_received || 0);
                     const unreceivedQty = qtyIssued - qtyReceived;
                     
                     return {
                         request_item_id: item.id,
-                        // If there's remaining qty, default to that, otherwise use unreceived quantity
-                        qty_received:  unreceivedQty,
+                        qty_received: unreceivedQty,
                     };
                 }) || [];
             setItems(initialItems);
@@ -72,10 +68,10 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
 
     // Check if item is fully completed
     const isItemFullyCompleted = (requisitionItem: any) => {
-        const qtyIssued = requisitionItem.qty_issued || 0;
-        const qtyReceived = requisitionItem.qty_received || 0;
-        const qtyRemaining = requisitionItem.qty_remaining || 0;
-        const qtyRequested = requisitionItem.qty_requested || 0;
+        const qtyIssued = Number(requisitionItem.qty_issued || 0);
+        const qtyReceived = Number(requisitionItem.qty_received || 0);
+        const qtyRemaining = Number(requisitionItem.qty_remaining || 0);
+        const qtyRequested = Number(requisitionItem.qty_requested || 0);
         
         // Item is fully completed if:
         // 1. qty_issued > 0
@@ -93,10 +89,10 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
         const requisitionItem = requisition?.items.find(ri => ri.id === item.request_item_id);
         if (!requisitionItem) return { isValid: false, message: 'Item not found' };
         
-        const qtyIssued = requisitionItem.qty_issued || 0;
-        const qtyReceived = requisitionItem.qty_received || 0;
-        const maxAllowed = qtyIssued - qtyReceived; // Only allow receiving what hasn't been received yet
-        const qtyReceivedInput = typeof item.qty_received === 'string' ? parseFloat(item.qty_received) : item.qty_received;
+        const qtyIssued = Number(requisitionItem.qty_issued || 0);
+        const qtyReceived = Number(requisitionItem.qty_received || 0);
+        const requiredQty = qtyIssued - qtyReceived; // Must receive the full unreceived quantity
+        const qtyReceivedInput = typeof item.qty_received === 'string' ? parseFloat(item.qty_received) : Number(item.qty_received);
         
         // Allow empty values during editing
         if (item.qty_received === '' || item.qty_received === null || item.qty_received === undefined) {
@@ -107,8 +103,9 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
             return { isValid: false, message: 'Must be greater than 0' };
         }
         
-        if (qtyReceivedInput > maxAllowed) {
-            return { isValid: false, message: `Max: ${maxAllowed}` };
+        // Must receive exactly the full unreceived quantity
+        if (qtyReceivedInput !== requiredQty) {
+            return { isValid: false, message: `Must be exactly ${requiredQty}` };
         }
         
         return { isValid: true, message: '' };
@@ -153,12 +150,12 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
 
     if (!isOpen || !requisition) return null;
 
-    const notIssuedItems = requisition.items?.filter(item => (item.qty_issued || 0) === 0) || [];
+    const notIssuedItems = requisition.items?.filter(item => Number(item.qty_issued || 0) === 0) || [];
     const fullyCompletedItems = requisition.items?.filter(isItemFullyCompleted) || [];
     const receivableItems = requisition.items?.filter(item => {
-        const qtyIssued = item.qty_issued || 0;
-        const qtyReceived = item.qty_received || 0;
-        return qtyIssued > 0 && qtyReceived < qtyIssued && !isItemFullyCompleted(item);
+        const qtyIssued = Number(item.qty_issued || 0);
+        const qtyReceived = Number(item.qty_received || 0);
+        return qtyIssued > qtyReceived && !isItemFullyCompleted(item);
     }) || [];
     const allItems = requisition.items || [];
 
@@ -219,12 +216,13 @@ const ReceiveMaterialsModal: React.FC<ReceiveMaterialsModalProps> = ({
                                     {allItems.map((requisitionItem) => {
                                         const item = items.find(i => i.request_item_id === requisitionItem.id);
                                         const validation = item ? getItemValidation(item) : { isValid: true, message: '' };
-                                        const isIssued = (requisitionItem.qty_issued || 0) > 0;
-                                        const qtyRemaining = requisitionItem.qty_remaining || 0;
-                                        const qtyReceived = requisitionItem.qty_received || 0;
-                                        const qtyIssued = requisitionItem.qty_issued || 0;
+                                        const isIssued = Number(requisitionItem.qty_issued || 0) > 0;
+                                        const qtyRemaining = Number(requisitionItem.qty_remaining || 0);
+                                        const qtyReceived = Number(requisitionItem.qty_received || 0);
+                                        const qtyIssued = Number(requisitionItem.qty_issued || 0);
                                         const isCompleted = isItemFullyCompleted(requisitionItem);
-                                        const canReceive = isIssued && qtyReceived < qtyIssued && !isCompleted;
+                                        // Show input ONLY if there are NEW unreceived quantities (qty_issued > qty_received)
+                                        const canReceive = qtyIssued > qtyReceived && !isCompleted;
                                         
                                         return (
                                             <tr key={requisitionItem.id} className={`hover:bg-gray-25 ${!canReceive ? 'bg-gray-50' : ''}`}>
